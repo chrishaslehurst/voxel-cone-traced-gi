@@ -17,7 +17,7 @@
     <Filter Include="Source\Debug">
       <UniqueIdentifier>{b1b11fb5-58df-4f76-ba19-c5d81ef42aa9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Renderer">
+    <Filter Include="Source\Rendering">
       <UniqueIdentifier>{54998ebc-59f7-49ea-b747-2eb4b33709a8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -29,10 +29,13 @@
       <Filter>Source\Application</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>Source\Renderer</Filter>
+      <Filter>Source\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="InputManager.cpp">
       <Filter>Source\Application</Filter>
+    </ClCompile>
+    <ClCompile Include="D3DWrapper.cpp">
+      <Filter>Source\Rendering</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -43,10 +46,13 @@
       <Filter>Source\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
-      <Filter>Source\Renderer</Filter>
+      <Filter>Source\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="InputManager.h">
       <Filter>Source\Application</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DWrapper.h">
+      <Filter>Source\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
