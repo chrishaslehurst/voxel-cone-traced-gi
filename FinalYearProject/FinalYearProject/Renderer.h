@@ -27,7 +27,7 @@ public:
 	bool Update();
 
 private:
-
+	D3DWrapper* m_pD3D;
 	bool Render();
 };
 

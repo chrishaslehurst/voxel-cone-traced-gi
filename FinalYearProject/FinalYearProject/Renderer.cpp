@@ -1,8 +1,10 @@
 #include "Renderer.h"
+#include "Debugging.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Renderer::Renderer()
+	: m_pD3D(nullptr)
 {
 
 }
@@ -18,6 +20,20 @@ Renderer::~Renderer()
 
 bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 {
+	m_pD3D = new D3DWrapper;
+	if (!m_pD3D)
+	{
+		VS_LOG_VERBOSE("Failed to create D3DWrapper");
+		return false;
+	}
+
+	//Initialise D3DWrapper..
+	if (!m_pD3D->Initialise(iScreenWidth, iScreenHeight, VSYNC_ENABLED, hwnd, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR))
+	{
+		MessageBox(hwnd, L"Could not initialise the D3DWrapper", L"Error", MB_OK);
+		return false;
+	}
+
 	return true;
 }
 
@@ -25,13 +41,24 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 
 void Renderer::Shutdown()
 {
-
+	//deallocate the D3DWrapper
+	if (m_pD3D)
+	{
+		delete m_pD3D;
+		m_pD3D = nullptr;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Renderer::Update()
 {
+	//Render the scene
+	if (!Render())
+	{
+		VS_LOG_VERBOSE("Render function failed")
+		return false;
+	}
 	return true;
 }
 
@@ -39,6 +66,13 @@ bool Renderer::Update()
 
 bool Renderer::Render()
 {
+	//Clear buffers to begin the scene
+	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
+
+
+	//Present the rendered scene to the screen
+	m_pD3D->EndScene();
+
 	return true;
 }
 
