@@ -20,6 +20,9 @@
     <Filter Include="Source\Rendering">
       <UniqueIdentifier>{54998ebc-59f7-49ea-b747-2eb4b33709a8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Renderables">
+      <UniqueIdentifier>{e536383e-3310-4013-be0e-6e118eaa9264}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -36,6 +39,12 @@
     </ClCompile>
     <ClCompile Include="D3DWrapper.cpp">
       <Filter>Source\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Source\Renderables</Filter>
+    </ClCompile>
+    <ClCompile Include="ColourShader.cpp">
+      <Filter>Shaders</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -54,5 +63,16 @@
     <ClInclude Include="D3DWrapper.h">
       <Filter>Source\Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Source\Renderables</Filter>
+    </ClInclude>
+    <ClInclude Include="ColourShader.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Colour.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
