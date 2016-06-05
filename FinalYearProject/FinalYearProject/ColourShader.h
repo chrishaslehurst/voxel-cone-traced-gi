@@ -3,6 +3,7 @@
 
 #include <d3d11_3.h>
 #include <DirectXMath.h>
+#include <D3DCompiler.h>
 
 #include <fstream>
 
@@ -15,7 +16,7 @@ class ColourShader
 	{
 		XMMATRIX world;
 		XMMATRIX view;
-		XMMATRIX position;
+		XMMATRIX projection;
 
 		void* operator new(size_t i)
 		{
@@ -38,7 +39,7 @@ public:
 
 private:
 
-	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sVSFilename, WCHAR* sPSFilename);
+	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename);
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 

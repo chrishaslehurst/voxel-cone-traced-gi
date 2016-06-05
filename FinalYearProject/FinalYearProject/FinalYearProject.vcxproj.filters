@@ -46,6 +46,9 @@
     <ClCompile Include="ColourShader.cpp">
       <Filter>Shaders</Filter>
     </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Source\Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -68,6 +71,9 @@
     </ClInclude>
     <ClInclude Include="ColourShader.h">
       <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Source\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
