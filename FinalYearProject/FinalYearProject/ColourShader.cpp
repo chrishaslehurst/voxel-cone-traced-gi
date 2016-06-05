@@ -198,13 +198,13 @@ void ColourShader::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd,
 	char* compileErrors = (char*)(errorMessage->GetBufferPointer());
 
 	//get the length of the message..
-	unsigned long u_iBufferSize = errorMessage->GetBufferSize();
+	size_t u_iBufferSize = errorMessage->GetBufferSize();
 	
 	ofstream fout;
 	fout.open("shader-error.txt");
 	//Write out the error to the file..
 
-	for (unsigned long i = 0; i < u_iBufferSize; i++)
+	for (size_t i = 0; i < u_iBufferSize; i++)
 	{
 		fout << compileErrors[i];
 	}

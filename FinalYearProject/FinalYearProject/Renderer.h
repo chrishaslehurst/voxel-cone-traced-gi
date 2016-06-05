@@ -4,6 +4,9 @@
 
 #include <windows.h>
 #include "D3DWrapper.h"
+#include "Camera.h"
+#include "Mesh.h"
+#include "ColourShader.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -28,6 +31,10 @@ public:
 
 private:
 	D3DWrapper* m_pD3D;
+	Camera*		m_pCamera;
+	Mesh*		m_pModel;
+	ColourShader* m_pShader;
+
 	bool Render();
 };
 

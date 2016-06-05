@@ -5,6 +5,9 @@
 
 Renderer::Renderer()
 	: m_pD3D(nullptr)
+	, m_pCamera(nullptr)
+	, m_pModel(nullptr)
+	, m_pShader(nullptr)
 {
 
 }
@@ -34,6 +37,44 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
+	m_pCamera = new Camera;
+	if (!m_pCamera)
+	{
+		VS_LOG_VERBOSE("Could not create Camera");
+		return false;
+	}
+	m_pCamera->SetPosition(0.f, 0.f, -10.f);
+
+	//Create the mesh..
+	m_pModel = new Mesh;
+	if (!m_pModel)
+	{
+		VS_LOG_VERBOSE("Could not create Mesh");
+		return false;
+	}
+
+	if (!m_pModel->Initialise(m_pD3D->GetDevice()))
+	{
+		VS_LOG_VERBOSE("Unable to initialise mesh")
+		return false;
+	}
+
+	//Create the shader
+	m_pShader = new ColourShader;
+	if (!m_pShader)
+	{
+		VS_LOG_VERBOSE("Could not create shader");
+		return false;
+	}
+
+	//Initialise shader..
+	if (!m_pShader->Initialise(m_pD3D->GetDevice(), hwnd))
+	{
+		VS_LOG_VERBOSE("Could not initialise shader")
+		return false;
+	}
+
+
 	return true;
 }
 
@@ -41,6 +82,26 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 
 void Renderer::Shutdown()
 {
+	if (m_pShader)
+	{
+		m_pShader->Shutdown();
+		delete m_pShader;
+		m_pShader = nullptr;
+	}
+
+	if (m_pModel)
+	{
+		m_pModel->Shutdown();
+		delete m_pModel;
+		m_pModel = nullptr;
+	}
+
+	if (m_pCamera)
+	{
+		delete m_pCamera;
+		m_pCamera = nullptr;
+	}
+
 	//deallocate the D3DWrapper
 	if (m_pD3D)
 	{
@@ -66,9 +127,29 @@ bool Renderer::Update()
 
 bool Renderer::Render()
 {
+
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
 
+	//Generate view matrix based on camera position
+	m_pCamera->Render();
+
+
+	XMMATRIX mView, mProjection, mWorld;
+	//Get the world, view and proj matrix from the camera and d3d objects..
+	m_pCamera->GetViewMatrix(mView);
+	m_pD3D->GetWorldMatrix(mWorld);
+	m_pD3D->GetProjectionMatrix(mProjection);
+
+	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
+	m_pModel->Render(m_pD3D->GetDeviceContext());
+
+	//Render the model using the shader..
+	if (!m_pShader->Render(m_pD3D->GetDeviceContext(), m_pModel->GetIndexCount(), mWorld, mView, mProjection))
+	{
+		VS_LOG_VERBOSE("Unable to render object with shader")
+		return false;
+	}
 
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
