@@ -57,7 +57,7 @@ private:
 	ID3D11InputLayout*  m_pLayout;
 	ID3D11Buffer*		m_pMatrixBuffer;
 
-	Texture* m_pTexture;
+	Texture*			m_pTexture;
 	ID3D11SamplerState* m_pSampleState;
 
 };

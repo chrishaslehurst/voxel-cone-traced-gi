@@ -19,23 +19,24 @@ Texture::~Texture()
 
 bool Texture::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
 {
-	ScratchImage* img = new ScratchImage;
+	m_pImage = new ScratchImage;
 	TexMetadata texMeta;
-	HRESULT hr = LoadFromTGAFile(filename, &texMeta, *img);
+	HRESULT hr = LoadFromTGAFile(filename, &texMeta, *m_pImage);
 	if (FAILED(hr))
 	{
 		VS_LOG_VERBOSE("Failed to load tex from file");
 		return false;
 	}
 
-	hr = CreateShaderResourceView(pDevice, img->GetImage(0, 0, 0), 1, texMeta, &m_pTexture);
+	const Image* pImage = m_pImage->GetImage(0, 0, 0);
+	hr = CreateShaderResourceView(pDevice, pImage, 1, texMeta, &m_pTexture);
 	if (FAILED(hr))
 	{
 		VS_LOG_VERBOSE("Texture failed to load");
 		return false;
 	}
-	delete img;
-
+	
+	
 	return true;
 }
 
@@ -47,6 +48,11 @@ void Texture::Shutdown()
 	{
 		m_pTexture->Release();
 		m_pTexture = nullptr;
+	}
+	if (m_pImage)
+	{
+		m_pImage->Release();
+		m_pImage = nullptr;
 	}
 }
 

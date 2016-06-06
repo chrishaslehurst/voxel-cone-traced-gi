@@ -20,6 +20,7 @@ public:
 private:
 
 	ID3D11ShaderResourceView* m_pTexture;
+	ScratchImage*			  m_pImage;
 };
 
 #endif // !TEXTURE_H

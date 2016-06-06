@@ -342,7 +342,7 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pMatrixBuffer);
 
 	ID3D11ShaderResourceView* pTex = m_pTexture->GetTexture();
-	pDeviceContext->VSSetShaderResources(0, 1, &pTex);
+	pDeviceContext->PSSetShaderResources(0, 1, &pTex);
 
 	return true;
 }
