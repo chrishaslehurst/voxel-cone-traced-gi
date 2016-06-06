@@ -23,6 +23,9 @@
     <Filter Include="Source\Renderables">
       <UniqueIdentifier>{e536383e-3310-4013-be0e-6e118eaa9264}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Materials">
+      <UniqueIdentifier>{36c43ebf-339b-491a-9b1e-717b23624978}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -43,11 +46,14 @@
     <ClCompile Include="Mesh.cpp">
       <Filter>Source\Renderables</Filter>
     </ClCompile>
-    <ClCompile Include="ColourShader.cpp">
-      <Filter>Shaders</Filter>
-    </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>Source\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Source\Materials</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -69,15 +75,18 @@
     <ClInclude Include="Mesh.h">
       <Filter>Source\Renderables</Filter>
     </ClInclude>
-    <ClInclude Include="ColourShader.h">
-      <Filter>Shaders</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Source\Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Source\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Source\Materials</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Colour.hlsl">
+    <FxCompile Include="Material.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

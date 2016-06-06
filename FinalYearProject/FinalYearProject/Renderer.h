@@ -6,7 +6,7 @@
 #include "D3DWrapper.h"
 #include "Camera.h"
 #include "Mesh.h"
-#include "ColourShader.h"
+#include "Material.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -33,7 +33,7 @@ private:
 	D3DWrapper* m_pD3D;
 	Camera*		m_pCamera;
 	Mesh*		m_pModel;
-	ColourShader* m_pShader;
+	Material* m_pShader;
 
 	bool Render();
 };

@@ -5,6 +5,7 @@
 
 #include <d3d11_3.h>
 #include <DirectXMath.h>
+#include "Material.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -19,6 +20,7 @@ __declspec(align(16)) class Mesh
 	__declspec(align(16)) struct VertexType
 	{
 		XMFLOAT3 position;
+		XMFLOAT2 texture;
 		XMFLOAT4 color;
 
 		void* operator new(size_t i)
@@ -47,11 +49,13 @@ public:
 	Mesh();
 	~Mesh();
 
-	bool Initialise(ID3D11Device* pDevice);
+	bool Initialise(ID3D11Device* pDevice, Material* pMaterial = nullptr);
 	void Shutdown();
-	void Render(ID3D11DeviceContext* pDeviceContext);
+	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
 
 	int GetIndexCount();
+
+	void SetMaterial(Material* pMaterial) { m_pMaterial = pMaterial; }
 
 private:
 
@@ -63,6 +67,8 @@ private:
 	ID3D11Buffer* m_pIndexBuffer;
 	int			  m_iVertexCount;
 	int			  m_iIndexCount;
+
+	Material*	  m_pMaterial;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
