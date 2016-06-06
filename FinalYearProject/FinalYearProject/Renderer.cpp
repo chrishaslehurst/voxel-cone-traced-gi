@@ -8,6 +8,7 @@ Renderer::Renderer()
 	, m_pCamera(nullptr)
 	, m_pModel(nullptr)
 	, m_pShader(nullptr)
+	, m_pDirectionalLight(nullptr)
 {
 
 }
@@ -72,10 +73,19 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 
 	if (!m_pModel->Initialise(m_pD3D->GetDevice(), m_pShader))
 	{
-		VS_LOG_VERBOSE("Unable to initialise mesh")
-			return false;
+		VS_LOG_VERBOSE("Unable to initialise mesh");
+		return false;
 	}
 
+	//Create the directional light
+	m_pDirectionalLight = new DirectionalLight;
+	if (!m_pDirectionalLight)
+	{
+		VS_LOG_VERBOSE("Unable to create Directional Light");
+		return false;
+	}
+	m_pDirectionalLight->SetDiffuseColour(1.0f, 0.0f, 1.0f, 1.0f);
+	m_pDirectionalLight->SetDirection(0.0f, 0.0f, 1.0f);
 
 	return true;
 }
@@ -84,6 +94,12 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 
 void Renderer::Shutdown()
 {
+	if (m_pDirectionalLight)
+	{
+		delete m_pDirectionalLight;
+		m_pDirectionalLight = nullptr;
+	}
+
 	if (m_pShader)
 	{
 		m_pShader->Shutdown();
@@ -129,6 +145,17 @@ bool Renderer::Update()
 
 bool Renderer::Render()
 {
+//TODO REMOVE THIS---------------------------------------
+	static float rotation = 0.0f;
+
+
+	// Update the rotation variable each frame.
+	rotation += (float)XM_PI * 0.01f;
+	if (rotation > 360.0f)
+	{
+		rotation -= 360.0f;
+	}
+//TODO: REMOVE THIS---------------------------------------
 
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
@@ -143,8 +170,10 @@ bool Renderer::Render()
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
 
+	mWorld = mWorld * XMMatrixRotationY(rotation);
+
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
-	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection);
+	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour());
 
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();

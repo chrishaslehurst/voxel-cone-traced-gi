@@ -31,13 +31,31 @@ class Material
 		}
 	};
 
+	__declspec(align(16)) struct LightBuffer
+	{
+		XMFLOAT4 diffuseColour;
+		XMFLOAT3 lightDirection;
+		float padding;
+
+		void* operator new(size_t i)
+		{
+			return _mm_malloc(i, 16);
+		}
+
+			void operator delete(void* p)
+		{
+			_mm_free(p);
+		}
+	};
+
+
 public:
 	Material();
 	~Material();
 
 	bool Initialise(ID3D11Device* pDevice, HWND hwnd, WCHAR* textureFileName);
 	void Shutdown();
-	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
+	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour);
 
 private:
 
@@ -48,7 +66,7 @@ private:
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
-	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
+	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour);
 	void RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 
 
@@ -56,6 +74,7 @@ private:
 	ID3D11PixelShader*  m_pPixelShader;
 	ID3D11InputLayout*  m_pLayout;
 	ID3D11Buffer*		m_pMatrixBuffer;
+	ID3D11Buffer*		m_pLightBuffer;
 
 	Texture*			m_pTexture;
 	ID3D11SamplerState* m_pSampleState;

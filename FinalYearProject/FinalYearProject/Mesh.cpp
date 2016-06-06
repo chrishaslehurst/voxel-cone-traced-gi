@@ -37,12 +37,12 @@ void Mesh::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
+void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour)
 {
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	RenderBuffers(pDeviceContext);
 
-	if (!m_pMaterial->Render(pDeviceContext, m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix))
+	if (!m_pMaterial->Render(pDeviceContext, m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour))
 	{
 		VS_LOG_VERBOSE("Unable to render object with shader");
 	}
@@ -88,16 +88,19 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 
 	// Load the vertex array with data.
 	vertices[0].position = XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left.
+	vertices[0].normal = XMFLOAT3(0.0f, 0.0f, -1.0f);
 	vertices[0].texture = XMFLOAT2(0.0f, 1.0f);
-	vertices[0].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	vertices[0].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	vertices[1].position = XMFLOAT3(0.0f, 1.0f, 0.0f);  // Top middle.
+	vertices[1].normal = XMFLOAT3(0.0f, 0.0f, -1.0f);
 	vertices[1].texture = XMFLOAT2(0.5f, 0.0f);
-	vertices[1].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	vertices[1].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	vertices[2].position = XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right.
+	vertices[2].normal = XMFLOAT3(0.0f, 0.0f, -1.0f);
 	vertices[2].texture = XMFLOAT2(1.0f, 1.0f);
-	vertices[2].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	vertices[2].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// Load the index array with data.
 	indices[0] = 0;  // Bottom left.

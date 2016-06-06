@@ -20,6 +20,7 @@ __declspec(align(16)) class Mesh
 	__declspec(align(16)) struct VertexType
 	{
 		XMFLOAT3 position;
+		XMFLOAT3 normal;
 		XMFLOAT2 texture;
 		XMFLOAT4 color;
 
@@ -51,7 +52,7 @@ public:
 
 	bool Initialise(ID3D11Device* pDevice, Material* pMaterial = nullptr);
 	void Shutdown();
-	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
+	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour);
 
 	int GetIndexCount();
 

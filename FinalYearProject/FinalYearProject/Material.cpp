@@ -9,6 +9,7 @@ Material::Material()
 	, m_pMatrixBuffer(nullptr)
 	, m_pTexture(nullptr)
 	, m_pSampleState(nullptr)
+	, m_pLightBuffer(nullptr)
 {
 
 }
@@ -47,10 +48,10 @@ void Material::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
+bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour)
 {
 	bool result;
-	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix);
+	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vDiffuseColour);
 	if (!result)
 	{
 		VS_LOG_VERBOSE("Failed to set shader parameters");
@@ -104,8 +105,6 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	ID3D10Blob* pErrorMessage( nullptr);
 	ID3D10Blob* pVertexShaderBuffer( nullptr);
 	ID3D10Blob* pPixelShaderBuffer( nullptr);
-	
-	D3D11_BUFFER_DESC matrixBufferDesc;
 
 	//Compile the vertex shader code
 	result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
@@ -155,7 +154,7 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 		return false;
 	}
 
-	D3D11_INPUT_ELEMENT_DESC polyLayout[3];
+	D3D11_INPUT_ELEMENT_DESC polyLayout[4];
 	//Setup data layout for the shader, needs to match the VertexType struct in the Mesh class and in the shader code.
 	polyLayout[0].SemanticName = "POSITION";
 	polyLayout[0].SemanticIndex = 0;
@@ -165,22 +164,31 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	polyLayout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[0].InstanceDataStepRate = 0;
 
-	polyLayout[1].SemanticName = "TEXCOORD";
+	polyLayout[1].SemanticName = "NORMAL";
 	polyLayout[1].SemanticIndex = 0;
-	polyLayout[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+	polyLayout[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polyLayout[1].InputSlot = 0;
 	polyLayout[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[1].InstanceDataStepRate = 0;
 
 
-	polyLayout[2].SemanticName = "COLOR";
+	polyLayout[2].SemanticName = "TEXCOORD";
 	polyLayout[2].SemanticIndex = 0;
-	polyLayout[2].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	polyLayout[2].Format = DXGI_FORMAT_R32G32_FLOAT;
 	polyLayout[2].InputSlot = 0;
 	polyLayout[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[2].InstanceDataStepRate = 0;
+
+
+	polyLayout[3].SemanticName = "COLOR";
+	polyLayout[3].SemanticIndex = 0;
+	polyLayout[3].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	polyLayout[3].InputSlot = 0;
+	polyLayout[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+	polyLayout[3].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+	polyLayout[3].InstanceDataStepRate = 0;
 
 	//Get the number of elements in the layout
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
@@ -201,6 +209,7 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	pPixelShaderBuffer->Release();
 	pPixelShaderBuffer = nullptr;
 
+	D3D11_BUFFER_DESC matrixBufferDesc;
 	//Setup the description of the dynamic matrix constant buffer that is in the shader..
 	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	matrixBufferDesc.ByteWidth = sizeof(MatrixBuffer);
@@ -209,10 +218,28 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	matrixBufferDesc.MiscFlags = 0;
 	matrixBufferDesc.StructureByteStride = 0;
 
+	//Create the buffer so we can access it from within this class
 	result = pDevice->CreateBuffer(&matrixBufferDesc, NULL, &m_pMatrixBuffer);
 	if (FAILED(result))
 	{
 		VS_LOG_VERBOSE("Failed to create matrix buffer");
+		return false;
+	}
+
+	D3D11_BUFFER_DESC lightBufferDesc;
+	//Setup description of the light dynamic constant buffer in the pixel shader
+	lightBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	lightBufferDesc.ByteWidth = sizeof(LightBuffer);
+	lightBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	lightBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	lightBufferDesc.MiscFlags = 0;
+	lightBufferDesc.StructureByteStride = 0;
+
+	//Create the buffer so we can access it from within this class
+	result = pDevice->CreateBuffer(&lightBufferDesc, nullptr, &m_pLightBuffer);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create light buffer");
 		return false;
 	}
 
@@ -246,6 +273,12 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 
 void Material::ShutdownShader()
 {
+	if (m_pLightBuffer)
+	{
+		m_pLightBuffer->Release();
+		m_pLightBuffer = nullptr;
+	}
+
 	if (m_pSampleState)
 	{
 		m_pSampleState->Release();
@@ -305,18 +338,15 @@ void Material::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCH
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
+bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour)
 {
 	
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	MatrixBuffer* pData;
-	unsigned int u_iBufferNumber;
-
 	//Matrices need to be transposed before sending them into the shader for dx11..
 	mWorldMatrix = XMMatrixTranspose(mWorldMatrix);
 	mViewMatrix = XMMatrixTranspose(mViewMatrix);
 	mProjectionMatrix = XMMatrixTranspose(mProjectionMatrix);
 
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	//Lock the matrixBuffer, set new matrices inside it, then unlock it.
 	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(result))
@@ -324,22 +354,41 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 		VS_LOG_VERBOSE("Failed to lock the matrix buffer");
 		return false;
 	}
-
+	MatrixBuffer* pMatrixData;
 	//Get pointer to the buffer data
-	pData = (MatrixBuffer*)mappedResource.pData;
+	pMatrixData = (MatrixBuffer*)mappedResource.pData;
 
-	pData->world = mWorldMatrix;
-	pData->view = mViewMatrix;
-	pData->projection = mProjectionMatrix;
+	pMatrixData->world = mWorldMatrix;
+	pMatrixData->view = mViewMatrix;
+	pMatrixData->projection = mProjectionMatrix;
 
 	//Unlock the buffer
 	pDeviceContext->Unmap(m_pMatrixBuffer, 0);
 
+	LightBuffer* pLightData;
+	//Lock the lightBuffer, set the lighting info and then unlock it
+	result = pDeviceContext->Map(m_pLightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to lock the light buffer");
+		return false;
+	}
+
+	pLightData = (LightBuffer*)mappedResource.pData;
+	pLightData->diffuseColour = vDiffuseColour;
+	pLightData->lightDirection = vLightDirection;
+	pLightData->padding = 0.f;
+
+	//Unlock the buffer
+	pDeviceContext->Unmap(m_pLightBuffer, 0);
+
 	//Set the position of the buffer in the HLSL shader
-	u_iBufferNumber = 0;
+	unsigned int u_iBufferNumber = 0;
 
 	//Finally, set the buffer in the shader to the new values
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pMatrixBuffer);
+
+	pDeviceContext->PSSetConstantBuffers(u_iBufferNumber, 1, &m_pLightBuffer);
 
 	ID3D11ShaderResourceView* pTex = m_pTexture->GetTexture();
 	pDeviceContext->PSSetShaderResources(0, 1, &pTex);

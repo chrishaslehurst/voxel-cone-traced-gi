@@ -26,6 +26,9 @@
     <Filter Include="Source\Materials">
       <UniqueIdentifier>{36c43ebf-339b-491a-9b1e-717b23624978}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Lights">
+      <UniqueIdentifier>{8c14f6fb-8d7f-4dac-9e47-c083f9a0fa18}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -55,6 +58,9 @@
     <ClCompile Include="Texture.cpp">
       <Filter>Source\Materials</Filter>
     </ClCompile>
+    <ClCompile Include="DirectionalLight.cpp">
+      <Filter>Source\Lights</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -83,6 +89,9 @@
     </ClInclude>
     <ClInclude Include="Texture.h">
       <Filter>Source\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectionalLight.h">
+      <Filter>Source\Lights</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
