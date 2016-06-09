@@ -6,6 +6,7 @@ Mesh::Mesh()
 	: m_pVertexBuffer(nullptr)
 	, m_pIndexBuffer(nullptr)
 	, m_pMaterial(nullptr)
+	, m_pModel(nullptr)
 {
 
 }
@@ -19,8 +20,14 @@ Mesh::~Mesh()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::Initialise(ID3D11Device* pDevice, Material* pMaterial /*=nullptr*/)
+bool Mesh::Initialise(ID3D11Device* pDevice, char* filename, Material* pMaterial /*=nullptr*/)
 {
+	//Load in the model data
+	if (!LoadModel(filename))
+	{
+		return false;
+	}
+
 	SetMaterial(pMaterial);
 	//Initialise the buffers
 	return InitialiseBuffers(pDevice);
@@ -33,6 +40,8 @@ void Mesh::Shutdown()
 {
 	//Release buffers
 	ShutdownBuffers();
+
+	ReleaseModel();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +66,73 @@ int Mesh::GetIndexCount()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool Mesh::LoadModel(char* filename)
+{
+	ifstream fin;
+	fin.open(filename);
+	
+	//did the file open?
+	if (fin.fail())
+	{
+		VS_LOG_VERBOSE("Failed to load model, could not open file..");
+		return false;
+	}
+	
+	char input;
+	//read up to the value of vertex count.
+	fin.get(input);
+	while (input != ':')
+	{
+		fin.get(input);
+	}
+
+	//read in the vert count
+	fin >> m_iVertexCount;
+	m_iIndexCount = m_iVertexCount;
+
+	//create the model array..
+	m_pModel = new ModelType[m_iVertexCount];
+	if (!m_pModel)
+	{
+		VS_LOG_VERBOSE("Failed to load model, could not initialise model array");
+		return false;
+	}
+
+	//Read up to the beginning of the data
+	fin.get(input);
+	while (input != ':')
+	{
+		fin.get(input);
+	}
+	fin.get(input);
+	fin.get(input);
+
+	//Read in the vertex data
+	for (int i = 0; i < m_iVertexCount; i++)
+	{
+		fin >> m_pModel[i].x >> m_pModel[i].y >> m_pModel[i].z;
+		fin >> m_pModel[i].tu >> m_pModel[i].tv;
+		fin >> m_pModel[i].nx >> m_pModel[i].ny >> m_pModel[i].nz;
+	}
+
+	fin.close();
+
+	return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::ReleaseModel()
+{
+	if (m_pModel)
+	{
+		delete[] m_pModel;
+		m_pModel = nullptr;
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 {
 	VertexType* vertices;
@@ -65,12 +141,6 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
 	HRESULT result;
-
-	//Set number of verts in the array
-	m_iVertexCount = 3;
-
-	//Set the number of indices in the array
-	m_iIndexCount = 3;
 
 	//Create vert array
 	vertices = new VertexType[m_iVertexCount];
@@ -86,26 +156,19 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 		return false;
 	}
 
-	// Load the vertex array with data.
-	vertices[0].position = XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left.
-	vertices[0].normal = XMFLOAT3(0.0f, 0.0f, -1.0f);
-	vertices[0].texture = XMFLOAT2(0.0f, 1.0f);
-	vertices[0].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
-	vertices[1].position = XMFLOAT3(0.0f, 1.0f, 0.0f);  // Top middle.
-	vertices[1].normal = XMFLOAT3(0.0f, 0.0f, -1.0f);
-	vertices[1].texture = XMFLOAT2(0.5f, 0.0f);
-	vertices[1].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	for (int i = 0; i < m_iVertexCount; i++)
+	{
+		// Load the vertex array with data.
+		vertices[i].position = XMFLOAT3(m_pModel[i].x, m_pModel[i].y, m_pModel[i].z);  // Bottom left.
+		vertices[i].normal = XMFLOAT3(m_pModel[i].nx, m_pModel[i].ny, m_pModel[i].nz);
+		vertices[i].texture = XMFLOAT2(m_pModel[i].tu, m_pModel[i].tv);
+		vertices[i].color = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
 
-	vertices[2].position = XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right.
-	vertices[2].normal = XMFLOAT3(0.0f, 0.0f, -1.0f);
-	vertices[2].texture = XMFLOAT2(1.0f, 1.0f);
-	vertices[2].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		indices[i] = i;
+	}
 
-	// Load the index array with data.
-	indices[0] = 0;  // Bottom left.
-	indices[1] = 1;  // Top middle.
-	indices[2] = 2;  // Bottom right.
+	
 
 	//Setup the description of the static vertex buffer.
 	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;

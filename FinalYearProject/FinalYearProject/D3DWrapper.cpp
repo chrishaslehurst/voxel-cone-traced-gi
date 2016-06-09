@@ -371,6 +371,8 @@ bool D3DWrapper::SetUpSwapChainAndDevice(HWND hwnd, bool bFullScreenEnabled, int
 		VS_LOG_VERBOSE("Failed to create device and swap chain");
 		return false;
 	}
+
+	//check for tiled resources support - need tier 3 for Volume Tiled Resources..
 	D3D11_FEATURE_DATA_D3D11_OPTIONS1 featureData;
 	m_pDevice->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS1, &featureData, sizeof(featureData));
 

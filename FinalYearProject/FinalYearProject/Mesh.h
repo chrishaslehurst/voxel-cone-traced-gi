@@ -5,11 +5,13 @@
 
 #include <d3d11_3.h>
 #include <DirectXMath.h>
+#include <fstream>
 #include "Material.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 using namespace DirectX;
+using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -36,6 +38,13 @@ __declspec(align(16)) class Mesh
 	};
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	struct ModelType
+	{
+		float x, y, z;
+		float tu, tv;
+		float nx, ny, nz;
+	};
+
 public:
 	void* operator new(size_t i)
 	{
@@ -50,7 +59,7 @@ public:
 	Mesh();
 	~Mesh();
 
-	bool Initialise(ID3D11Device* pDevice, Material* pMaterial = nullptr);
+	bool Initialise(ID3D11Device* pDevice, char* modelFilename, Material* pMaterial = nullptr);
 	void Shutdown();
 	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour);
 
@@ -60,6 +69,8 @@ public:
 
 private:
 
+	bool LoadModel(char* filename);
+	void ReleaseModel();
 	bool InitialiseBuffers(ID3D11Device* pDevice);
 	void ShutdownBuffers();
 	void RenderBuffers(ID3D11DeviceContext* pDeviceContext);
@@ -70,6 +81,8 @@ private:
 	int			  m_iIndexCount;
 
 	Material*	  m_pMaterial;
+
+	ModelType*	  m_pModel;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

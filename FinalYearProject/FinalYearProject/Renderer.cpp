@@ -71,7 +71,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	if (!m_pModel->Initialise(m_pD3D->GetDevice(), m_pShader))
+	if (!m_pModel->Initialise(m_pD3D->GetDevice(), "../Assets/Models/cube.txt", m_pShader))
 	{
 		VS_LOG_VERBOSE("Unable to initialise mesh");
 		return false;
@@ -84,7 +84,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		VS_LOG_VERBOSE("Unable to create Directional Light");
 		return false;
 	}
-	m_pDirectionalLight->SetDiffuseColour(1.0f, 0.0f, 1.0f, 1.0f);
+	m_pDirectionalLight->SetDiffuseColour(1.0f, 1.0f, 1.0f, 1.0f);
 	m_pDirectionalLight->SetDirection(0.0f, 0.0f, 1.0f);
 
 	return true;
