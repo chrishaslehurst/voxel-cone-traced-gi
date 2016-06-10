@@ -171,10 +171,11 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 	int iObjectIndex(-1);
 	while (fin)
 	{		
-		int iVertexIndex;
-		int iNormalIndex;
-		int iTexCoordIndex;
-
+		int iVertexIndex =0;
+		int iNormalIndex =0;
+		int iTexCoordIndex=0;
+		int iFaceIndex = 0;
+		char dump;
 		if (s == "object")
 		{
 			iObjectIndex++;
@@ -193,22 +194,101 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 				if (s == "v")
 				{
 					//vertex
-					float x, y, z;
-					fin >> x >> y >> z;
+					fin >> Verts[iVertexIndex].x >> Verts[iVertexIndex].y >> Verts[iVertexIndex].z;
+					// Invert the Z vertex to change to left hand system.
+					Verts[iVertexIndex].z = Verts[iVertexIndex].z * -1.0f;
+					iVertexIndex++;
 				}
 				else if (s == "vt")
 				{
 					//texture coord
+					fin >> TexCoords[iTexCoordIndex].x >> TexCoords[iTexCoordIndex].y;
+					//Invert the v texture coord to left hand system
+					TexCoords[iTexCoordIndex].y = 1.0f - TexCoords[iTexCoordIndex].y;
+					iTexCoordIndex++;
 				}
 				else if (s == "vn")
 				{
-					//normal
+					//normal coord
+					fin >> Normals[iNormalIndex].x >> Normals[iNormalIndex].y >> Normals[iNormalIndex].z;
+					//Invert the z normal to change to left hand system
+					Normals[iNormalIndex].z = Normals[iNormalIndex].z * -1.f;
+					iNormalIndex++;
 				}
 				else if (s == "f")
 				{
-					//face
+					//Reade the face data in backwards to convert to left hand system
+					fin >> Faces[iFaceIndex].vIndex3 >> dump >> Faces[iFaceIndex].tIndex3 >> dump >> Faces[iFaceIndex].nIndex3
+						>> Faces[iFaceIndex].vIndex2 >> dump >> Faces[iFaceIndex].tIndex2 >> dump >> Faces[iFaceIndex].nIndex2
+						>> Faces[iFaceIndex].vIndex1 >> dump >> Faces[iFaceIndex].tIndex1 >> dump >> Faces[iFaceIndex].nIndex1;
+
+						iFaceIndex++;
+				}
+				else if (s == "usemtl")
+				{
+					//get the mat name
+					fin >> s;
+
+					m_arrSubMeshes[iObjectIndex].m_pMaterial = m_MatLib->GetMaterial(s);
 				}
 			}
+
+			m_arrSubMeshes[iObjectIndex].m_pModel = new ModelType[m_arrSubMeshes[iObjectIndex].m_iFaceCount * 3];
+			int vIndex, tIndex, nIndex;
+			for (int i = 0; i < iFaceIndex; i++)
+			{
+				int modelIndex = i * 3;
+				vIndex = Faces[i].vIndex1 - 1;
+				tIndex = Faces[i].tIndex1 - 1;
+				nIndex = Faces[i].nIndex1 - 1;
+
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].x = Verts[vIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].y = Verts[vIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].z = Verts[vIndex].z;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].tu = TexCoords[tIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].tv = TexCoords[tIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].nx = Normals[nIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].ny = Normals[nIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].nz = Normals[nIndex].z;
+
+				modelIndex++;
+				vIndex = Faces[i].vIndex2 - 1;
+				tIndex = Faces[i].tIndex2 - 1;
+				nIndex = Faces[i].nIndex2 - 1;
+
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].x = Verts[vIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].y = Verts[vIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].z = Verts[vIndex].z;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].tu = TexCoords[tIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].tv = TexCoords[tIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].nx = Normals[nIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].ny = Normals[nIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].nz = Normals[nIndex].z;
+
+				modelIndex++;
+				vIndex = Faces[i].vIndex3 - 1;
+				tIndex = Faces[i].tIndex3 - 1;
+				nIndex = Faces[i].nIndex3 - 1;
+
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].x = Verts[vIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].y = Verts[vIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].z = Verts[vIndex].z;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].tu = TexCoords[tIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].tv = TexCoords[tIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].nx = Normals[nIndex].x;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].ny = Normals[nIndex].y;
+				m_arrSubMeshes[iObjectIndex].m_pModel[modelIndex].nz = Normals[nIndex].z;
+			}
+
+			delete[] Verts;
+			Verts = nullptr;
+			delete[] TexCoords;
+			TexCoords = nullptr;
+			delete[] Normals;
+			Normals = nullptr;
+			delete[] Faces;
+			Faces = nullptr;
+
 		}
 		
 		else if (s == "mtllib")
