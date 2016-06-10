@@ -104,6 +104,7 @@ bool Mesh::LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename)
 	}
 
 	m_iSubMeshCount = 1;
+	m_arrSubMeshes = new SubMesh[m_iSubMeshCount];
 
 	//read in the vert count
 	fin >> m_arrSubMeshes[0].m_iVertexCount;
@@ -155,6 +156,12 @@ void Mesh::ReleaseModel()
 			delete[] m_arrSubMeshes[0].m_pModel;
 			m_arrSubMeshes[0].m_pModel = nullptr;
 		}
+	}
+
+	if (m_arrSubMeshes)
+	{
+		delete[] m_arrSubMeshes;
+		m_arrSubMeshes = nullptr;
 	}
 }
 
