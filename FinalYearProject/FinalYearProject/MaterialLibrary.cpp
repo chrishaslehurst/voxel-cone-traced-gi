@@ -20,7 +20,7 @@ MaterialLibrary::~MaterialLibrary()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, char* filename)
+bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, const char* filename)
 {
 	fstream fin;
 	fin.open(filename);
@@ -112,6 +112,11 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, char
 				map_Ka = AssetFolderString + map_Ka;
 				wstring wideDiffuseName = wstring(map_Ka.begin(), map_Ka.end());
 				pMat->Initialise(pDevice, hwnd, &wideDiffuseName[0]);
+			}
+			else
+			{
+				//TODO: FIGURE OUT WHY SOME DONT HAVE A TEX
+				pMat->Initialise(pDevice, hwnd, L"textures\vase_hanging.tga");
 			}
 			m_MaterialMap[sMaterialName] = pMat;
 		}

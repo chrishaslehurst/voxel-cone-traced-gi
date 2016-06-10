@@ -22,7 +22,7 @@ public:
 	MaterialLibrary();
 	~MaterialLibrary();
 
-	bool LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, char* filename);
+	bool LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, const char* filename);
 	Material* GetMaterial(string sMaterialName);
 
 private:

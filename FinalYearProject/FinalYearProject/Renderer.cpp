@@ -121,15 +121,15 @@ bool Renderer::Update()
 bool Renderer::Render()
 {
 //TODO REMOVE THIS---------------------------------------
-	static float rotation = 0.0f;
-
-
-	// Update the rotation variable each frame.
-	rotation += (float)XM_PI * 0.01f;
-	if (rotation > 360.0f)
-	{
-		rotation -= 360.0f;
-	}
+// 	static float rotation = 0.0f;
+// 
+// 
+// 	// Update the rotation variable each frame.
+// 	rotation += (float)XM_PI * 0.01f;
+// 	if (rotation > 360.0f)
+// 	{
+// 		rotation -= 360.0f;
+// 	}
 //TODO: REMOVE THIS---------------------------------------
 
 	//Clear buffers to begin the scene
@@ -145,7 +145,7 @@ bool Renderer::Render()
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
 
-	mWorld = mWorld * XMMatrixRotationY(rotation);
+	//mWorld = mWorld * XMMatrixRotationY(rotation);
 
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
 	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour());

@@ -7,6 +7,7 @@
 #include <DirectXMath.h>
 #include <fstream>
 #include "MaterialLibrary.h"
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -47,8 +48,8 @@ __declspec(align(16)) class Mesh
 
 	struct SubMesh
 	{
-		ModelType*	  m_pModel;
-		Material*	  m_pMaterial;
+		std::vector<ModelType>	  m_arrModel;
+		Material*				  m_pMaterial;
 
 		ID3D11Buffer* m_pVertexBuffer;
 		ID3D11Buffer* m_pIndexBuffer;
@@ -62,9 +63,12 @@ __declspec(align(16)) class Mesh
 		: m_pVertexBuffer(nullptr)
 		, m_pIndexBuffer(nullptr)
 		, m_pMaterial(nullptr)
-		, m_pModel(nullptr)
+		, m_iVertexCount(0)
+		, m_iFaceCount(0)
+		, m_iNormalCount(0)
+		, m_iIndexCount(0)
+		, m_iTextureCoordCount(0)
 		{
-
 		}
 	};
 
@@ -108,6 +112,9 @@ private:
 	void RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext);
 
 	int m_iSubMeshCount;
+	int m_iTotalVerticesCount;
+	int m_iTotalTextureCoordCount;
+	int m_iTotalNormalCount;
 
 	SubMesh* m_arrSubMeshes;
 	MaterialLibrary* m_MatLib;
