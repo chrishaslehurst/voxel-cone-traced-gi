@@ -45,6 +45,26 @@ __declspec(align(16)) class Mesh
 		float nx, ny, nz;
 	};
 
+	struct SubMesh
+	{
+		ModelType*	  m_pModel;
+		Material*	  m_pMaterial;
+
+		ID3D11Buffer* m_pVertexBuffer;
+		ID3D11Buffer* m_pIndexBuffer;
+		int			  m_iVertexCount;
+		int			  m_iIndexCount;
+
+		SubMesh() 
+		: m_pVertexBuffer(nullptr)
+		, m_pIndexBuffer(nullptr)
+		, m_pMaterial(nullptr)
+		, m_pModel(nullptr)
+		{
+
+		}
+	};
+
 public:
 	void* operator new(size_t i)
 	{
@@ -63,26 +83,23 @@ public:
 	void Shutdown();
 	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour);
 
-	int GetIndexCount();
+	int GetIndexCount(int subMeshIndex);
 
-	void SetMaterial(Material* pMaterial) { m_pMaterial = pMaterial; }
+	void SetMaterial(int subMeshIndex, Material* pMaterial) { m_arrSubMeshes[subMeshIndex].m_pMaterial = pMaterial; }
 
 private:
 
 	bool LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename);
 	void ReleaseModel();
-	bool InitialiseBuffers(ID3D11Device* pDevice);
+	bool InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice);
 	void ShutdownBuffers();
-	void RenderBuffers(ID3D11DeviceContext* pDeviceContext);
+	void RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext);
 
-	ID3D11Buffer* m_pVertexBuffer;
-	ID3D11Buffer* m_pIndexBuffer;
-	int			  m_iVertexCount;
-	int			  m_iIndexCount;
+	int m_iSubMeshCount;
 
-	Material*	  m_pMaterial;
+	SubMesh* m_arrSubMeshes;
 	MaterialLibrary* m_MatLib;
-	ModelType*	  m_pModel;
+	
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

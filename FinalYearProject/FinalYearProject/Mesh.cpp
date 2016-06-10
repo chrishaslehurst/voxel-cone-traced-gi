@@ -3,11 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Mesh::Mesh()
-	: m_pVertexBuffer(nullptr)
-	, m_pIndexBuffer(nullptr)
-	, m_pMaterial(nullptr)
-	, m_pModel(nullptr)
-	, m_MatLib(nullptr)
+	: m_MatLib(nullptr)
 {
 
 }
@@ -29,10 +25,18 @@ bool Mesh::Initialise(ID3D11Device* pDevice, HWND hwnd, char* filename)
 		return false;
 	}
 
-	SetMaterial(m_MatLib->GetMaterial("roof"));
+	SetMaterial(0, m_MatLib->GetMaterial("roof"));
 	//Initialise the buffers
-	return InitialiseBuffers(pDevice);
-	
+	bool result(true);
+	for (int i = 0; i < m_iSubMeshCount; i++)
+	{
+		result = InitialiseBuffers(i, pDevice);
+		if (!result)
+		{
+			break;
+		}
+	}
+	return result;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,19 +54,22 @@ void Mesh::Shutdown()
 void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour)
 {
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
-	RenderBuffers(pDeviceContext);
-
-	if (!m_pMaterial->Render(pDeviceContext, m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour))
+	for (int i = 0; i < m_iSubMeshCount; i++)
 	{
-		VS_LOG_VERBOSE("Unable to render object with shader");
+		RenderBuffers(i, pDeviceContext);
+
+		if (!m_arrSubMeshes[i].m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i].m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour))
+		{
+			VS_LOG_VERBOSE("Unable to render object with shader");
+		}
 	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int Mesh::GetIndexCount()
+int Mesh::GetIndexCount(int subMeshIndex)
 {
-	return m_iIndexCount;
+	return m_arrSubMeshes[subMeshIndex].m_iIndexCount;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,13 +103,15 @@ bool Mesh::LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename)
 		fin.get(input);
 	}
 
+	m_iSubMeshCount = 1;
+
 	//read in the vert count
-	fin >> m_iVertexCount;
-	m_iIndexCount = m_iVertexCount;
+	fin >> m_arrSubMeshes[0].m_iVertexCount;
+	m_arrSubMeshes[0].m_iIndexCount = m_arrSubMeshes[0].m_iVertexCount;
 
 	//create the model array..
-	m_pModel = new ModelType[m_iVertexCount];
-	if (!m_pModel)
+	m_arrSubMeshes[0].m_pModel = new ModelType[m_arrSubMeshes[0].m_iVertexCount];
+	if (!m_arrSubMeshes[0].m_pModel)
 	{
 		VS_LOG_VERBOSE("Failed to load model, could not initialise model array");
 		return false;
@@ -118,11 +127,11 @@ bool Mesh::LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename)
 	fin.get(input);
 
 	//Read in the vertex data
-	for (int i = 0; i < m_iVertexCount; i++)
+	for (int i = 0; i < m_arrSubMeshes[0].m_iVertexCount; i++)
 	{
-		fin >> m_pModel[i].x >> m_pModel[i].y >> m_pModel[i].z;
-		fin >> m_pModel[i].tu >> m_pModel[i].tv;
-		fin >> m_pModel[i].nx >> m_pModel[i].ny >> m_pModel[i].nz;
+		fin >> m_arrSubMeshes[0].m_pModel[i].x >> m_arrSubMeshes[0].m_pModel[i].y >> m_arrSubMeshes[0].m_pModel[i].z;
+		fin >> m_arrSubMeshes[0].m_pModel[i].tu >> m_arrSubMeshes[0].m_pModel[i].tv;
+		fin >> m_arrSubMeshes[0].m_pModel[i].nx >> m_arrSubMeshes[0].m_pModel[i].ny >> m_arrSubMeshes[0].m_pModel[i].nz;
 	}
 
 	fin.close();
@@ -139,16 +148,19 @@ void Mesh::ReleaseModel()
 		delete m_MatLib;
 		m_MatLib = nullptr;
 	}
-	if (m_pModel)
+	for (int i = 0; i < m_iSubMeshCount; i++)
 	{
-		delete[] m_pModel;
-		m_pModel = nullptr;
+		if (m_arrSubMeshes[0].m_pModel)
+		{
+			delete[] m_arrSubMeshes[0].m_pModel;
+			m_arrSubMeshes[0].m_pModel = nullptr;
+		}
 	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
+bool Mesh::InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice)
 {
 	VertexType* vertices;
 	unsigned long* indices;
@@ -157,27 +169,32 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
 	HRESULT result;
 
+	SubMesh* pSubMesh = &m_arrSubMeshes[subMeshIndex];
+	if (!pSubMesh)
+	{
+		return false;
+	}
 	//Create vert array
-	vertices = new VertexType[m_iVertexCount];
+	vertices = new VertexType[pSubMesh->m_iVertexCount];
 	if (!vertices)
 	{
 		return false;
 	}
 
 	//Create index array
-	indices = new unsigned long[m_iIndexCount];
+	indices = new unsigned long[pSubMesh->m_iIndexCount];
 	if (!indices)
 	{
 		return false;
 	}
 
 
-	for (int i = 0; i < m_iVertexCount; i++)
+	for (int i = 0; i < pSubMesh->m_iVertexCount; i++)
 	{
 		// Load the vertex array with data.
-		vertices[i].position = XMFLOAT3(m_pModel[i].x, m_pModel[i].y, m_pModel[i].z);  // Bottom left.
-		vertices[i].normal = XMFLOAT3(m_pModel[i].nx, m_pModel[i].ny, m_pModel[i].nz);
-		vertices[i].texture = XMFLOAT2(m_pModel[i].tu, m_pModel[i].tv);
+		vertices[i].position = XMFLOAT3(pSubMesh->m_pModel[i].x, pSubMesh->m_pModel[i].y, pSubMesh->m_pModel[i].z);  // Bottom left.
+		vertices[i].normal = XMFLOAT3(pSubMesh->m_pModel[i].nx, pSubMesh->m_pModel[i].ny, pSubMesh->m_pModel[i].nz);
+		vertices[i].texture = XMFLOAT2(pSubMesh->m_pModel[i].tu, pSubMesh->m_pModel[i].tv);
 		vertices[i].color = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
 
 		indices[i] = i;
@@ -187,7 +204,7 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 
 	//Setup the description of the static vertex buffer.
 	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	vertexBufferDesc.ByteWidth = sizeof(VertexType) * m_iVertexCount;
+	vertexBufferDesc.ByteWidth = sizeof(VertexType) * pSubMesh->m_iVertexCount;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vertexBufferDesc.CPUAccessFlags = 0;
 	vertexBufferDesc.MiscFlags = 0;
@@ -199,7 +216,7 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 	vertexData.SysMemSlicePitch = 0;
 
 	//Create the Vertex buffer..
-	result = pDevice->CreateBuffer(&vertexBufferDesc, &vertexData, &m_pVertexBuffer);
+	result = pDevice->CreateBuffer(&vertexBufferDesc, &vertexData, &pSubMesh->m_pVertexBuffer);
 	if (FAILED(result))
 	{
 		VS_LOG_VERBOSE("Failed to create vertex buffer");
@@ -208,7 +225,7 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 
 	//Setup the description of the static index buffer
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.ByteWidth = sizeof(unsigned long) * m_iIndexCount;
+	indexBufferDesc.ByteWidth = sizeof(unsigned long) * pSubMesh->m_iIndexCount;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	indexBufferDesc.CPUAccessFlags = 0;
 	indexBufferDesc.MiscFlags = 0;
@@ -220,7 +237,7 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 	indexData.SysMemSlicePitch = 0;
 
 	//Create the index buffer
-	result = pDevice->CreateBuffer(&indexBufferDesc, &indexData, &m_pIndexBuffer);
+	result = pDevice->CreateBuffer(&indexBufferDesc, &indexData, &pSubMesh->m_pIndexBuffer);
 	if (FAILED(result))
 	{
 		VS_LOG_VERBOSE("Failed to create index buffer");
@@ -241,21 +258,25 @@ bool Mesh::InitialiseBuffers(ID3D11Device* pDevice)
 
 void Mesh::ShutdownBuffers()
 {
-	if (m_pIndexBuffer)
+	for (int i = 0; i < m_iSubMeshCount; i++)
 	{
-		m_pIndexBuffer->Release();
-		m_pIndexBuffer = nullptr;
-	}
-	if (m_pVertexBuffer)
-	{
-		m_pVertexBuffer->Release();
-		m_pVertexBuffer = nullptr;
+		
+		if (m_arrSubMeshes[i].m_pIndexBuffer)
+		{
+			m_arrSubMeshes[i].m_pIndexBuffer->Release();
+			m_arrSubMeshes[i].m_pIndexBuffer = nullptr;
+		}
+		if (m_arrSubMeshes[i].m_pVertexBuffer)
+		{
+			m_arrSubMeshes[i].m_pVertexBuffer->Release();
+			m_arrSubMeshes[i].m_pVertexBuffer = nullptr;
+		}
 	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::RenderBuffers(ID3D11DeviceContext* pDeviceContext)
+void Mesh::RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext)
 {
 	unsigned int stride;
 	unsigned int offset;
@@ -265,10 +286,10 @@ void Mesh::RenderBuffers(ID3D11DeviceContext* pDeviceContext)
 	offset = 0;
 
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
-	pDeviceContext->IASetVertexBuffers(0, 1, &m_pVertexBuffer, &stride, &offset);
+	pDeviceContext->IASetVertexBuffers(0, 1, &m_arrSubMeshes[subMeshIndex].m_pVertexBuffer, &stride, &offset);
 
 	// Set the index buffer to active in the input assembler so it can be rendered.
-	pDeviceContext->IASetIndexBuffer(m_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	pDeviceContext->IASetIndexBuffer(m_arrSubMeshes[subMeshIndex].m_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
 	pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
