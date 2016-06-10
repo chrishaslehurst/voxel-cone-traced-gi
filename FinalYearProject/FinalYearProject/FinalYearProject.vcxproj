@@ -159,6 +159,7 @@
     <ClCompile Include="D3DWrapper.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MaterialLibrary.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Texture.cpp" />
@@ -171,6 +172,7 @@
     <ClInclude Include="D3DWrapper.h" />
     <ClInclude Include="Debugging.h" />
     <ClInclude Include="InputManager.h" />
+    <ClInclude Include="MaterialLibrary.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Texture.h" />

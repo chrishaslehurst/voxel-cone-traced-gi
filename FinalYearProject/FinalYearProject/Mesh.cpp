@@ -7,6 +7,7 @@ Mesh::Mesh()
 	, m_pIndexBuffer(nullptr)
 	, m_pMaterial(nullptr)
 	, m_pModel(nullptr)
+	, m_MatLib(nullptr)
 {
 
 }
@@ -20,15 +21,15 @@ Mesh::~Mesh()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::Initialise(ID3D11Device* pDevice, char* filename, Material* pMaterial /*=nullptr*/)
+bool Mesh::Initialise(ID3D11Device* pDevice, HWND hwnd, char* filename)
 {
 	//Load in the model data
-	if (!LoadModel(filename))
+	if (!LoadModel(pDevice, hwnd, filename))
 	{
 		return false;
 	}
 
-	SetMaterial(pMaterial);
+	SetMaterial(m_MatLib->GetMaterial("roof"));
 	//Initialise the buffers
 	return InitialiseBuffers(pDevice);
 	
@@ -66,8 +67,17 @@ int Mesh::GetIndexCount()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::LoadModel(char* filename)
+bool Mesh::LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename)
 {
+	m_MatLib = new MaterialLibrary;
+	if (!m_MatLib)
+	{
+		VS_LOG_VERBOSE("Unable to create new material library");
+		return false;
+	}
+	m_MatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");
+	
+
 	ifstream fin;
 	fin.open(filename);
 	
@@ -124,6 +134,11 @@ bool Mesh::LoadModel(char* filename)
 
 void Mesh::ReleaseModel()
 {
+	if (m_MatLib)
+	{
+		delete m_MatLib;
+		m_MatLib = nullptr;
+	}
 	if (m_pModel)
 	{
 		delete[] m_pModel;

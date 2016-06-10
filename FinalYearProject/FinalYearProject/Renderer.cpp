@@ -7,7 +7,6 @@ Renderer::Renderer()
 	: m_pD3D(nullptr)
 	, m_pCamera(nullptr)
 	, m_pModel(nullptr)
-	, m_pShader(nullptr)
 	, m_pDirectionalLight(nullptr)
 {
 
@@ -46,23 +45,6 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	}
 	m_pCamera->SetPosition(0.f, 0.f, -10.f);
 
-	
-
-	//Create the shader
-	m_pShader = new Material;
-	if (!m_pShader)
-	{
-		VS_LOG_VERBOSE("Could not create shader");
-		return false;
-	}
-
-	//Initialise shader..
-	if (!m_pShader->Initialise(m_pD3D->GetDevice(), hwnd, L"../Assets/Textures/spnza_bricks_a_diff.tga"))
-	{
-		VS_LOG_VERBOSE("Could not initialise shader")
-		return false;
-	}
-
 	//Create the mesh..
 	m_pModel = new Mesh;
 	if (!m_pModel)
@@ -71,7 +53,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	if (!m_pModel->Initialise(m_pD3D->GetDevice(), "../Assets/Models/cube.txt", m_pShader))
+	if (!m_pModel->Initialise(m_pD3D->GetDevice(), hwnd, "../Assets/Models/cube.txt"))
 	{
 		VS_LOG_VERBOSE("Unable to initialise mesh");
 		return false;
@@ -98,13 +80,6 @@ void Renderer::Shutdown()
 	{
 		delete m_pDirectionalLight;
 		m_pDirectionalLight = nullptr;
-	}
-
-	if (m_pShader)
-	{
-		m_pShader->Shutdown();
-		delete m_pShader;
-		m_pShader = nullptr;
 	}
 
 	if (m_pModel)

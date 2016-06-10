@@ -6,7 +6,6 @@
 #include "D3DWrapper.h"
 #include "Camera.h"
 #include "Mesh.h"
-#include "Material.h"
 #include "DirectionalLight.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +35,6 @@ private:
 
 	//TODO: These things should probably go elsewhere long term!
 	Mesh*		m_pModel;
-	Material*	m_pShader;
 	DirectionalLight* m_pDirectionalLight;
 
 	bool Render();

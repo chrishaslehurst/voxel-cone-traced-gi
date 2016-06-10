@@ -6,7 +6,7 @@
 #include <d3d11_3.h>
 #include <DirectXMath.h>
 #include <fstream>
-#include "Material.h"
+#include "MaterialLibrary.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -59,7 +59,7 @@ public:
 	Mesh();
 	~Mesh();
 
-	bool Initialise(ID3D11Device* pDevice, char* modelFilename, Material* pMaterial = nullptr);
+	bool Initialise(ID3D11Device* pDevice, HWND hwnd, char* modelFilename);
 	void Shutdown();
 	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour);
 
@@ -69,7 +69,7 @@ public:
 
 private:
 
-	bool LoadModel(char* filename);
+	bool LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename);
 	void ReleaseModel();
 	bool InitialiseBuffers(ID3D11Device* pDevice);
 	void ShutdownBuffers();
@@ -81,7 +81,7 @@ private:
 	int			  m_iIndexCount;
 
 	Material*	  m_pMaterial;
-
+	MaterialLibrary* m_MatLib;
 	ModelType*	  m_pModel;
 };
 
