@@ -20,7 +20,7 @@ Mesh::~Mesh()
 bool Mesh::Initialise(ID3D11Device* pDevice, HWND hwnd, char* filename)
 {
 	//Load in the model data
-	if (!LoadModel(pDevice, hwnd, filename))
+	if (!LoadModelFromObjFile(pDevice, hwnd, filename))
 	{
 		return false;
 	}
@@ -74,7 +74,7 @@ int Mesh::GetIndexCount(int subMeshIndex)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename)
+bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filename)
 {
 	m_MatLib = new MaterialLibrary;
 	if (!m_MatLib)
@@ -84,7 +84,6 @@ bool Mesh::LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename)
 	}
 	m_MatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");
 	
-
 	ifstream fin;
 	fin.open(filename);
 	
@@ -137,6 +136,185 @@ bool Mesh::LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename)
 
 	fin.close();
 
+	return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename)
+{
+	m_MatLib = new MaterialLibrary;
+	if (!m_MatLib)
+	{
+		VS_LOG_VERBOSE("Unable to create new material library");
+		return false;
+	}
+	m_MatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");
+	FindNumSubMeshes(filename);
+	m_arrSubMeshes = new SubMesh[m_iSubMeshCount];
+	ReadObjFileCounts(filename);
+	
+	ifstream fin;
+	fin.open(filename);
+
+	//did the file open?
+	if (fin.fail())
+	{
+		VS_LOG_VERBOSE("Failed to load model, could not open file..");
+		return false;
+	}
+
+	
+
+	string s;
+	string sMaterialLibName;
+	int iObjectIndex(-1);
+	while (fin)
+	{		
+		int iVertexIndex;
+		int iNormalIndex;
+		int iTexCoordIndex;
+
+		if (s == "object")
+		{
+			iObjectIndex++;
+			XMFLOAT3* Verts = new XMFLOAT3[m_arrSubMeshes[iObjectIndex].m_iVertexCount];
+			XMFLOAT3* TexCoords = new XMFLOAT3[m_arrSubMeshes[iObjectIndex].m_iTextureCoordCount];
+			XMFLOAT3* Normals = new XMFLOAT3[m_arrSubMeshes[iObjectIndex].m_iNormalCount];
+			Face* Faces = new Face[m_arrSubMeshes[iObjectIndex].m_iFaceCount];
+			//This is a new sub object.. start parsing..
+			//object name
+			fin >> s;
+			//second #
+			fin >> s;
+			while (s != "object")
+			{
+				fin >> s;
+				if (s == "v")
+				{
+					//vertex
+					float x, y, z;
+					fin >> x >> y >> z;
+				}
+				else if (s == "vt")
+				{
+					//texture coord
+				}
+				else if (s == "vn")
+				{
+					//normal
+				}
+				else if (s == "f")
+				{
+					//face
+				}
+			}
+		}
+		
+		else if (s == "mtllib")
+		{
+			fin >> sMaterialLibName;
+			fin >> s;
+		}
+		else
+		{
+			fin >> s;
+		}
+		
+	}
+	return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Mesh::FindNumSubMeshes(char* filename)
+{
+	m_iSubMeshCount = 0;
+	ifstream fin;
+	fin.open(filename);
+
+	//did the file open?
+	if (fin.fail())
+	{
+		VS_LOG_VERBOSE("Failed to load model, could not open file..");
+		return false;
+	}
+	string s;
+	string sMaterialLibName;
+	while (fin)
+	{
+		if (s == "object")
+		{
+			m_iSubMeshCount++;
+		}
+		fin >> s;
+
+	}
+	return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Mesh::ReadObjFileCounts(char* filename)
+{
+	fstream fin;
+	fin.open(filename);
+
+	//did the file open?
+	if (fin.fail())
+	{
+		VS_LOG_VERBOSE("Failed to load model, could not open file..");
+		return false;
+	}
+	int iObjectIndex( -1);
+	string s;
+	while (fin)
+	{
+		if (s == "object")
+		{
+			int iVertCount(0), iTexCount(0), iNormalCount(0), iFaceCount(0);
+			iObjectIndex++;
+			//This is a new sub object.. start parsing..
+			//object name
+			fin >> s;
+			//second #
+			fin >> s;
+			while (fin && s != "object")
+			{
+				fin >> s;
+				if (s == "v")
+				{
+					//vertex
+					iVertCount++;
+				}
+				else if (s == "vt")
+				{
+					//texture coord
+					iTexCount++;
+				}
+				else if (s == "vn")
+				{
+					//normal
+					iNormalCount++;
+				}
+				else if (s == "f")
+				{
+					//face
+					iFaceCount++;
+				}
+			}
+			m_arrSubMeshes[iObjectIndex].m_iVertexCount = iVertCount;
+			m_arrSubMeshes[iObjectIndex].m_iTextureCoordCount = iTexCount;
+			m_arrSubMeshes[iObjectIndex].m_iNormalCount = iNormalCount;
+			m_arrSubMeshes[iObjectIndex].m_iFaceCount = iFaceCount;
+
+		}
+		else
+		{
+			fin >> s;
+		}
+
+	}
 	return true;
 }
 

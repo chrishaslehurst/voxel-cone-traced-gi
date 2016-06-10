@@ -53,6 +53,9 @@ __declspec(align(16)) class Mesh
 		ID3D11Buffer* m_pVertexBuffer;
 		ID3D11Buffer* m_pIndexBuffer;
 		int			  m_iVertexCount;
+		int			  m_iTextureCoordCount;
+		int			  m_iNormalCount;
+		int			  m_iFaceCount;
 		int			  m_iIndexCount;
 
 		SubMesh() 
@@ -65,6 +68,12 @@ __declspec(align(16)) class Mesh
 		}
 	};
 
+	struct Face
+	{
+		int vIndex1, vIndex2, vIndex3;
+		int tIndex1, tIndex2, tIndex3;
+		int nIndex1, nIndex2, nIndex3;
+	};
 public:
 	void* operator new(size_t i)
 	{
@@ -89,7 +98,10 @@ public:
 
 private:
 
-	bool LoadModel(ID3D11Device* pDevice, HWND hwnd, char* filename);
+	bool LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filename);
+	bool LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename);
+	bool FindNumSubMeshes(char* filename);
+	bool ReadObjFileCounts(char* filename);
 	void ReleaseModel();
 	bool InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice);
 	void ShutdownBuffers();

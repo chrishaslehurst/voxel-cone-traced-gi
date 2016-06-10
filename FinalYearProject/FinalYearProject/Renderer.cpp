@@ -53,7 +53,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	if (!m_pModel->Initialise(m_pD3D->GetDevice(), hwnd, "../Assets/Models/cube.txt"))
+	if (!m_pModel->Initialise(m_pD3D->GetDevice(), hwnd, "../Assets/Models/sponza.obj"))
 	{
 		VS_LOG_VERBOSE("Unable to initialise mesh");
 		return false;
