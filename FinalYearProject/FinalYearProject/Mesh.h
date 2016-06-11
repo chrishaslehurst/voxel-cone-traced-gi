@@ -115,8 +115,7 @@ private:
 	int m_iTotalVerticesCount;
 	int m_iTotalTextureCoordCount;
 	int m_iTotalNormalCount;
-
-	SubMesh* m_arrSubMeshes;
+	std::vector<SubMesh> m_arrSubMeshes;
 	MaterialLibrary* m_MatLib;
 	
 };

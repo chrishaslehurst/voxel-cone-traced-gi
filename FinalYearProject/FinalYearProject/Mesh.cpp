@@ -103,7 +103,10 @@ bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filenam
 	}
 
 	m_iSubMeshCount = 1;
-	m_arrSubMeshes = new SubMesh[m_iSubMeshCount];
+	for (int i = 0; i < m_iSubMeshCount; i++)
+	{
+		m_arrSubMeshes.push_back(SubMesh());
+	}
 
 	//read in the vert count
 	fin >> m_arrSubMeshes[0].m_iVertexCount;
@@ -148,9 +151,13 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		VS_LOG_VERBOSE("Unable to create new material library");
 		return false;
 	}
-	m_MatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");
+	/*m_MatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");*/
 	FindNumSubMeshes(filename);
-	m_arrSubMeshes = new SubMesh[m_iSubMeshCount];
+	
+	for (int i = 0; i < m_iSubMeshCount; i++)
+	{
+		m_arrSubMeshes.push_back(SubMesh());
+	}
 	ReadObjFileCounts(filename);
 	
 	ifstream fin;
@@ -163,9 +170,9 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		return false;
 	}
 
-	XMFLOAT3* Verts = new XMFLOAT3[m_iTotalVerticesCount];
-	XMFLOAT3* TexCoords = new XMFLOAT3[m_iTotalTextureCoordCount];
-	XMFLOAT3* Normals = new XMFLOAT3[m_iTotalNormalCount];
+	std::vector<XMFLOAT3> Verts;
+	std::vector<XMFLOAT3> TexCoords;
+	std::vector<XMFLOAT3> Normals;
 	int iVertexIndex = 0;
 	int iNormalIndex = 0;
 	int iTexCoordIndex = 0;
@@ -181,6 +188,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		if (s == "v")
 		{
 			//vertex
+			Verts.push_back(XMFLOAT3());
 			fin >> Verts[iVertexIndex].x >> Verts[iVertexIndex].y >> Verts[iVertexIndex].z;
 			// Invert the Z vertex to change to left hand system.
 			Verts[iVertexIndex].z = Verts[iVertexIndex].z * -1.0f;
@@ -189,6 +197,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		}
 		else if (s == "vt")
 		{
+			TexCoords.push_back(XMFLOAT3());
 			//texture coord
 			fin >> TexCoords[iTexCoordIndex].x >> TexCoords[iTexCoordIndex].y;
 			//Invert the v texture coord to left hand system
@@ -198,6 +207,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		}
 		else if (s == "vn")
 		{
+			Normals.push_back(XMFLOAT3());
 			//normal coord
 			fin >> Normals[iNormalIndex].x >> Normals[iNormalIndex].y >> Normals[iNormalIndex].z;
 			//Invert the z normal to change to left hand system
@@ -290,7 +300,8 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		{
 			fin >> sMaterialLibName;
 			
-			m_MatLib->LoadMaterialLibrary(pDevice, hwnd, sMaterialLibName.c_str());
+			sMaterialLibName = "../Assets/Shaders/" + sMaterialLibName;
+ 			m_MatLib->LoadMaterialLibrary(pDevice, hwnd, sMaterialLibName.c_str());
 			fin >> s;
 		}
 		else
@@ -352,12 +363,6 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 
 		iObjectIndex++;
 	}
-	delete[] Verts;
-	Verts = nullptr;
-	delete[] TexCoords;
-	TexCoords = nullptr;
-	delete[] Normals;
-	Normals = nullptr;
 
 	return true;
 }
@@ -461,12 +466,6 @@ void Mesh::ReleaseModel()
 	{
 		delete m_MatLib;
 		m_MatLib = nullptr;
-	}
-
-	if (m_arrSubMeshes)
-	{
-		delete[] m_arrSubMeshes;
-		m_arrSubMeshes = nullptr;
 	}
 }
 
