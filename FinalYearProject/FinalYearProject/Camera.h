@@ -29,9 +29,13 @@ public:
 	XMFLOAT3 GetPosition();
 	XMFLOAT3 GetRotation();
 
+
+	void Update();
 	void Render();
 	void GetViewMatrix(XMMATRIX& mViewMatrix);
 private:
+
+	int m_iPrevMouseX, m_iPrevMouseY;
 
 	XMFLOAT3 m_vPosition;
 	XMFLOAT3 m_vRotation;

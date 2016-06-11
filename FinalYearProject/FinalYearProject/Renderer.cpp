@@ -53,7 +53,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	if (!m_pModel->Initialise(m_pD3D->GetDevice(), hwnd, "../Assets/Models/sponza.obj"))
+	if (!m_pModel->Initialise(m_pD3D->GetDevice(), hwnd, "../Assets/Models/sponza_tri1.obj"))
 	{
 		VS_LOG_VERBOSE("Unable to initialise mesh");
 		return false;
@@ -67,7 +67,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 	m_pDirectionalLight->SetDiffuseColour(1.0f, 1.0f, 1.0f, 1.0f);
-	m_pDirectionalLight->SetDirection(0.0f, 0.0f, 1.0f);
+	m_pDirectionalLight->SetDirection(0.0f, -0.5f, 0.5f);
 
 	return true;
 }
@@ -107,6 +107,7 @@ void Renderer::Shutdown()
 
 bool Renderer::Update()
 {
+	m_pCamera->Update();
 	//Render the scene
 	if (!Render())
 	{

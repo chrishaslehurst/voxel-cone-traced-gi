@@ -288,11 +288,11 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 			{
 				Faces.push_back(Face());
 			}
-
+			int v4, t4, n4;
 			fin >> Faces[iFaceIndex].vIndex3 >> dump >> Faces[iFaceIndex].tIndex3 >> dump >> Faces[iFaceIndex].nIndex3
 				>> Faces[iFaceIndex].vIndex2 >> dump >> Faces[iFaceIndex].tIndex2 >> dump >> Faces[iFaceIndex].nIndex2
 				>> Faces[iFaceIndex].vIndex1 >> dump >> Faces[iFaceIndex].tIndex1 >> dump >> Faces[iFaceIndex].nIndex1;
-
+			
 			iFaceIndex++;
 			fin >> s;
 		}

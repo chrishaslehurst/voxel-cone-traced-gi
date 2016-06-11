@@ -1,5 +1,5 @@
 #include "Camera.h"
-
+#include "InputManager.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Camera::Camera()
@@ -49,6 +49,55 @@ DirectX::XMFLOAT3 Camera::GetPosition()
 DirectX::XMFLOAT3 Camera::GetRotation()
 {
 	return m_vRotation;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Camera::Update()
+{
+	InputManager* pInput = InputManager::Get();
+	if (pInput)
+	{
+		int newMouseX, newMouseY;
+		pInput->GetMouseLocation(newMouseX, newMouseY);
+		if (pInput->IsKeyPressed(DIK_W))
+		{
+			SetPosition(m_vPosition.x, m_vPosition.y, m_vPosition.z + 1);
+		}
+		if (pInput->IsKeyPressed(DIK_S))
+		{
+			SetPosition(m_vPosition.x, m_vPosition.y, m_vPosition.z - 1);
+		}
+		if (pInput->IsKeyPressed(DIK_A))
+		{
+			SetPosition(m_vPosition.x- 1, m_vPosition.y, m_vPosition.z );
+		}
+		if (pInput->IsKeyPressed(DIK_D))
+		{
+			SetPosition(m_vPosition.x+1, m_vPosition.y, m_vPosition.z );
+		}
+		if (pInput->IsKeyPressed(DIK_P))
+		{
+			SetPosition(m_vPosition.x, m_vPosition.y+1, m_vPosition.z);
+		}
+		if (pInput->IsKeyPressed(DIK_L))
+		{
+			SetPosition(m_vPosition.x, m_vPosition.y-1, m_vPosition.z);
+		}
+
+		if (newMouseX != m_iPrevMouseX)
+		{
+			SetRotation(m_vRotation.x, m_vRotation.y + ((newMouseX - m_iPrevMouseX) * 0.1f), m_vRotation.z);
+		}
+		//This will depend on the forward vector..
+// 		if (newMouseY != m_iPrevMouseY)
+// 		{
+// 			SetRotation(m_vRotation.x + ((newMouseY - m_iPrevMouseY) * 0.001f), m_vRotation.y  , m_vRotation.z);
+// 		}
+
+		m_iPrevMouseX = newMouseX;
+		m_iPrevMouseY = newMouseY;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

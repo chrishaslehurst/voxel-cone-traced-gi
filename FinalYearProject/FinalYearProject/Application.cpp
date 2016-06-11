@@ -53,12 +53,6 @@ void Application::Shutdown()
 		m_pRenderer = nullptr;
 	}
 
-	if (m_pInput)
-	{
-		delete m_pInput;
-		m_pInput = nullptr;
-	}
-
 	//Shutdown window
 	ShutdownWindows();
 }
@@ -89,13 +83,17 @@ bool Application::Initialise()
 	InitialiseWindows(iScreenWidth, iScreenHeight);
 
 	//Create input manager
-	m_pInput = new InputManager;
+	m_pInput = InputManager::Get();
 	if (!m_pInput)
 	{
-		VS_LOG("Failed to create Input Manager");
+		VS_LOG("Failed to get Input Manager");
 		return false;
 	}
-	m_pInput->Initialise();
+	if (!m_pInput->Initialise(m_hInstance, m_hwnd, iScreenWidth, iScreenHeight))
+	{
+		MessageBox(m_hwnd, L"Could not initialize the input object.", L"Error", MB_OK);
+		return false;
+	}
 	
 	//Create renderer
 	m_pRenderer = new Renderer;
@@ -119,10 +117,21 @@ bool Application::Initialise()
 bool Application::Update()
 {
 	//Check if the user wants to quit..
-	if (m_pInput->IsKeyDown(VK_ESCAPE))
+	if (m_pInput->IsEscapePressed())
 	{
 		return false;
 	}
+
+	//update input manager
+	if (!m_pInput->Update())
+	{
+		return false;
+	}
+
+	int mouseX, mouseY;
+	//Get mouse location from input
+	m_pInput->GetMouseLocation(mouseX, mouseY);
+
 
 	//Update renderer
 	return m_pRenderer->Update();
@@ -241,26 +250,7 @@ void Application::ShutdownWindows()
 
 LRESULT CALLBACK Application::MessageHandler(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
 {
-	switch (umsg)
-	{
-		//check if a key has been pressed
-		case WM_KEYDOWN:
-		{
-			m_pInput->KeyDown((unsigned)wParam);
-			return 0;
-		}
-		break;
-		case WM_KEYUP:
-		{
-			m_pInput->KeyUp((unsigned)wParam);
-			return 0;
-		}
-		break;
-		default:
-		{
-			return DefWindowProc(hwnd, umsg, wParam, lParam);
-		}
-	}
+	return DefWindowProc(hwnd, umsg, wParam, lParam);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
