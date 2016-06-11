@@ -39,11 +39,23 @@ __declspec(align(16)) class Mesh
 	};
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	struct ModelType
+	__declspec(align(16)) struct ModelType
 	{
-		float x, y, z;
-		float tu, tv;
-		float nx, ny, nz;
+		XMFLOAT3 pos;
+		XMFLOAT2 tex;
+		XMFLOAT3 norm;
+// 		float x, y, z;
+// 		float tu, tv;
+// 		float nx, ny, nz;
+		void* operator new(size_t i)
+		{
+			return _mm_malloc(i, 16);
+		}
+
+			void operator delete(void* p)
+		{
+			_mm_free(p);
+		}
 	};
 
 	struct SubMesh

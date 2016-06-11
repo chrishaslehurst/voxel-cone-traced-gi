@@ -64,6 +64,9 @@
     <ClCompile Include="MaterialLibrary.cpp">
       <Filter>Source\Materials</Filter>
     </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>Source\Application</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -98,6 +101,9 @@
     </ClInclude>
     <ClInclude Include="MaterialLibrary.h">
       <Filter>Source\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>Source\Application</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
