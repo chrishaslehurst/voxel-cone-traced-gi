@@ -177,6 +177,8 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 
 	string s;
 	
+	double dPushBackTime = 0;
+
 	int iObjectIndex( 0);
 	std::vector<Face> Faces;
 	int iFaceIndex = 0;
@@ -186,7 +188,10 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		if (s == "v")
 		{
 			//vertex
+			double dVertPushBackStartTime = Timer::Get()->GetCurrentTime();
 			Verts.push_back(XMFLOAT3());
+			double dVertPushBackEndTime = Timer::Get()->GetCurrentTime();
+			dPushBackTime += dVertPushBackEndTime - dVertPushBackStartTime;
 			fin >> Verts[iVertexIndex].x >> Verts[iVertexIndex].y >> Verts[iVertexIndex].z;
 			// Invert the Z vertex to change to left hand system.
 			Verts[iVertexIndex].z = Verts[iVertexIndex].z * -1.0f;
@@ -344,7 +349,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 	m_iSubMeshCount = m_arrSubMeshes.size();
 	double dEndTime = Timer::Get()->GetCurrentTime();
 	stringstream output;
-	output << "Time to process data: " << (dEndTime - dStartTime);
+	output << "Time to process data: " << (dEndTime - dStartTime) << '\n' << "Time To push back verts: " << dPushBackTime;
 	VS_LOG(output.str().c_str());
 
 	return true;

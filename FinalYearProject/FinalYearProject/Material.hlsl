@@ -74,7 +74,8 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 {
 	float4 finalColour;
 	float4 textureColour;
-	textureColour = diffuseTexture.Sample(SampleType, input.tex);
+
+	textureColour = diffuseTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
 	textureColour = textureColour * input.colour;
 

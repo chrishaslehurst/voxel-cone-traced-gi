@@ -84,6 +84,14 @@ void Camera::Update()
 		{
 			SetPosition(m_vPosition.x, m_vPosition.y-1, m_vPosition.z);
 		}
+		if (pInput->IsKeyPressed(DIK_M))
+		{
+			SetRotation(m_vRotation.x , m_vRotation.y + 0.1f, m_vRotation.z);
+		}
+		if (pInput->IsKeyPressed(DIK_N))
+		{
+			SetRotation(m_vRotation.x, m_vRotation.y - 0.1f, m_vRotation.z);
+		}
 
 		if (newMouseX != m_iPrevMouseX)
 		{
