@@ -4,13 +4,12 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Camera::Camera()
+	: m_vPosition(XMFLOAT3(0.f,0.f,0.f))
+	, m_vRotation(XMFLOAT3(0.f,0.f,0.f))
+	, m_vUpVector(XMFLOAT3(0.f, 1.f, 0.f))
+	, m_fCameraSpeed(5.f)
 {
-	m_vPosition.x = 0.f;
-	m_vPosition.y = 0.f;
-	m_vPosition.z = 0.f;
-	m_vRotation.x = 0.f;
-	m_vRotation.y = 0.f;
-	m_vRotation.z = 0.f;
+	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,23 +86,27 @@ void Camera::Update()
 		//Move the camera..
 		if (pInput->IsKeyPressed(DIK_W))
 		{
-			m_vPosition.x += m_vForward.x;
-			m_vPosition.y += m_vForward.y;
-			m_vPosition.z += m_vForward.z;	
+			m_vPosition.x += (m_vForward.x * m_fCameraSpeed);
+			m_vPosition.y += (m_vForward.y * m_fCameraSpeed);
+			m_vPosition.z += (m_vForward.z * m_fCameraSpeed);
 		}
 		if (pInput->IsKeyPressed(DIK_S))
 		{
-			m_vPosition.x -= m_vForward.x;
-			m_vPosition.y -= m_vForward.y;
-			m_vPosition.z -= m_vForward.z;
+			m_vPosition.x -= (m_vForward.x * m_fCameraSpeed);
+			m_vPosition.y -= (m_vForward.y * m_fCameraSpeed);
+			m_vPosition.z -= (m_vForward.z * m_fCameraSpeed);
 		}
 		if (pInput->IsKeyPressed(DIK_A))
 		{
-			SetPosition(m_vPosition.x- 1, m_vPosition.y, m_vPosition.z );
+			m_vPosition.x += (m_vLeftVector.x * m_fCameraSpeed);
+			m_vPosition.y += (m_vLeftVector.y * m_fCameraSpeed);
+			m_vPosition.z += (m_vLeftVector.z * m_fCameraSpeed);
 		}
 		if (pInput->IsKeyPressed(DIK_D))
 		{
-			SetPosition(m_vPosition.x+1, m_vPosition.y, m_vPosition.z );
+			m_vPosition.x -= (m_vLeftVector.x * m_fCameraSpeed);
+			m_vPosition.y -= (m_vLeftVector.y * m_fCameraSpeed);
+			m_vPosition.z -= (m_vLeftVector.z * m_fCameraSpeed);
 		}
 	}
 }
@@ -112,17 +115,14 @@ void Camera::Update()
 
 void Camera::Render()
 {
-	XMFLOAT3 f3up, f3lookAt;
-	f3up.x = 0.f;
-	f3up.y = 1.f;
-	f3up.z = 0.f;
+	XMFLOAT3 f3lookAt;
 
 	f3lookAt.x = 0.f;
 	f3lookAt.y = 0.f;
 	f3lookAt.z = 1.f;
 	
-	XMVECTOR up, pos, lookAt;
-	up = XMLoadFloat3(&f3up);
+	XMVECTOR up, pos, lookAt, right;
+	up = XMLoadFloat3(&m_vUpVector);
 	lookAt = XMLoadFloat3(&f3lookAt);
 	pos = XMLoadFloat3(&m_vPosition);
 
@@ -136,7 +136,9 @@ void Camera::Render()
 
 	lookAt = XMVector3TransformCoord(lookAt, m_mRotationMatrix);
 	XMStoreFloat3(&m_vForward, lookAt);
-	up = XMVector3TransformCoord(up, m_mRotationMatrix);
+	right = XMVector3Cross(lookAt, up);
+	XMStoreFloat3(&m_vLeftVector, right);
+
 
 	lookAt = pos + lookAt;
 
