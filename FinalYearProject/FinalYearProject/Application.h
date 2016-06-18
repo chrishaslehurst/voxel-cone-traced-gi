@@ -35,6 +35,8 @@ public:
 
 	void Run();
 	void Shutdown();
+	void GetWidthAndHeight(int& width, int& height);
+	bool AppInFocus() { return GetFocus() == m_hwnd; }
 
 	LRESULT CALLBACK MessageHandler(HWND, UINT, WPARAM, LPARAM);
 	

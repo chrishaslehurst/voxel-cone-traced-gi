@@ -33,6 +33,8 @@ bool InputManager::Initialise(HINSTANCE hInstance, HWND hwnd, int screenWidth, i
 	m_iMouseX = 0;
 	m_iMouseY = 0;
 
+	m_hwnd = hwnd;
+
 	//Initialise main direct input interface
 	res = DirectInput8Create(hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&m_pDirectInput, nullptr);
 	if (FAILED(res))
@@ -171,8 +173,10 @@ bool InputManager::IsEscapePressed()
 
 void InputManager::GetMouseLocation(int& x, int &y)
 {
-	x = m_iMouseX;
-	y = m_iMouseY;
+	POINT mousePos;
+	GetCursorPos(&mousePos);
+	x = mousePos.x;
+	y = mousePos.y;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -228,6 +232,7 @@ bool InputManager::ReadMouse()
 			return false;
 		}
 	}
+	
 	return true;
 }
 

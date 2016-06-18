@@ -40,6 +40,9 @@ private:
 	XMFLOAT3 m_vPosition;
 	XMFLOAT3 m_vRotation;
 	XMMATRIX m_mViewMatrix;
+	XMMATRIX m_mRotationMatrix;
+
+	XMFLOAT3 m_vForward;
 
 };
 

@@ -69,6 +69,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	m_pDirectionalLight->SetDiffuseColour(1.0f, 1.0f, 1.0f, 1.0f);
 	m_pDirectionalLight->SetDirection(0.0f, -0.5f, 0.5f);
 
+
 	return true;
 }
 

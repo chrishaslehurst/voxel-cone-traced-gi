@@ -1,5 +1,6 @@
 #include "Camera.h"
 #include "InputManager.h"
+#include "Application.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Camera::Camera()
@@ -58,15 +59,43 @@ void Camera::Update()
 	InputManager* pInput = InputManager::Get();
 	if (pInput)
 	{
-		int newMouseX, newMouseY;
-		pInput->GetMouseLocation(newMouseX, newMouseY);
+		int iNewMouseX, iNewMouseY;
+		pInput->GetMouseLocation(iNewMouseX, iNewMouseY);
+
+		//Reset the cursor to the centre..
+		int iWindowWidth(0), iWindowHeight(0);
+		Application::Get()->GetWidthAndHeight(iWindowWidth, iWindowHeight);
+		int iWindowCentreX = iWindowWidth / 2;
+		int iWindowCentreY = iWindowHeight / 2;
+		if (Application::Get()->AppInFocus())
+		{
+			SetCursorPos(iWindowCentreX, iWindowCentreY);
+		}
+
+		//Rotate the camera based on the mouse position
+		SetRotation(m_vRotation.x + ((iNewMouseY - iWindowCentreY) * 0.1f), m_vRotation.y + ((iNewMouseX - iWindowCentreX) * 0.1f), m_vRotation.z);
+		//constrain x rotation to stop camera turning upside down..
+		if (m_vRotation.x > 89.f)
+		{
+			m_vRotation.x = 89.f;
+		}
+		else if (m_vRotation.x < -89.f)
+		{
+			m_vRotation.x = -89.f;
+		}
+		
+		//Move the camera..
 		if (pInput->IsKeyPressed(DIK_W))
 		{
-			SetPosition(m_vPosition.x, m_vPosition.y, m_vPosition.z + 1);
+			m_vPosition.x += m_vForward.x;
+			m_vPosition.y += m_vForward.y;
+			m_vPosition.z += m_vForward.z;	
 		}
 		if (pInput->IsKeyPressed(DIK_S))
 		{
-			SetPosition(m_vPosition.x, m_vPosition.y, m_vPosition.z - 1);
+			m_vPosition.x -= m_vForward.x;
+			m_vPosition.y -= m_vForward.y;
+			m_vPosition.z -= m_vForward.z;
 		}
 		if (pInput->IsKeyPressed(DIK_A))
 		{
@@ -76,35 +105,6 @@ void Camera::Update()
 		{
 			SetPosition(m_vPosition.x+1, m_vPosition.y, m_vPosition.z );
 		}
-		if (pInput->IsKeyPressed(DIK_P))
-		{
-			SetPosition(m_vPosition.x, m_vPosition.y+1, m_vPosition.z);
-		}
-		if (pInput->IsKeyPressed(DIK_L))
-		{
-			SetPosition(m_vPosition.x, m_vPosition.y-1, m_vPosition.z);
-		}
-		if (pInput->IsKeyPressed(DIK_M))
-		{
-			SetRotation(m_vRotation.x , m_vRotation.y + 0.1f, m_vRotation.z);
-		}
-		if (pInput->IsKeyPressed(DIK_N))
-		{
-			SetRotation(m_vRotation.x, m_vRotation.y - 0.1f, m_vRotation.z);
-		}
-
-		if (newMouseX != m_iPrevMouseX)
-		{
-			SetRotation(m_vRotation.x, m_vRotation.y + ((newMouseX - m_iPrevMouseX) * 0.1f), m_vRotation.z);
-		}
-		//This will depend on the forward vector..
-// 		if (newMouseY != m_iPrevMouseY)
-// 		{
-// 			SetRotation(m_vRotation.x + ((newMouseY - m_iPrevMouseY) * 0.001f), m_vRotation.y  , m_vRotation.z);
-// 		}
-
-		m_iPrevMouseX = newMouseX;
-		m_iPrevMouseY = newMouseY;
 	}
 }
 
@@ -132,10 +132,11 @@ void Camera::Render()
 	yaw = XMConvertToRadians(m_vRotation.y);
 	roll = XMConvertToRadians(m_vRotation.z);
 
-	XMMATRIX rotation = XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
+	m_mRotationMatrix = XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
 
-	lookAt = XMVector3TransformCoord(lookAt, rotation);
-	up = XMVector3TransformCoord(up, rotation);
+	lookAt = XMVector3TransformCoord(lookAt, m_mRotationMatrix);
+	XMStoreFloat3(&m_vForward, lookAt);
+	up = XMVector3TransformCoord(up, m_mRotationMatrix);
 
 	lookAt = pos + lookAt;
 
