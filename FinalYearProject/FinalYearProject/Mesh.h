@@ -44,9 +44,7 @@ __declspec(align(16)) class Mesh
 		XMFLOAT3 pos;
 		XMFLOAT2 tex;
 		XMFLOAT3 norm;
-// 		float x, y, z;
-// 		float tu, tv;
-// 		float nx, ny, nz;
+
 		void* operator new(size_t i)
 		{
 			return _mm_malloc(i, 16);
@@ -86,9 +84,9 @@ __declspec(align(16)) class Mesh
 
 	struct Face
 	{
-		int vIndex1, vIndex2, vIndex3;
-		int tIndex1, tIndex2, tIndex3;
-		int nIndex1, nIndex2, nIndex3;
+		int vIndex[3];
+		int tIndex[3];
+		int nIndex[3];
 	};
 public:
 	void* operator new(size_t i)
@@ -110,7 +108,7 @@ public:
 
 	int GetIndexCount(int subMeshIndex);
 
-	void SetMaterial(int subMeshIndex, Material* pMaterial) { m_arrSubMeshes[subMeshIndex].m_pMaterial = pMaterial; }
+	void SetMaterial(int subMeshIndex, Material* pMaterial) { m_arrSubMeshes[subMeshIndex]->m_pMaterial = pMaterial; }
 
 private:
 
@@ -127,7 +125,7 @@ private:
 	int m_iTotalVerticesCount;
 	int m_iTotalTextureCoordCount;
 	int m_iTotalNormalCount;
-	std::vector<SubMesh> m_arrSubMeshes;
+	std::vector<SubMesh*> m_arrSubMeshes;
 	MaterialLibrary* m_MatLib;
 	
 };

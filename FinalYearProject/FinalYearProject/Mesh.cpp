@@ -60,7 +60,7 @@ void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XM
 	{
 		RenderBuffers(i, pDeviceContext);
 
-		if (!m_arrSubMeshes[i].m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i].m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
+		if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
 		{
 			VS_LOG_VERBOSE("Unable to render object with shader");
 		}
@@ -71,7 +71,7 @@ void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XM
 
 int Mesh::GetIndexCount(int subMeshIndex)
 {
-	return m_arrSubMeshes[subMeshIndex].m_iIndexCount;
+	return m_arrSubMeshes[subMeshIndex]->m_iIndexCount;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,18 +104,16 @@ bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filenam
 		fin.get(input);
 	}
 
-	m_iSubMeshCount = 1;
-	for (int i = 0; i < m_iSubMeshCount; i++)
-	{
-		m_arrSubMeshes.push_back(SubMesh());
-	}
+	
+	m_arrSubMeshes.push_back(new SubMesh());
+	
 
 	//read in the vert count
-	fin >> m_arrSubMeshes[0].m_iVertexCount;
-	m_arrSubMeshes[0].m_iIndexCount = m_arrSubMeshes[0].m_iVertexCount;
+	fin >> m_arrSubMeshes[0]->m_iVertexCount;
+	m_arrSubMeshes[0]->m_iIndexCount = m_arrSubMeshes[0]->m_iVertexCount;
 
 	//create the model array..
-	m_arrSubMeshes[0].m_arrModel.reserve(m_arrSubMeshes[0].m_iVertexCount);
+	m_arrSubMeshes[0]->m_arrModel.reserve(m_arrSubMeshes[0]->m_iVertexCount);
 
 	//Read up to the beginning of the data
 	fin.get(input);
@@ -127,15 +125,15 @@ bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filenam
 	fin.get(input);
 
 	//Read in the vertex data
-	for (int i = 0; i < m_arrSubMeshes[0].m_iVertexCount; i++)
+	for (int i = 0; i < m_arrSubMeshes[0]->m_iVertexCount; i++)
 	{
-		if (i + 1 > m_arrSubMeshes[0].m_arrModel.size())
+		if (i + 1 > m_arrSubMeshes[0]->m_arrModel.size())
 		{
-			m_arrSubMeshes[0].m_arrModel.push_back(ModelType());
+			m_arrSubMeshes[0]->m_arrModel.push_back(ModelType());
 		}
-		fin >> m_arrSubMeshes[0].m_arrModel[i].pos.x >> m_arrSubMeshes[0].m_arrModel[i].pos.y >> m_arrSubMeshes[0].m_arrModel[i].pos.z;
-		fin >> m_arrSubMeshes[0].m_arrModel[i].tex.x >> m_arrSubMeshes[0].m_arrModel[i].tex.y;
-		fin >> m_arrSubMeshes[0].m_arrModel[i].norm.x >> m_arrSubMeshes[0].m_arrModel[i].norm.y >> m_arrSubMeshes[0].m_arrModel[i].norm.z;
+		fin >> m_arrSubMeshes[0]->m_arrModel[i].pos.x >> m_arrSubMeshes[0]->m_arrModel[i].pos.y >> m_arrSubMeshes[0]->m_arrModel[i].pos.z;
+		fin >> m_arrSubMeshes[0]->m_arrModel[i].tex.x >> m_arrSubMeshes[0]->m_arrModel[i].tex.y;
+		fin >> m_arrSubMeshes[0]->m_arrModel[i].norm.x >> m_arrSubMeshes[0]->m_arrModel[i].norm.y >> m_arrSubMeshes[0]->m_arrModel[i].norm.z;
 	}
 
 	fin.close();
@@ -170,174 +168,158 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 	std::vector<XMFLOAT3> Verts;
 	std::vector<XMFLOAT2> TexCoords;
 	std::vector<XMFLOAT3> Normals;
+	std::vector<Face> Faces;
+	Verts.reserve(10000);
+	TexCoords.reserve(200000);
+	Normals.reserve(300000);
+	Faces.reserve(1000);
 
-	int iVertexIndex = 0;
-	int iNormalIndex = 0;
-	int iTexCoordIndex = 0;
 
 	string s;
 	
-	double dPushBackTime = 0;
+	double dFaceReadTime = 0;
+	double dModelCreateTime = 0;
 
 	int iObjectIndex( 0);
-	std::vector<Face> Faces;
+
 	int iFaceIndex = 0;
+	char checkChar;
+	//fin >> s;
 	while (fin)
 	{
-		char dump;
-		if (s == "v")
+		checkChar = fin.get();
+		switch (checkChar)
 		{
-			//vertex
-			double dVertPushBackStartTime = Timer::Get()->GetCurrentTime();
-			Verts.push_back(XMFLOAT3());
-			double dVertPushBackEndTime = Timer::Get()->GetCurrentTime();
-			dPushBackTime += dVertPushBackEndTime - dVertPushBackStartTime;
-			fin >> Verts[iVertexIndex].x >> Verts[iVertexIndex].y >> Verts[iVertexIndex].z;
-			// Invert the Z vertex to change to left hand system.
-			Verts[iVertexIndex].z = Verts[iVertexIndex].z * -1.0f;
-			iVertexIndex++;
-			fin >> s;
+		case '#':
+		case 'g':
+		case 's':
+			checkChar = fin.get();
+			while (checkChar != '\n')
+				checkChar = fin.get();
+			break;
+		case 'v':
+		{
+			checkChar = fin.get();
+			if (checkChar == ' ')
+			{
+				//vertex
+				float x, y, z;
+				fin >> x >> y >> z;
+				// Invert the Z vertex to change to left hand system.
+				Verts.push_back(XMFLOAT3(x, y, -z));
+			}
+			else if (checkChar == 't')
+			{
+				//texture coord
+				float u, v;
+				fin >> u >> v;
+				//Invert the v texture coord to left hand system
+				TexCoords.push_back(XMFLOAT2(u, 1.f - v));
+			}
+			else if (checkChar == 'n')
+			{
+				//normal coord
+				float x, y, z;
+				fin >> x >> y >> z;
+				//Invert the z normal to change to left hand system
+				Normals.push_back(XMFLOAT3(x, y, -z));
+			}
+			break;
 		}
-		else if (s == "vt")
+		case 'f':
 		{
-			TexCoords.push_back(XMFLOAT2());
-			//texture coord
-			fin >> TexCoords[iTexCoordIndex].x >> TexCoords[iTexCoordIndex].y;
-			//Invert the v texture coord to left hand system
-			TexCoords[iTexCoordIndex].y = 1.0f - TexCoords[iTexCoordIndex].y;
-			iTexCoordIndex++;
-			fin >> s;
-		}
-		else if (s == "vn")
-		{
-			Normals.push_back(XMFLOAT3());
-			//normal coord
-			fin >> Normals[iNormalIndex].x >> Normals[iNormalIndex].y >> Normals[iNormalIndex].z;
-			//Invert the z normal to change to left hand system
-			Normals[iNormalIndex].z = Normals[iNormalIndex].z * -1.f;
-			iNormalIndex++;
-			fin >> s;
-		}
-		else if (s == "f")
-		{
-			//Reade the face data in backwards to convert to left hand system
+			double dFaceReadStartTime = Timer::Get()->GetCurrentTime();
+			//Read the face data in backwards to convert to left hand system
 			if (iFaceIndex + 1 > Faces.size())
 			{
 				Faces.push_back(Face());
 			}
-			int v4, t4, n4;
-			fin >> Faces[iFaceIndex].vIndex3 >> dump >> Faces[iFaceIndex].tIndex3 >> dump >> Faces[iFaceIndex].nIndex3
-				>> Faces[iFaceIndex].vIndex2 >> dump >> Faces[iFaceIndex].tIndex2 >> dump >> Faces[iFaceIndex].nIndex2
-				>> Faces[iFaceIndex].vIndex1 >> dump >> Faces[iFaceIndex].tIndex1 >> dump >> Faces[iFaceIndex].nIndex1;
+			fin >> Faces[iFaceIndex].vIndex[2] >> checkChar >> Faces[iFaceIndex].tIndex[2] >> checkChar >> Faces[iFaceIndex].nIndex[2]
+				>> Faces[iFaceIndex].vIndex[1] >> checkChar >> Faces[iFaceIndex].tIndex[1] >> checkChar >> Faces[iFaceIndex].nIndex[1]
+				>> Faces[iFaceIndex].vIndex[0] >> checkChar >> Faces[iFaceIndex].tIndex[0] >> checkChar >> Faces[iFaceIndex].nIndex[0];
 
 			iFaceIndex++;
-			fin >> s;
+			double dFaceReadEndTime = Timer::Get()->GetCurrentTime();
+			dFaceReadTime += dFaceReadEndTime - dFaceReadStartTime;
+			break;
 		}
-		else if (s == "usemtl")
+		case 'u':
 		{
-			//get the mat name
 			fin >> s;
-			
-			if (iFaceIndex > 0)
+			if (s == "semtl")
 			{
-				int vIndex, tIndex, nIndex;
-				m_arrSubMeshes[iObjectIndex].m_arrModel.reserve(Faces.size() * 3);
-				for (int i = 0; i < iFaceIndex; i++)
+				//get the mat name
+				fin >> s;
+				double dModelCreateStartTime = Timer::Get()->GetCurrentTime();
+				if (iFaceIndex > 0)
 				{
-					int modelIndex = i * 3;
-					vIndex = Faces[i].vIndex1 - 1;
-					tIndex = Faces[i].tIndex1 - 1;
-					nIndex = Faces[i].nIndex1 - 1;
+					int vIndex, tIndex, nIndex;
+					m_arrSubMeshes[iObjectIndex]->m_arrModel.reserve(Faces.size() * 3);
+					for (int i = 0; i < iFaceIndex; i++)
+					{
+						int modelIndex = i * 3;
+						for (int j = 0; j < 3; j++)
+						{
+							vIndex = Faces[i].vIndex[j] - 1;
+							tIndex = Faces[i].tIndex[j] - 1;
+							nIndex = Faces[i].nIndex[j] - 1;
 
-					m_arrSubMeshes[iObjectIndex].m_arrModel.push_back(ModelType());
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].pos = Verts[vIndex];
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].tex = TexCoords[tIndex];
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].norm = Normals[nIndex];
+							m_arrSubMeshes[iObjectIndex]->m_arrModel.push_back(ModelType());
+							m_arrSubMeshes[iObjectIndex]->m_arrModel[modelIndex].pos = Verts[vIndex];
+							m_arrSubMeshes[iObjectIndex]->m_arrModel[modelIndex].tex = TexCoords[tIndex];
+							m_arrSubMeshes[iObjectIndex]->m_arrModel[modelIndex].norm = Normals[nIndex];
 
-					modelIndex++;
-					vIndex = Faces[i].vIndex2 - 1;
-					tIndex = Faces[i].tIndex2 - 1;
-					nIndex = Faces[i].nIndex2 - 1;
+							modelIndex++;
+						}
+					}
 
-					m_arrSubMeshes[iObjectIndex].m_arrModel.push_back(ModelType());
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].pos = Verts[vIndex];
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].tex = TexCoords[tIndex];
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].norm = Normals[nIndex];
-
-					modelIndex++;
-					vIndex = Faces[i].vIndex3 - 1;
-					tIndex = Faces[i].tIndex3 - 1;
-					nIndex = Faces[i].nIndex3 - 1;
-
-					m_arrSubMeshes[iObjectIndex].m_arrModel.push_back(ModelType());
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].pos = Verts[vIndex];
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].tex = TexCoords[tIndex];
-					m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].norm = Normals[nIndex];
+					iObjectIndex++;
 				}
-
-				iObjectIndex++;
+				iFaceIndex = 0;
+				if (iObjectIndex + 1 > m_arrSubMeshes.size())
+				{
+					m_arrSubMeshes.push_back(new SubMesh());
+				}
+				m_arrSubMeshes[iObjectIndex]->m_pMaterial = m_MatLib->GetMaterial(s);
+				double dModelCreateEndTime = Timer::Get()->GetCurrentTime();
+				dModelCreateTime += dModelCreateEndTime - dModelCreateStartTime;
 			}
-			iFaceIndex = 0;
-			if (Faces.size() > 0)
-			{
-				Faces.empty();
-			}
-			if (iObjectIndex + 1 > m_arrSubMeshes.size())
-			{
-				m_arrSubMeshes.push_back(SubMesh());
-			}
-			m_arrSubMeshes[iObjectIndex].m_pMaterial = m_MatLib->GetMaterial(s);
-			fin >> s;
+			break;
 		}
-		else if (s == "mtllib")
+		case 'm':
 		{
 			string sMaterialLibName;
 			fin >> sMaterialLibName;
+			fin >> sMaterialLibName;
 
 			sMaterialLibName = "../Assets/Shaders/" + sMaterialLibName;
- 			m_MatLib->LoadMaterialLibrary(pDevice, hwnd, sMaterialLibName.c_str());
-			fin >> s;
+			m_MatLib->LoadMaterialLibrary(pDevice, hwnd, sMaterialLibName.c_str());
+			break;
 		}
-		else
-		{
-			fin >> s;
+
+		//fin >> s;	
 		}
 	}
-	//append the last face
+	//append the last model
 	if (iFaceIndex > 0)
 	{
 		int vIndex, tIndex, nIndex;
 		for (int i = 0; i < iFaceIndex; i++)
 		{
 			int modelIndex = i * 3;
-			vIndex = Faces[i].vIndex1 - 1;
-			tIndex = Faces[i].tIndex1 - 1;
-			nIndex = Faces[i].nIndex1 - 1;
+			for (int j = 0; j < 3; j++)
+			{
+				vIndex = Faces[i].vIndex[j] - 1;
+				tIndex = Faces[i].tIndex[j] - 1;
+				nIndex = Faces[i].nIndex[j] - 1;
 
-			m_arrSubMeshes[iObjectIndex].m_arrModel.push_back(ModelType());
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].pos = Verts[vIndex];
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].tex = TexCoords[tIndex];
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].norm = Normals[nIndex];
+				m_arrSubMeshes[iObjectIndex]->m_arrModel.push_back(ModelType());
+				m_arrSubMeshes[iObjectIndex]->m_arrModel[modelIndex].pos = Verts[vIndex];
+				m_arrSubMeshes[iObjectIndex]->m_arrModel[modelIndex].tex = TexCoords[tIndex];
+				m_arrSubMeshes[iObjectIndex]->m_arrModel[modelIndex].norm = Normals[nIndex];
 
-			modelIndex++;
-			vIndex = Faces[i].vIndex2 - 1;
-			tIndex = Faces[i].tIndex2 - 1;
-			nIndex = Faces[i].nIndex2 - 1;
-
-			m_arrSubMeshes[iObjectIndex].m_arrModel.push_back(ModelType());
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].pos = Verts[vIndex];
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].tex = TexCoords[tIndex];
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].norm = Normals[nIndex];
-
-			modelIndex++;
-			vIndex = Faces[i].vIndex3 - 1;
-			tIndex = Faces[i].tIndex3 - 1;
-			nIndex = Faces[i].nIndex3 - 1;
-
-			m_arrSubMeshes[iObjectIndex].m_arrModel.push_back(ModelType());
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].pos = Verts[vIndex];
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].tex = TexCoords[tIndex];
-			m_arrSubMeshes[iObjectIndex].m_arrModel[modelIndex].norm = Normals[nIndex];
+				modelIndex++;
+			}
 		}
 
 		iObjectIndex++;
@@ -349,7 +331,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 	m_iSubMeshCount = m_arrSubMeshes.size();
 	double dEndTime = Timer::Get()->GetCurrentTime();
 	stringstream output;
-	output << "Time to process data: " << (dEndTime - dStartTime) << '\n' << "Time To push back verts: " << dPushBackTime;
+	output << "Time to process data: " << (dEndTime - dStartTime) << '\n' << "Time To read in faces: " << dFaceReadTime << '\n' << "Time to create models: " << dModelCreateTime;
 	VS_LOG(output.str().c_str());
 
 	return true;
@@ -424,7 +406,7 @@ bool Mesh::ReadObjFileCounts(char* filename)
 
 			if (iFaceIndex > 0)
 			{
-				m_arrSubMeshes[iSubMeshCount].m_iFaceCount = iFaceIndex;
+				m_arrSubMeshes[iSubMeshCount]->m_iFaceCount = iFaceIndex;
 				iSubMeshCount++;
 			}
 			iFaceIndex = 0;
@@ -441,7 +423,7 @@ bool Mesh::ReadObjFileCounts(char* filename)
 		}
 	}
 	//append the last face
-	m_arrSubMeshes[iSubMeshCount].m_iFaceCount = iFaceIndex;
+	m_arrSubMeshes[iSubMeshCount]->m_iFaceCount = iFaceIndex;
 	return true;
 }
 
@@ -453,6 +435,12 @@ void Mesh::ReleaseModel()
 	{
 		delete m_MatLib;
 		m_MatLib = nullptr;
+	}
+
+	for (int i = 0; i < m_arrSubMeshes.size(); i++)
+	{
+		delete m_arrSubMeshes[i];
+		m_arrSubMeshes[i] = nullptr;
 	}
 }
 
@@ -467,7 +455,7 @@ bool Mesh::InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice)
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
 	HRESULT result;
 
-	SubMesh* pSubMesh = &m_arrSubMeshes[subMeshIndex];
+	SubMesh* pSubMesh = m_arrSubMeshes[subMeshIndex];
 	if (!pSubMesh)
 	{
 		return false;
@@ -543,6 +531,8 @@ bool Mesh::InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice)
 		return false;
 	}
 
+	m_arrSubMeshes[subMeshIndex]->m_arrModel.clear();
+
 	//Release the arrays now that the vertex and index buffers have been created and loaded..
 	delete[] vertices;
 	vertices = nullptr;
@@ -559,16 +549,15 @@ void Mesh::ShutdownBuffers()
 {
 	for (int i = 0; i < m_iSubMeshCount; i++)
 	{
-		
-		if (m_arrSubMeshes[i].m_pIndexBuffer)
+		if (m_arrSubMeshes[i]->m_pIndexBuffer)
 		{
-			m_arrSubMeshes[i].m_pIndexBuffer->Release();
-			m_arrSubMeshes[i].m_pIndexBuffer = nullptr;
+			m_arrSubMeshes[i]->m_pIndexBuffer->Release();
+			m_arrSubMeshes[i]->m_pIndexBuffer = nullptr;
 		}
-		if (m_arrSubMeshes[i].m_pVertexBuffer)
+		if (m_arrSubMeshes[i]->m_pVertexBuffer)
 		{
-			m_arrSubMeshes[i].m_pVertexBuffer->Release();
-			m_arrSubMeshes[i].m_pVertexBuffer = nullptr;
+			m_arrSubMeshes[i]->m_pVertexBuffer->Release();
+			m_arrSubMeshes[i]->m_pVertexBuffer = nullptr;
 		}
 	}
 }
@@ -585,10 +574,10 @@ void Mesh::RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext)
 	offset = 0;
 
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
-	pDeviceContext->IASetVertexBuffers(0, 1, &m_arrSubMeshes[subMeshIndex].m_pVertexBuffer, &stride, &offset);
+	pDeviceContext->IASetVertexBuffers(0, 1, &m_arrSubMeshes[subMeshIndex]->m_pVertexBuffer, &stride, &offset);
 
 	// Set the index buffer to active in the input assembler so it can be rendered.
-	pDeviceContext->IASetIndexBuffer(m_arrSubMeshes[subMeshIndex].m_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	pDeviceContext->IASetIndexBuffer(m_arrSubMeshes[subMeshIndex]->m_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
 	pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
