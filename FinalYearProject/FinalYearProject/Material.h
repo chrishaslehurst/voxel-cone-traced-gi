@@ -33,8 +33,26 @@ class Material
 
 	__declspec(align(16)) struct LightBuffer
 	{
+		XMFLOAT4 ambientColour;
 		XMFLOAT4 diffuseColour;
 		XMFLOAT3 lightDirection;
+		float specularPower;
+		XMFLOAT4 specularColour;
+
+		void* operator new(size_t i)
+		{
+			return _mm_malloc(i, 16);
+		}
+
+			void operator delete(void* p)
+		{
+			_mm_free(p);
+		}
+	};
+
+	__declspec(align(16)) struct CameraBuffer
+	{
+		XMFLOAT3 cameraPosition;
 		float padding;
 
 		void* operator new(size_t i)
@@ -55,7 +73,7 @@ public:
 
 	bool Initialise(ID3D11Device* pDevice, HWND hwnd, WCHAR* textureFileName);
 	void Shutdown();
-	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour);
+	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
 private:
 
@@ -66,7 +84,7 @@ private:
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
-	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour);
+	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 	void RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 
 
@@ -75,7 +93,11 @@ private:
 	ID3D11InputLayout*  m_pLayout;
 	ID3D11Buffer*		m_pMatrixBuffer;
 	ID3D11Buffer*		m_pLightBuffer;
+	ID3D11Buffer*		m_pCameraBuffer;
 
+
+	float				m_fSpecularPower;
+	XMFLOAT4			m_vSpecularColour;
 	Texture*			m_pTexture;
 	ID3D11SamplerState* m_pSampleState;
 

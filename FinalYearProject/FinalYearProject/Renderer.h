@@ -37,6 +37,8 @@ private:
 	Mesh*		m_pModel;
 	DirectionalLight* m_pDirectionalLight;
 
+
+
 	bool Render();
 };
 

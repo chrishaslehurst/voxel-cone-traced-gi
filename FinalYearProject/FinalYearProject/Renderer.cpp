@@ -150,7 +150,7 @@ bool Renderer::Render()
 	//mWorld = mWorld * XMMatrixRotationY(rotation);
 
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
-	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour());
+	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
 
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();

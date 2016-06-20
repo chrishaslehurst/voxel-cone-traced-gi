@@ -10,8 +10,11 @@ Material::Material()
 	, m_pTexture(nullptr)
 	, m_pSampleState(nullptr)
 	, m_pLightBuffer(nullptr)
+	, m_pCameraBuffer(nullptr)
 {
-
+	//TODO: REMOVE THIS AND HAVE IT LOADED FROM MATERIAL!
+	m_vSpecularColour = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
+	m_fSpecularPower = 32.f;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,10 +51,10 @@ void Material::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour)
+bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	bool result;
-	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vDiffuseColour);
+	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vDiffuseColour, vAmbientColour, vCameraPos);
 	if (!result)
 	{
 		VS_LOG_VERBOSE("Failed to set shader parameters");
@@ -243,6 +246,23 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 		return false;
 	}
 
+	D3D11_BUFFER_DESC cameraBufferDesc;
+	// Setup the description of the camera dynamic constant buffer that is in the vertex shader.
+	cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	cameraBufferDesc.ByteWidth = sizeof(CameraBuffer);
+	cameraBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cameraBufferDesc.MiscFlags = 0;
+	cameraBufferDesc.StructureByteStride = 0;
+
+	// Create the camera constant buffer pointer so we can access the vertex shader constant buffer from within this class.
+	result = pDevice->CreateBuffer(&cameraBufferDesc, NULL, &m_pCameraBuffer);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create camera buffer");
+		return false;
+	}
+
 	D3D11_SAMPLER_DESC samplerDesc;
 	// Create a texture sampler state description.
 	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
@@ -273,6 +293,11 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 
 void Material::ShutdownShader()
 {
+	if (m_pCameraBuffer)
+	{
+		m_pCameraBuffer->Release();
+		m_pCameraBuffer = nullptr;
+	}
 	if (m_pLightBuffer)
 	{
 		m_pLightBuffer->Release();
@@ -338,7 +363,7 @@ void Material::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCH
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour)
+bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	
 	//Matrices need to be transposed before sending them into the shader for dx11..
@@ -375,20 +400,38 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	}
 
 	pLightData = (LightBuffer*)mappedResource.pData;
+	pLightData->ambientColour = vAmbientColour;
 	pLightData->diffuseColour = vDiffuseColour;
 	pLightData->lightDirection = vLightDirection;
-	pLightData->padding = 0.f;
+	pLightData->specularPower = m_fSpecularPower;
+	pLightData->specularColour = m_vSpecularColour;
 
 	//Unlock the buffer
 	pDeviceContext->Unmap(m_pLightBuffer, 0);
 
+	CameraBuffer* pCameraData;
+	result = pDeviceContext->Map(m_pCameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to lock camera buffer");
+		return false;
+	}
+	pCameraData = (CameraBuffer*)mappedResource.pData;
+	pCameraData->cameraPosition = vCameraPos;
+	pCameraData->padding = 0.f;
+
+	pDeviceContext->Unmap(m_pCameraBuffer, 0);
+
 	//Set the position of the buffer in the HLSL shader
 	unsigned int u_iBufferNumber = 0;
 
-	//Finally, set the buffer in the shader to the new values
+	//Finally, set the buffers in the shader to the new values
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pMatrixBuffer);
 
 	pDeviceContext->PSSetConstantBuffers(u_iBufferNumber, 1, &m_pLightBuffer);
+
+	u_iBufferNumber = 1;
+	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pCameraBuffer);
 
 	ID3D11ShaderResourceView* pTex = m_pTexture->GetTexture();
 	pDeviceContext->PSSetShaderResources(0, 1, &pTex);

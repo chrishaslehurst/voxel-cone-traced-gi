@@ -53,14 +53,14 @@ void Mesh::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour)
+void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	for (int i = 0; i < m_iSubMeshCount; i++)
 	{
 		RenderBuffers(i, pDeviceContext);
 
-		if (!m_arrSubMeshes[i].m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i].m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour))
+		if (!m_arrSubMeshes[i].m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i].m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
 		{
 			VS_LOG_VERBOSE("Unable to render object with shader");
 		}
