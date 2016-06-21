@@ -118,6 +118,21 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 				//TODO: FIGURE OUT WHY SOME DONT HAVE A TEX
 				pMat->Initialise(pDevice, hwnd, L"textures\vase_hanging.tga");
 			}
+
+			pMat->SetSpecularProperties(KsR, KsG, KsB, Ns);
+			
+			if (map_bump != "")
+			{
+				map_bump = AssetFolderString + map_bump;
+				wstring wideBumpName = wstring(map_bump.begin(), map_bump.end());
+				pMat->SetNormalMap(pDevice, &wideBumpName[0]);
+				pMat->SetHasNormal(true);
+			}
+			else
+			{
+				pMat->SetHasNormal(false);
+			}
+
 			m_MaterialMap[sMaterialName] = pMat;
 		}
 		

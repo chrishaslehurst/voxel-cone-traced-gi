@@ -75,9 +75,13 @@ public:
 	void Shutdown();
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
+	void SetSpecularProperties(float r, float g, float b, float power);
+	void SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename);
+
+	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
 private:
 
-	bool LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
+	Texture* LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
 	void ReleaseTexture();
 
 	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename);
@@ -98,7 +102,10 @@ private:
 
 	float				m_fSpecularPower;
 	XMFLOAT4			m_vSpecularColour;
-	Texture*			m_pTexture;
+	Texture*			m_pDiffuseTexture;
+
+	bool				m_bHasNormalMap;
+	Texture*			m_pNormalMap;
 	ID3D11SamplerState* m_pSampleState;
 
 };

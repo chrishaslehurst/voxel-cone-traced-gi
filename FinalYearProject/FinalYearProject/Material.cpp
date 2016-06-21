@@ -7,14 +7,15 @@ Material::Material()
 	, m_pPixelShader(nullptr)
 	, m_pLayout(nullptr)
 	, m_pMatrixBuffer(nullptr)
-	, m_pTexture(nullptr)
+	, m_pDiffuseTexture(nullptr)
+	, m_pNormalMap(nullptr)
 	, m_pSampleState(nullptr)
 	, m_pLightBuffer(nullptr)
 	, m_pCameraBuffer(nullptr)
 {
-	//TODO: REMOVE THIS AND HAVE IT LOADED FROM MATERIAL!
+	
 	m_vSpecularColour = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
-	m_fSpecularPower = 32.f;
+	m_fSpecularPower = 1.f;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,8 +33,8 @@ bool Material::Initialise(ID3D11Device* pDevice, HWND hwnd, WCHAR* textureFileNa
 	{
 		return false;
 	}
-
-	if (!LoadTexture(pDevice, textureFileName))
+	m_pDiffuseTexture = LoadTexture(pDevice, textureFileName);
+	if (!m_pDiffuseTexture)
 	{
 		return false;
 	}
@@ -67,24 +68,43 @@ bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMA
 	return true;
 }
 
+void Material::SetSpecularProperties(float r, float g, float b, float power)
+{
+	m_vSpecularColour.x = r;
+	m_vSpecularColour.y = g;
+	m_vSpecularColour.z = b;
+	m_fSpecularPower = power;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
+void Material::SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename)
 {
-	m_pTexture = new Texture;
-	if(!m_pTexture)
+	m_pNormalMap = LoadTexture(pDevice, normalMapFilename);
+	if (m_pNormalMap->GetTexture() == nullptr)
+	{
+		VS_LOG_VERBOSE("Failed to set normal map");
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Texture* Material::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
+{
+	Texture* pTexture = new Texture;
+	if(!pTexture)
 	{
 		VS_LOG_VERBOSE("Failed to create new texture");
 		return false;
 	}
 
-	if (!m_pTexture->LoadTexture(pDevice, filename))
+	if (!pTexture->LoadTexture(pDevice, filename))
 	{
 		VS_LOG_VERBOSE("Failed to load texture from file");
 		return false;
 	}
 
-	return true;
+	return pTexture;
 	
 }
 
@@ -92,11 +112,11 @@ bool Material::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
 
 void Material::ReleaseTexture()
 {
-	if (m_pTexture)
+	if (m_pDiffuseTexture)
 	{
-		m_pTexture->Shutdown();
-		delete m_pTexture;
-		m_pTexture = nullptr;
+		m_pDiffuseTexture->Shutdown();
+		delete m_pDiffuseTexture;
+		m_pDiffuseTexture = nullptr;
 	}
 }
 
@@ -157,7 +177,7 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 		return false;
 	}
 
-	D3D11_INPUT_ELEMENT_DESC polyLayout[4];
+	D3D11_INPUT_ELEMENT_DESC polyLayout[6];
 	//Setup data layout for the shader, needs to match the VertexType struct in the Mesh class and in the shader code.
 	polyLayout[0].SemanticName = "POSITION";
 	polyLayout[0].SemanticIndex = 0;
@@ -192,6 +212,22 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	polyLayout[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[3].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[3].InstanceDataStepRate = 0;
+
+	polyLayout[4].SemanticName = "TANGENT";
+	polyLayout[4].SemanticIndex = 0;
+	polyLayout[4].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	polyLayout[4].InputSlot = 0;
+	polyLayout[4].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+	polyLayout[4].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+	polyLayout[4].InstanceDataStepRate = 0;
+
+	polyLayout[5].SemanticName = "BINORMAL";
+	polyLayout[5].SemanticIndex = 0;
+	polyLayout[5].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	polyLayout[5].InputSlot = 0;
+	polyLayout[5].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+	polyLayout[5].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+	polyLayout[5].InstanceDataStepRate = 0;
 
 	//Get the number of elements in the layout
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
@@ -365,7 +401,6 @@ void Material::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCH
 
 bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
-	
 	//Matrices need to be transposed before sending them into the shader for dx11..
 	mWorldMatrix = XMMatrixTranspose(mWorldMatrix);
 	mViewMatrix = XMMatrixTranspose(mViewMatrix);
@@ -433,8 +468,19 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	u_iBufferNumber = 1;
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pCameraBuffer);
 
-	ID3D11ShaderResourceView* pTex = m_pTexture->GetTexture();
-	pDeviceContext->PSSetShaderResources(0, 1, &pTex);
+	ID3D11ShaderResourceView* pTextures[2] = { nullptr, nullptr };
+	if (m_pDiffuseTexture)
+	{
+		pTextures[0] = m_pDiffuseTexture->GetTexture();
+	
+		if (m_bHasNormalMap)
+		{
+			pTextures[1] = m_pNormalMap->GetTexture();
+		}
+	}
+	pDeviceContext->PSSetShaderResources(0, 2, pTextures);
+	
+
 
 	return true;
 }

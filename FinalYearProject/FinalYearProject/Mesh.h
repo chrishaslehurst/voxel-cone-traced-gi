@@ -26,6 +26,8 @@ __declspec(align(16)) class Mesh
 		XMFLOAT3 normal;
 		XMFLOAT2 texture;
 		XMFLOAT4 color;
+		XMFLOAT3 tangent;
+		XMFLOAT3 binormal;
 
 		void* operator new(size_t i)
 		{
@@ -44,6 +46,8 @@ __declspec(align(16)) class Mesh
 		XMFLOAT3 pos;
 		XMFLOAT2 tex;
 		XMFLOAT3 norm;
+		XMFLOAT3 tangent;
+		XMFLOAT3 binormal;
 
 		void* operator new(size_t i)
 		{
@@ -120,6 +124,8 @@ private:
 	bool InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice);
 	void ShutdownBuffers();
 	void RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext);
+
+	void CalculateModelVectors();
 
 	int m_iSubMeshCount;
 	int m_iTotalVerticesCount;

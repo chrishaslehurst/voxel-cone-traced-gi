@@ -8,7 +8,8 @@ cbuffer MatrixBuffer
 	matrix projectionMatrix;
 };
 
-Texture2D diffuseTexture;
+Texture2D shaderTextures[2];
+
 SamplerState SampleType;
 
 cbuffer LightBuffer
@@ -36,6 +37,8 @@ struct VertexInputType
 	float3 normal	: NORMAL;
 	float2 tex		: TEXCOORD0;
 	float4 colour	: COLOR;
+	float3 tangent : TANGENT;
+	float3 binormal : BINORMAL;
 };
 
 struct PixelInputType
@@ -45,6 +48,8 @@ struct PixelInputType
 	float2 tex		: TEXCOORD0;
 	float4 colour	: COLOR;
 	float3 viewDirection : TEXCOORD1;
+	float3 tangent : TANGENT;
+	float3 binormal : BINORMAL;
 };
 
 
@@ -72,6 +77,15 @@ PixelInputType VSMain(VertexInputType input)
 	output.normal = mul(input.normal, (float3x3)worldMatrix);
 	output.normal = normalize(output.normal);
 
+	//transform tangent to world space then normalise
+	output.tangent = mul(input.tangent, (float3x3)worldMatrix);
+	output.tangent = normalize(output.tangent);
+
+	//transform binormal to world space then normalise
+	output.binormal = mul(input.binormal, (float3x3)worldMatrix);
+	output.binormal = normalize(output.binormal);
+
+
 	//Viewing direction based on position of the camera and position of the vertex
 	output.viewDirection = cameraPosition.xyz - mul(input.position, worldMatrix).xyz;
 	output.viewDirection = normalize(output.viewDirection);
@@ -87,10 +101,17 @@ PixelInputType VSMain(VertexInputType input)
 float4 PSMain(PixelInputType input) : SV_TARGET
 {
 	float4 finalColour = ambientColour;
-	float4 textureColour, specularColour;
-	float3 reflectionVector;
+	float4 textureColour, specularColour, normalMapCol;
+	float3 reflectionVector, bumpNormal;
 
-	textureColour = diffuseTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+	textureColour = shaderTextures[0].SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+	normalMapCol = shaderTextures[1].SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+
+	//Expand range of normal map to -1 / +1
+	normalMapCol = (normalMapCol * 2) - 1.f;
+	// Calculate normal from the data in normal map.
+	bumpNormal = (normalMapCol.x * input.tangent) + (normalMapCol.y * input.binormal) + (normalMapCol.z * input.normal);
+	bumpNormal = normalize(bumpNormal);
 
 	textureColour = textureColour * input.colour;
 
@@ -98,7 +119,7 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 
 	//Invert the light direction
 	float3 lightDir = -lightDirection;
-	float lightIntensity = saturate(dot(input.normal, lightDir));
+	float lightIntensity = saturate(dot(bumpNormal, lightDir));
 
 	if (lightIntensity > 0.0f)
 	{

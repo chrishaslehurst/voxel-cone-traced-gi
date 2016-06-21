@@ -27,7 +27,9 @@ bool Mesh::Initialise(ID3D11Device* pDevice, HWND hwnd, char* filename)
 		return false;
 	}
 
-	//SetMaterial(0, m_MatLib->GetMaterial("roof"));
+	//Calculate the binormals and tangent vectors
+	CalculateModelVectors();
+	
 	//Initialise the buffers
 	bool result(true);
 	for (int i = 0; i < m_iSubMeshCount; i++)
@@ -152,8 +154,6 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 		return false;
 	}
 	
-
-
 	double dStartTime = Timer::Get()->GetCurrentTime();
 	ifstream fin;
 	fin.open(filename);
@@ -173,8 +173,6 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 	TexCoords.reserve(200000);
 	Normals.reserve(300000);
 	
-
-
 	string s;
 	
 	double dFaceReadTime = 0;
@@ -259,6 +257,8 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 				m_arrSubMeshes[iObjectIndex]->m_arrModel[iModelIndex + j].tex = TexCoords[f.tIndex[j] - 1];
 				m_arrSubMeshes[iObjectIndex]->m_arrModel[iModelIndex + j].norm = Normals[f.nIndex[j] - 1];
 			}
+
+
 
 			iFaceIndex++;
 			double dFaceReadEndTime = Timer::Get()->GetCurrentTime();
@@ -473,6 +473,8 @@ bool Mesh::InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice)
 		vertices[i].normal = pSubMesh->m_arrModel[i].norm;
 		vertices[i].texture = pSubMesh->m_arrModel[i].tex;
 		vertices[i].color = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
+		vertices[i].tangent = pSubMesh->m_arrModel[i].tangent;
+		vertices[i].binormal = pSubMesh->m_arrModel[i].binormal;
 
 		indices[i] = i;
 	}
@@ -571,6 +573,78 @@ void Mesh::RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext)
 
 	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
 	pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::CalculateModelVectors()
+{
+	for (int i = 0; i < m_arrSubMeshes.size(); i++)
+	{
+		for (int j = 0; j < m_arrSubMeshes[i]->m_arrModel.size()/3; j++)
+		{
+			XMFLOAT3 binormal, tangent;
+			XMVECTOR vBinormal, vTangent, vNormal;
+
+			XMFLOAT3 vVec1, vVec2;
+			XMFLOAT2 vTUVec, vTVVec;
+
+			ModelType *pVert1, *pVert2, *pVert3;
+
+			pVert1 = &m_arrSubMeshes[i]->m_arrModel[(j * 3)];
+			pVert2 = &m_arrSubMeshes[i]->m_arrModel[(j * 3) + 1];
+			pVert3 = &m_arrSubMeshes[i]->m_arrModel[(j * 3) + 2];
+
+			//Get two vectors for this face
+			vVec1.x = pVert2->pos.x - pVert1->pos.x;
+			vVec1.y = pVert2->pos.y - pVert1->pos.y;
+			vVec1.z = pVert2->pos.z - pVert1->pos.z;
+			vVec2.x = pVert3->pos.x - pVert1->pos.x;
+			vVec2.y = pVert3->pos.y - pVert1->pos.y;
+			vVec2.z = pVert3->pos.z - pVert1->pos.z;
+
+			vTUVec.x = pVert2->tex.x - pVert1->tex.x;
+			vTUVec.y = pVert3->tex.x - pVert1->tex.x;
+
+			vTVVec.x = pVert2->tex.y - pVert1->tex.y;
+			vTVVec.y = pVert3->tex.y - pVert1->tex.y;
+
+			// Calculate the denominator of the tangent/binormal equation.
+			float den = 1.f / ((vTUVec.x * vTVVec.y) - (vTUVec.y * vTVVec.x));
+
+			//Calculate the tangent and binormal
+			tangent.x = (vTVVec.y * vVec1.x - vTVVec.x * vVec2.x) * den;
+			tangent.y = (vTVVec.y * vVec1.y - vTVVec.x * vVec2.y) * den;
+			tangent.z = (vTVVec.y * vVec1.z - vTVVec.x * vVec2.z) * den;
+
+			binormal.x = (vTUVec.x * vVec2.x - vTUVec.y * vVec1.x) * den;
+			binormal.y = (vTUVec.x * vVec2.y - vTUVec.y * vVec1.y) * den;
+			binormal.z = (vTUVec.x * vVec2.z - vTUVec.y * vVec1.z) * den;
+
+			vTangent = XMLoadFloat3(&tangent);
+			vBinormal = XMLoadFloat3(&binormal);
+
+			vTangent = XMVector3Normalize(vTangent);
+			vBinormal = XMVector3Normalize(vBinormal);
+
+			//Now calculate the new normal..
+			vNormal = XMVector3Cross(vTangent, vBinormal);
+			vNormal = XMVector3Normalize(vNormal);
+
+			//Store them back in the model types
+			XMStoreFloat3(&pVert1->binormal, vBinormal);
+			XMStoreFloat3(&pVert1->tangent, vTangent);
+			XMStoreFloat3(&pVert1->norm, vNormal);
+
+			XMStoreFloat3(&pVert2->binormal, vBinormal);
+			XMStoreFloat3(&pVert2->tangent, vTangent);
+			XMStoreFloat3(&pVert2->norm, vNormal);
+
+			XMStoreFloat3(&pVert3->binormal, vBinormal);
+			XMStoreFloat3(&pVert3->tangent, vTangent);
+			XMStoreFloat3(&pVert3->norm, vNormal);
+		}
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
