@@ -19,7 +19,6 @@ cbuffer LightBuffer
 	float3 lightDirection;
 	float specularPower;
 	float4 specularColor;
-	
 };
 
 cbuffer CameraBuffer
@@ -105,17 +104,25 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 	float3 reflectionVector, bumpNormal;
 
 	textureColour = shaderTextures[0].SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+
+#if USE_NORMAL_MAPS
 	normalMapCol = shaderTextures[1].SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
 	//Expand range of normal map to -1 / +1
 	normalMapCol = (normalMapCol * 2) - 1.f;
 	// Calculate normal from the data in normal map.
+
 	bumpNormal = (normalMapCol.x * input.tangent) + (normalMapCol.y * input.binormal) + (normalMapCol.z * input.normal);
 	bumpNormal = normalize(bumpNormal);
+#else
+	bumpNormal = input.normal;
+#endif
 
 	textureColour = textureColour * input.colour;
 
 	specularColour = float4(0.f, 0.f, 0.f, 0.f);
+
+
 
 	//Invert the light direction
 	float3 lightDir = -lightDirection;
@@ -129,13 +136,11 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 		finalColour = saturate(finalColour);
 
 		//Calculate reflection vector based on light and surface normal direction
-		reflectionVector = normalize(2 * lightIntensity * input.normal - lightDir);
+		reflectionVector = normalize(2 * lightIntensity * bumpNormal - lightDir);
 
 		//Calculate amount of specular light based on viewing pos
 		specularColour = pow(saturate(dot(reflectionVector, input.viewDirection)), specularPower);
 	}
-
-	
 
 	//Multiply surface colour by light colour to get final colour
 	finalColour = finalColour * textureColour;

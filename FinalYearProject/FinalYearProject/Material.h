@@ -12,6 +12,14 @@
 using namespace std;
 using namespace DirectX;
 
+enum MaterialFlags
+{
+	USE_NORMAL_MAPS,
+	NULLS,
+	MAX
+};
+
+
 class Material
 {
 	__declspec(align(16)) struct MatrixBuffer
@@ -79,6 +87,7 @@ public:
 	void SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename);
 
 	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
+	bool UsesNormalMaps() { return m_bHasNormalMap; }
 private:
 
 	Texture* LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
@@ -108,6 +117,8 @@ private:
 	Texture*			m_pNormalMap;
 	ID3D11SamplerState* m_pSampleState;
 
+
+	D3D_SHADER_MACRO m_defines[MaterialFlags::MAX];
 };
 
 #endif // !COLOUR_SHADER_H

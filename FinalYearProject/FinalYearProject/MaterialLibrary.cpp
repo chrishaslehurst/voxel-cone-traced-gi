@@ -107,17 +107,7 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			//Create a material from the parameters..
 			Material* pMat = new Material;
 			std::string AssetFolderString = "../Assets/";
-			if (map_Ka != "") 
-			{
-				map_Ka = AssetFolderString + map_Ka;
-				wstring wideDiffuseName = wstring(map_Ka.begin(), map_Ka.end());
-				pMat->Initialise(pDevice, hwnd, &wideDiffuseName[0]);
-			}
-			else
-			{
-				//TODO: FIGURE OUT WHY SOME DONT HAVE A TEX
-				pMat->Initialise(pDevice, hwnd, L"textures\vase_hanging.tga");
-			}
+			
 
 			pMat->SetSpecularProperties(KsR, KsG, KsB, Ns);
 			
@@ -131,6 +121,20 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			else
 			{
 				pMat->SetHasNormal(false);
+			}
+
+
+			//Do this stage last as it compiles the shader and the defines need to be set before this.
+			if (map_Ka != "")
+			{
+				map_Ka = AssetFolderString + map_Ka;
+				wstring wideDiffuseName = wstring(map_Ka.begin(), map_Ka.end());
+				pMat->Initialise(pDevice, hwnd, &wideDiffuseName[0]);
+			}
+			else
+			{
+				//TODO: FIGURE OUT WHY SOME DONT HAVE A TEX
+				pMat->Initialise(pDevice, hwnd, L"textures\vase_hanging.tga");
 			}
 
 			m_MaterialMap[sMaterialName] = pMat;

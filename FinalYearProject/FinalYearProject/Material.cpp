@@ -16,6 +16,11 @@ Material::Material()
 	
 	m_vSpecularColour = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
 	m_fSpecularPower = 1.f;
+
+	m_defines[USE_NORMAL_MAPS].Name = "USE_NORMAL_MAPS";
+	m_defines[USE_NORMAL_MAPS].Definition = "0";
+	m_defines[NULLS].Name = nullptr;
+	m_defines[NULLS].Definition = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -81,6 +86,7 @@ void Material::SetSpecularProperties(float r, float g, float b, float power)
 void Material::SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename)
 {
 	m_pNormalMap = LoadTexture(pDevice, normalMapFilename);
+	m_defines[USE_NORMAL_MAPS].Definition = "1";
 	if (m_pNormalMap->GetTexture() == nullptr)
 	{
 		VS_LOG_VERBOSE("Failed to set normal map");
@@ -130,7 +136,7 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	ID3D10Blob* pPixelShaderBuffer( nullptr);
 
 	//Compile the vertex shader code
-	result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
+	result = D3DCompileFromFile(sShaderFilename, m_defines, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
 	if (FAILED(result))
 	{
 		if (pErrorMessage)
@@ -147,7 +153,7 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	}
 
 	//compile the pixel shader..
-	result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
+	result = D3DCompileFromFile(sShaderFilename, m_defines, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
 	if (FAILED(result))
 	{
 		if (pErrorMessage)

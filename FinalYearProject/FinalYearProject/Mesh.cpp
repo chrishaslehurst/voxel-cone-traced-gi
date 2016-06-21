@@ -28,6 +28,7 @@ bool Mesh::Initialise(ID3D11Device* pDevice, HWND hwnd, char* filename)
 	}
 
 	//Calculate the binormals and tangent vectors
+	
 	CalculateModelVectors();
 	
 	//Initialise the buffers
@@ -581,68 +582,71 @@ void Mesh::CalculateModelVectors()
 {
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
-		for (int j = 0; j < m_arrSubMeshes[i]->m_arrModel.size()/3; j++)
+		if (m_arrSubMeshes[i]->m_pMaterial->UsesNormalMaps())
 		{
-			XMFLOAT3 binormal, tangent;
-			XMVECTOR vBinormal, vTangent, vNormal;
+			for (int j = 0; j < m_arrSubMeshes[i]->m_arrModel.size() / 3; j++)
+			{
+				XMFLOAT3 binormal, tangent;
+				XMVECTOR vBinormal, vTangent, vNormal;
 
-			XMFLOAT3 vVec1, vVec2;
-			XMFLOAT2 vTUVec, vTVVec;
+				XMFLOAT3 vVec1, vVec2;
+				XMFLOAT2 vTUVec, vTVVec;
 
-			ModelType *pVert1, *pVert2, *pVert3;
+				ModelType *pVert1, *pVert2, *pVert3;
 
-			pVert1 = &m_arrSubMeshes[i]->m_arrModel[(j * 3)];
-			pVert2 = &m_arrSubMeshes[i]->m_arrModel[(j * 3) + 1];
-			pVert3 = &m_arrSubMeshes[i]->m_arrModel[(j * 3) + 2];
+				pVert1 = &m_arrSubMeshes[i]->m_arrModel[(j * 3)];
+				pVert2 = &m_arrSubMeshes[i]->m_arrModel[(j * 3) + 1];
+				pVert3 = &m_arrSubMeshes[i]->m_arrModel[(j * 3) + 2];
 
-			//Get two vectors for this face
-			vVec1.x = pVert2->pos.x - pVert1->pos.x;
-			vVec1.y = pVert2->pos.y - pVert1->pos.y;
-			vVec1.z = pVert2->pos.z - pVert1->pos.z;
-			vVec2.x = pVert3->pos.x - pVert1->pos.x;
-			vVec2.y = pVert3->pos.y - pVert1->pos.y;
-			vVec2.z = pVert3->pos.z - pVert1->pos.z;
+				//Get two vectors for this face
+				vVec1.x = pVert2->pos.x - pVert1->pos.x;
+				vVec1.y = pVert2->pos.y - pVert1->pos.y;
+				vVec1.z = pVert2->pos.z - pVert1->pos.z;
+				vVec2.x = pVert3->pos.x - pVert1->pos.x;
+				vVec2.y = pVert3->pos.y - pVert1->pos.y;
+				vVec2.z = pVert3->pos.z - pVert1->pos.z;
 
-			vTUVec.x = pVert2->tex.x - pVert1->tex.x;
-			vTUVec.y = pVert3->tex.x - pVert1->tex.x;
+				vTUVec.x = pVert2->tex.x - pVert1->tex.x;
+				vTUVec.y = pVert3->tex.x - pVert1->tex.x;
 
-			vTVVec.x = pVert2->tex.y - pVert1->tex.y;
-			vTVVec.y = pVert3->tex.y - pVert1->tex.y;
+				vTVVec.x = pVert2->tex.y - pVert1->tex.y;
+				vTVVec.y = pVert3->tex.y - pVert1->tex.y;
 
-			// Calculate the denominator of the tangent/binormal equation.
-			float den = 1.f / ((vTUVec.x * vTVVec.y) - (vTUVec.y * vTVVec.x));
+				// Calculate the denominator of the tangent/binormal equation.
+				float den = 1.f / ((vTUVec.x * vTVVec.y) - (vTUVec.y * vTVVec.x));
 
-			//Calculate the tangent and binormal
-			tangent.x = (vTVVec.y * vVec1.x - vTVVec.x * vVec2.x) * den;
-			tangent.y = (vTVVec.y * vVec1.y - vTVVec.x * vVec2.y) * den;
-			tangent.z = (vTVVec.y * vVec1.z - vTVVec.x * vVec2.z) * den;
+				//Calculate the tangent and binormal
+				tangent.x = (vTVVec.y * vVec1.x - vTVVec.x * vVec2.x) * den;
+				tangent.y = (vTVVec.y * vVec1.y - vTVVec.x * vVec2.y) * den;
+				tangent.z = (vTVVec.y * vVec1.z - vTVVec.x * vVec2.z) * den;
 
-			binormal.x = (vTUVec.x * vVec2.x - vTUVec.y * vVec1.x) * den;
-			binormal.y = (vTUVec.x * vVec2.y - vTUVec.y * vVec1.y) * den;
-			binormal.z = (vTUVec.x * vVec2.z - vTUVec.y * vVec1.z) * den;
+				binormal.x = (vTUVec.x * vVec2.x - vTUVec.y * vVec1.x) * den;
+				binormal.y = (vTUVec.x * vVec2.y - vTUVec.y * vVec1.y) * den;
+				binormal.z = (vTUVec.x * vVec2.z - vTUVec.y * vVec1.z) * den;
 
-			vTangent = XMLoadFloat3(&tangent);
-			vBinormal = XMLoadFloat3(&binormal);
+				vTangent = XMLoadFloat3(&tangent);
+				vBinormal = XMLoadFloat3(&binormal);
 
-			vTangent = XMVector3Normalize(vTangent);
-			vBinormal = XMVector3Normalize(vBinormal);
+				vTangent = XMVector3Normalize(vTangent);
+				vBinormal = XMVector3Normalize(vBinormal);
 
-			//Now calculate the new normal..
-			vNormal = XMVector3Cross(vTangent, vBinormal);
-			vNormal = XMVector3Normalize(vNormal);
+				//Now calculate the new normal..
+				vNormal = XMVector3Cross(vTangent, vBinormal);
+				vNormal = XMVector3Normalize(vNormal);
 
-			//Store them back in the model types
-			XMStoreFloat3(&pVert1->binormal, vBinormal);
-			XMStoreFloat3(&pVert1->tangent, vTangent);
-			XMStoreFloat3(&pVert1->norm, vNormal);
+				//Store them back in the model types
+				XMStoreFloat3(&pVert1->binormal, vBinormal);
+				XMStoreFloat3(&pVert1->tangent, vTangent);
+				XMStoreFloat3(&pVert1->norm, vNormal);
 
-			XMStoreFloat3(&pVert2->binormal, vBinormal);
-			XMStoreFloat3(&pVert2->tangent, vTangent);
-			XMStoreFloat3(&pVert2->norm, vNormal);
+				XMStoreFloat3(&pVert2->binormal, vBinormal);
+				XMStoreFloat3(&pVert2->tangent, vTangent);
+				XMStoreFloat3(&pVert2->norm, vNormal);
 
-			XMStoreFloat3(&pVert3->binormal, vBinormal);
-			XMStoreFloat3(&pVert3->tangent, vTangent);
-			XMStoreFloat3(&pVert3->norm, vNormal);
+				XMStoreFloat3(&pVert3->binormal, vBinormal);
+				XMStoreFloat3(&pVert3->tangent, vTangent);
+				XMStoreFloat3(&pVert3->norm, vNormal);
+			}
 		}
 	}
 }
