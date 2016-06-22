@@ -26,8 +26,8 @@ public:
 	void BeginScene(float r, float g, float b, float a);
 	void EndScene();
 
-	ID3D11Device* GetDevice();
-	ID3D11DeviceContext* GetDeviceContext();
+	ID3D11Device3* GetDevice();
+	ID3D11DeviceContext3* GetDeviceContext();
 
 	void GetProjectionMatrix(XMMATRIX& mProjectionMatrix);
 	void GetWorldMatrix(XMMATRIX& mWorldMatrix);
@@ -50,8 +50,8 @@ private:
 	int							m_iVideoCardMemoryInMB;
 	char						m_videoCardDescription[128];
 	IDXGISwapChain*				m_pSwapChain;
-	ID3D11Device*				m_pDevice;
-	ID3D11DeviceContext*		m_pDeviceContext;
+	ID3D11Device3*				m_pDevice;
+	ID3D11DeviceContext3*		m_pDeviceContext;
 	ID3D11RenderTargetView*		m_pRenderTargetView;
 	ID3D11Texture2D*			m_pDepthStencilBuffer;
 	ID3D11DepthStencilState*	m_pDepthStencilState;

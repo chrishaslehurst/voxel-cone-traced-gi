@@ -107,14 +107,14 @@ void D3DWrapper::EndScene()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-ID3D11Device* D3DWrapper::GetDevice()
+ID3D11Device3* D3DWrapper::GetDevice()
 {
 	return m_pDevice;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-ID3D11DeviceContext* D3DWrapper::GetDeviceContext()
+ID3D11DeviceContext3* D3DWrapper::GetDeviceContext()
 {
 	return m_pDeviceContext;
 }
@@ -365,16 +365,20 @@ bool D3DWrapper::SetUpSwapChainAndDevice(HWND hwnd, bool bFullScreenEnabled, int
 
 	//now the description is filled out, the swap chain can be created..
 	//Pass D3D11_CREATE_DEVICE_DEBUG in instead of 0 to catch any problems..
-	HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, &m_pSwapChain, &m_pDevice, nullptr, &m_pDeviceContext);
+	ID3D11Device* pDev;
+	ID3D11DeviceContext* pCont;
+	HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, &m_pSwapChain, &pDev, nullptr, &pCont);
 	if (FAILED(hr))
 	{
 		VS_LOG_VERBOSE("Failed to create device and swap chain");
 		return false;
 	}
+	pDev->QueryInterface<ID3D11Device3>(&m_pDevice);
+	pCont->QueryInterface<ID3D11DeviceContext3>(&m_pDeviceContext);
 
 	//check for tiled resources support - need tier 3 for Volume Tiled Resources..
 	D3D11_FEATURE_DATA_D3D11_OPTIONS1 featureData;
-	m_pDevice->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS1, &featureData, sizeof(featureData));
+	m_pDevice->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &featureData, sizeof(featureData));
 
 	//Get ptr to the back buffer
 	ID3D11Texture2D* pBackBuffer;
