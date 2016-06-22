@@ -630,22 +630,16 @@ void Mesh::CalculateModelVectors()
 				vTangent = XMVector3Normalize(vTangent);
 				vBinormal = XMVector3Normalize(vBinormal);
 
-				//Now calculate the new normal..
-				vNormal = XMVector3Cross(vTangent, vBinormal);
-				vNormal = XMVector3Normalize(vNormal);
-
 				//Store them back in the model types
 				XMStoreFloat3(&pVert1->binormal, vBinormal);
 				XMStoreFloat3(&pVert1->tangent, vTangent);
-				XMStoreFloat3(&pVert1->norm, vNormal);
-
+		
 				XMStoreFloat3(&pVert2->binormal, vBinormal);
 				XMStoreFloat3(&pVert2->tangent, vTangent);
-				XMStoreFloat3(&pVert2->norm, vNormal);
-
+		
 				XMStoreFloat3(&pVert3->binormal, vBinormal);
 				XMStoreFloat3(&pVert3->tangent, vTangent);
-				XMStoreFloat3(&pVert3->norm, vNormal);
+			
 			}
 		}
 	}

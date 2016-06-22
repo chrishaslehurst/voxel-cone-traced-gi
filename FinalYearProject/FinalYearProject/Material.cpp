@@ -12,6 +12,8 @@ Material::Material()
 	, m_pSampleState(nullptr)
 	, m_pLightBuffer(nullptr)
 	, m_pCameraBuffer(nullptr)
+	, m_bHasSpecularMap(false)
+	, m_bHasNormalMap(false)
 {
 	
 	m_vSpecularColour = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
@@ -19,6 +21,8 @@ Material::Material()
 
 	m_defines[USE_NORMAL_MAPS].Name = "USE_NORMAL_MAPS";
 	m_defines[USE_NORMAL_MAPS].Definition = "0";
+	m_defines[USE_SPECULAR_MAPS].Name = "USE_SPECULAR_MAPS";
+	m_defines[USE_SPECULAR_MAPS].Definition = "0";
 	m_defines[NULLS].Name = nullptr;
 	m_defines[NULLS].Definition = nullptr;
 }
@@ -83,14 +87,18 @@ void Material::SetSpecularProperties(float r, float g, float b, float power)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Material::SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename)
+{
+	m_pSpecularMap = LoadTexture(pDevice, specMapFilename);
+	m_defines[USE_SPECULAR_MAPS].Definition = "1";
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void Material::SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename)
 {
 	m_pNormalMap = LoadTexture(pDevice, normalMapFilename);
 	m_defines[USE_NORMAL_MAPS].Definition = "1";
-	if (m_pNormalMap->GetTexture() == nullptr)
-	{
-		VS_LOG_VERBOSE("Failed to set normal map");
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -474,17 +482,22 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	u_iBufferNumber = 1;
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pCameraBuffer);
 
-	ID3D11ShaderResourceView* pTextures[2] = { nullptr, nullptr };
+	
 	if (m_pDiffuseTexture)
 	{
-		pTextures[0] = m_pDiffuseTexture->GetTexture();
-	
-		if (m_bHasNormalMap)
-		{
-			pTextures[1] = m_pNormalMap->GetTexture();
-		}
+		ID3D11ShaderResourceView* pDiffuseTexture = m_pDiffuseTexture->GetTexture();
+		pDeviceContext->PSSetShaderResources(0, 1, &pDiffuseTexture);
 	}
-	pDeviceContext->PSSetShaderResources(0, 2, pTextures);
+	if (m_bHasNormalMap)
+	{
+		ID3D11ShaderResourceView* pNormalMapTexture = m_pNormalMap->GetTexture();
+		pDeviceContext->PSSetShaderResources(1, 1, &pNormalMapTexture);
+	}
+	if (m_bHasSpecularMap)
+	{
+		ID3D11ShaderResourceView* pSpecularMapTexture = m_pSpecularMap->GetTexture();
+		pDeviceContext->PSSetShaderResources(2, 1, &pSpecularMapTexture);
+	}
 	
 
 

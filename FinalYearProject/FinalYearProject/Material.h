@@ -15,6 +15,7 @@ using namespace DirectX;
 enum MaterialFlags
 {
 	USE_NORMAL_MAPS,
+	USE_SPECULAR_MAPS,
 	NULLS,
 	MAX
 };
@@ -84,10 +85,14 @@ public:
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
 	void SetSpecularProperties(float r, float g, float b, float power);
+	void SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename);
 	void SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename);
 
 	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
 	bool UsesNormalMaps() { return m_bHasNormalMap; }
+
+	void SetHasSpecular(bool bHasSpecular) { m_bHasSpecularMap = bHasSpecular; }
+	bool UsesSpecularMaps() { return m_bHasSpecularMap; }
 private:
 
 	Texture* LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
@@ -115,6 +120,8 @@ private:
 
 	bool				m_bHasNormalMap;
 	Texture*			m_pNormalMap;
+	bool				m_bHasSpecularMap;
+	Texture*			m_pSpecularMap;
 	ID3D11SamplerState* m_pSampleState;
 
 

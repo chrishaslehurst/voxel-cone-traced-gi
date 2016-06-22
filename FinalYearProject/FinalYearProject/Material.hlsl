@@ -8,7 +8,12 @@ cbuffer MatrixBuffer
 	matrix projectionMatrix;
 };
 
-Texture2D shaderTextures[2];
+Texture2D diffuseTexture;
+
+Texture2D normalMapTexture;
+
+Texture2D specularMapTexture;
+
 
 SamplerState SampleType;
 
@@ -100,13 +105,13 @@ PixelInputType VSMain(VertexInputType input)
 float4 PSMain(PixelInputType input) : SV_TARGET
 {
 	float4 finalColour = ambientColour;
-	float4 textureColour, specularColour, normalMapCol;
+	float4 textureColour, specCol, normalMapCol;
 	float3 reflectionVector, bumpNormal;
 
-	textureColour = shaderTextures[0].SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+	textureColour = diffuseTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
 #if USE_NORMAL_MAPS
-	normalMapCol = shaderTextures[1].SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+	normalMapCol = normalMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
 	//Expand range of normal map to -1 / +1
 	normalMapCol = (normalMapCol * 2) - 1.f;
@@ -120,9 +125,7 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 
 	textureColour = textureColour * input.colour;
 
-	specularColour = float4(0.f, 0.f, 0.f, 0.f);
-
-
+	specCol = float4(0.f, 0.f, 0.f, 0.f);
 
 	//Invert the light direction
 	float3 lightDir = -lightDirection;
@@ -139,13 +142,19 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 		reflectionVector = normalize(2 * lightIntensity * bumpNormal - lightDir);
 
 		//Calculate amount of specular light based on viewing pos
-		specularColour = pow(saturate(dot(reflectionVector, input.viewDirection)), specularPower);
+		specCol = pow(saturate(dot(reflectionVector, input.viewDirection)), specularPower);
+#if USE_SPECULAR_MAPS
+		float4 specularIntensity = specularMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+		specCol = specCol * specularIntensity;
+#else
+		specCol = specCol * specularColor;
+#endif
 	}
 
 	//Multiply surface colour by light colour to get final colour
 	finalColour = finalColour * textureColour;
 
-	finalColour = saturate(finalColour + specularColour);
+	finalColour = saturate(finalColour + specCol);
 
 	return finalColour;
 }
