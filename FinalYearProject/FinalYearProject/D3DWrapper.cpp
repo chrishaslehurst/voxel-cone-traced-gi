@@ -51,6 +51,11 @@ bool D3DWrapper::Initialise(int iScreenWidth, int iScreenHeight, bool bVsyncEnab
 	{
 		return false;
 	}
+	if (!CreateBlendState())
+	{
+		return false;
+	}
+	TurnOnAlphaBlending();
 	SetUpViewPort(iScreenWidth, iScreenHeight);
 
 	//Setup the projection matrix
@@ -146,6 +151,44 @@ void D3DWrapper::GetVideoCardInfo(char* cardName, int& memory)
 {
 	strcpy_s(cardName, 128, m_videoCardDescription);
 	memory = m_iVideoCardMemoryInMB;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void D3DWrapper::TurnOnAlphaBlending()
+{
+	float blendFactor[4];
+
+
+	// Setup the blend factor.
+	blendFactor[0] = 0.0f;
+	blendFactor[1] = 0.0f;
+	blendFactor[2] = 0.0f;
+	blendFactor[3] = 0.0f;
+
+	// Turn on the alpha blending.
+	m_pDeviceContext->OMSetBlendState(m_alphaEnableBlendingState, blendFactor, 0xffffffff);
+
+	return;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void D3DWrapper::TurnOffAlphaBlending()
+{
+	float blendFactor[4];
+
+
+	// Setup the blend factor.
+	blendFactor[0] = 0.0f;
+	blendFactor[1] = 0.0f;
+	blendFactor[2] = 0.0f;
+	blendFactor[3] = 0.0f;
+
+	// Turn off the alpha blending.
+	m_pDeviceContext->OMSetBlendState(m_alphaDisableBlendingState, blendFactor, 0xffffffff);
+
+	return;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -512,6 +555,43 @@ bool D3DWrapper::SetUpRasteriser()
 	}
 
 	m_pDeviceContext->RSSetState(m_pRasterState);
+	return true;
+}
+
+bool D3DWrapper::CreateBlendState()
+{
+	D3D11_BLEND_DESC blendStateDescription;
+	// Clear the blend state description.
+	ZeroMemory(&blendStateDescription, sizeof(D3D11_BLEND_DESC));
+
+	// Create an alpha enabled blend state description.
+	blendStateDescription.RenderTarget[0].BlendEnable = TRUE;
+	//blendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	blendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	blendStateDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	blendStateDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	blendStateDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	blendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	blendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	blendStateDescription.RenderTarget[0].RenderTargetWriteMask = 0x0f;
+
+	// Create the blend state using the description.
+	if (FAILED(m_pDevice->CreateBlendState(&blendStateDescription, &m_alphaEnableBlendingState)))
+	{
+		VS_LOG_VERBOSE("Failed to create alpha enabled blend state");
+		return false;
+	}
+
+	// Modify the description to create an alpha disabled blend state description.
+	blendStateDescription.RenderTarget[0].BlendEnable = FALSE;
+
+	// Create the blend state using the description.
+	if (FAILED(m_pDevice->CreateBlendState(&blendStateDescription, &m_alphaDisableBlendingState)))
+	{
+		VS_LOG_VERBOSE("Failed to create alpha disabled blend state");
+		return false;
+	}
+
 	return true;
 }
 

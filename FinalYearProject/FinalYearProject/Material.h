@@ -16,6 +16,7 @@ enum MaterialFlags
 {
 	USE_NORMAL_MAPS,
 	USE_SPECULAR_MAPS,
+	USE_ALPHA_MASKS,
 	NULLS,
 	MAX
 };
@@ -87,12 +88,16 @@ public:
 	void SetSpecularProperties(float r, float g, float b, float power);
 	void SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename);
 	void SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename);
+	void SetAlphaMask(ID3D11Device* pDevice, WCHAR* alphaMaskFilename);
 
 	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
 	bool UsesNormalMaps() { return m_bHasNormalMap; }
 
 	void SetHasSpecular(bool bHasSpecular) { m_bHasSpecularMap = bHasSpecular; }
 	bool UsesSpecularMaps() { return m_bHasSpecularMap; }
+
+	void SetHasAlphaMask(bool bHasMask) { m_bHasAlphaMask = bHasMask; }
+	bool UsesAlphaMaps() { return m_bHasAlphaMask; }
 private:
 
 	Texture* LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
@@ -122,6 +127,10 @@ private:
 	Texture*			m_pNormalMap;
 	bool				m_bHasSpecularMap;
 	Texture*			m_pSpecularMap;
+
+	bool				m_bHasAlphaMask;
+	Texture*			m_pAlphaMask;
+
 	ID3D11SamplerState* m_pSampleState;
 
 

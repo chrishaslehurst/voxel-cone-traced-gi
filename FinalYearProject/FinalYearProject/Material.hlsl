@@ -15,6 +15,9 @@ Texture2D normalMapTexture;
 #if USE_SPECULAR_MAPS
 Texture2D specularMapTexture;
 #endif
+#if USE_ALPHA_MASKS
+Texture2D alphaMaskTexture;
+#endif
 
 
 SamplerState SampleType;
@@ -157,7 +160,10 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 	finalColour = finalColour * textureColour;
 
 	finalColour = saturate(finalColour + specCol);
-
+#if USE_ALPHA_MASKS
+	float4 alpha = alphaMaskTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+	finalColour.a = alpha.r;
+#endif
 	return finalColour;
 }
 

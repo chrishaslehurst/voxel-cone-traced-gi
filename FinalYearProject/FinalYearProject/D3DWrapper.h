@@ -35,6 +35,9 @@ public:
 
 	void GetVideoCardInfo(char* cardName, int& memory);
 
+	void TurnOnAlphaBlending();
+	void TurnOffAlphaBlending();
+
 private:
 	void Shutdown();
 
@@ -43,6 +46,7 @@ private:
 	bool SetUpDepthBufferAndDepthStencilState(int iScreenWidth, int iScreenHeight);
 	bool SetUpDepthStencilView();
 	bool SetUpRasteriser();
+	bool CreateBlendState();
 	void SetUpViewPort(int iScreenWidth, int iScreenHeight);
 
 
@@ -56,6 +60,9 @@ private:
 	ID3D11Texture2D*			m_pDepthStencilBuffer;
 	ID3D11DepthStencilState*	m_pDepthStencilState;
 	ID3D11DepthStencilView*		m_pDepthStencilView;
+
+	ID3D11BlendState*			m_alphaEnableBlendingState;
+	ID3D11BlendState*			m_alphaDisableBlendingState;
 	ID3D11RasterizerState*		m_pRasterState;
 	XMMATRIX					m_mProjectionMatrix;
 	XMMATRIX					m_mWorldMatrix;

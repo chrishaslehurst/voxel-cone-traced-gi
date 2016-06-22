@@ -23,6 +23,8 @@ Material::Material()
 	m_defines[USE_NORMAL_MAPS].Definition = "0";
 	m_defines[USE_SPECULAR_MAPS].Name = "USE_SPECULAR_MAPS";
 	m_defines[USE_SPECULAR_MAPS].Definition = "0";
+	m_defines[USE_ALPHA_MASKS].Name = "USE_ALPHA_MASKS";
+	m_defines[USE_ALPHA_MASKS].Definition = "0";
 	m_defines[NULLS].Name = nullptr;
 	m_defines[NULLS].Definition = nullptr;
 }
@@ -99,6 +101,12 @@ void Material::SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename)
 {
 	m_pNormalMap = LoadTexture(pDevice, normalMapFilename);
 	m_defines[USE_NORMAL_MAPS].Definition = "1";
+}
+
+void Material::SetAlphaMask(ID3D11Device* pDevice, WCHAR* alphaMaskFilename)
+{
+	m_pAlphaMask = LoadTexture(pDevice, alphaMaskFilename);
+	m_defines[USE_ALPHA_MASKS].Definition = "1";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -499,6 +507,12 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	{
 		ID3D11ShaderResourceView* pSpecularMapTexture = m_pSpecularMap->GetTexture();
 		pDeviceContext->PSSetShaderResources(slot, 1, &pSpecularMapTexture);
+		slot++;
+	}
+	if(m_bHasAlphaMask)
+	{
+		ID3D11ShaderResourceView* pAlphaMaskTexture = m_pAlphaMask->GetTexture();
+		pDeviceContext->PSSetShaderResources(slot, 1, &pAlphaMaskTexture);
 		slot++;
 	}
 	

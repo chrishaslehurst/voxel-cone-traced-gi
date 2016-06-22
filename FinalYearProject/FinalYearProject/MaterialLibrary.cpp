@@ -138,7 +138,17 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				pMat->SetHasSpecular(false);
 			}
-
+			if (map_d != "")
+			{
+				map_d = AssetFolderString + map_d;
+				wstring wideMaskName = wstring(map_d.begin(), map_d.end());
+				pMat->SetAlphaMask(pDevice, &wideMaskName[0]);
+				pMat->SetHasAlphaMask(true);
+			}
+			else
+			{
+				pMat->SetHasAlphaMask(false);
+			}
 
 			//Do this stage last as it compiles the shader and the defines need to be set before this.
 			if (map_Ka != "")
