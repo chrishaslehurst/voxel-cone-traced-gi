@@ -9,10 +9,12 @@ cbuffer MatrixBuffer
 };
 
 Texture2D diffuseTexture;
-
+#if USE_NORMAL_MAPS
 Texture2D normalMapTexture;
-
+#endif
+#if USE_SPECULAR_MAPS
 Texture2D specularMapTexture;
+#endif
 
 
 SamplerState SampleType;

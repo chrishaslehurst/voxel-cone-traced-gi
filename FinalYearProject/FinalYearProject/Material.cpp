@@ -482,21 +482,24 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	u_iBufferNumber = 1;
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pCameraBuffer);
 
-	
+	UINT slot = 0;
 	if (m_pDiffuseTexture)
 	{
 		ID3D11ShaderResourceView* pDiffuseTexture = m_pDiffuseTexture->GetTexture();
-		pDeviceContext->PSSetShaderResources(0, 1, &pDiffuseTexture);
+		pDeviceContext->PSSetShaderResources(slot, 1, &pDiffuseTexture);
+		slot++;
 	}
 	if (m_bHasNormalMap)
 	{
 		ID3D11ShaderResourceView* pNormalMapTexture = m_pNormalMap->GetTexture();
-		pDeviceContext->PSSetShaderResources(1, 1, &pNormalMapTexture);
+		pDeviceContext->PSSetShaderResources(slot, 1, &pNormalMapTexture);
+		slot++;
 	}
 	if (m_bHasSpecularMap)
 	{
 		ID3D11ShaderResourceView* pSpecularMapTexture = m_pSpecularMap->GetTexture();
-		pDeviceContext->PSSetShaderResources(2, 1, &pSpecularMapTexture);
+		pDeviceContext->PSSetShaderResources(slot, 1, &pSpecularMapTexture);
+		slot++;
 	}
 	
 
