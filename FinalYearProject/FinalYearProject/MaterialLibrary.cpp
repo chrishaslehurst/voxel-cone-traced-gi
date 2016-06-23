@@ -173,7 +173,12 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 
 Material* MaterialLibrary::GetMaterial(string sMaterialName)
 {
-	return m_MaterialMap[sMaterialName];
+	Material* pMat = m_MaterialMap[sMaterialName];
+	if (!pMat)
+	{
+		VS_LOG_VERBOSE("Unable to find material in library");
+	}
+	return pMat;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

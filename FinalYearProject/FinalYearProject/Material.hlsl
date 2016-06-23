@@ -1,5 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define NUM_LIGHTS 4
+
 //Globals
 cbuffer MatrixBuffer
 {
@@ -22,13 +24,23 @@ Texture2D alphaMaskTexture;
 
 SamplerState SampleType;
 
-cbuffer LightBuffer
+cbuffer DirectionLightBuffer
 {
 	float4 ambientColour;
 	float4 diffuseColour;
 	float3 lightDirection;
 	float specularPower;
 	float4 specularColor;
+};
+
+cbuffer PointLightPositionsBuffer
+{
+	float4 lightPositions[NUM_LIGHTS];
+};
+
+cbuffer PointLightColoursBuffer
+{
+	float4 lightColours[NUM_LIGHTS];
 };
 
 cbuffer CameraBuffer
@@ -59,8 +71,42 @@ struct PixelInputType
 	float3 viewDirection : TEXCOORD1;
 	float3 tangent : TANGENT;
 	float3 binormal : BINORMAL;
+	float3 lightPos1 : TEXCOORD2;
+	float3 lightPos2 : TEXCOORD3;
+	float3 lightPos3 : TEXCOORD4;
+	float3 lightPos4 : TEXCOORD5;
 };
 
+//Functions
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float4 BlinnPhongBRDF(float3 toLight, float3 viewDir, float3 surfaceNormal, float4 specularIntensity, float specularPower, float4 lightColour, float4 diffuseTexture, inout float4 specularColour)
+{
+	float4 colour = float4(0.f,0.f,0.f, 1.f);
+	float4 specCol = float4(0.f, 0.f, 0.f, 1.f);
+	float lightIntensity = saturate(dot(surfaceNormal, toLight));
+
+	if (lightIntensity > 0.0f)
+	{
+		// Determine the final diffuse color based on the diffuse color and the amount of light intensity.
+		colour = lightIntensity * lightColour;
+
+		colour = saturate(colour * diffuseTexture);
+
+		//Calculate reflection vector based on light and surface normal direction
+		float3 reflectionVector = normalize(2 * lightIntensity * surfaceNormal - toLight);
+
+		//Calculate amount of specular light based on viewing pos
+		specCol = pow(saturate(dot(reflectionVector, viewDir)), specularPower);
+
+		specCol = specCol * specularIntensity;
+
+	}
+
+	specularColour += specCol;
+
+	return colour;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -75,6 +121,7 @@ PixelInputType VSMain(VertexInputType input)
 
 	//Calculate the position of the vertex against the world, view and projection matrices.
 	output.position = mul(input.position, worldMatrix);
+	float4 worldPos = output.position;
 	output.position = mul(output.position, viewMatrix);
 	output.position = mul(output.position, projectionMatrix);
 
@@ -96,8 +143,23 @@ PixelInputType VSMain(VertexInputType input)
 
 
 	//Viewing direction based on position of the camera and position of the vertex
-	output.viewDirection = cameraPosition.xyz - mul(input.position, worldMatrix).xyz;
+	output.viewDirection = cameraPosition.xyz - worldPos.xyz;
 	output.viewDirection = normalize(output.viewDirection);
+
+	
+	//Turn the light positions into 'ToLight' vectors
+	output.lightPos1.xyz = lightPositions[0].xyz - worldPos.xyz;
+	output.lightPos2.xyz = lightPositions[1].xyz - worldPos.xyz;
+	output.lightPos3.xyz = lightPositions[2].xyz - worldPos.xyz;
+	output.lightPos4.xyz = lightPositions[3].xyz - worldPos.xyz;
+
+	// Normalize the light position vectors.
+	output.lightPos1 = normalize(output.lightPos1);
+	output.lightPos2 = normalize(output.lightPos2);
+	output.lightPos3 = normalize(output.lightPos3);
+	output.lightPos4 = normalize(output.lightPos4);
+	
+
 
 	return output;
 }
@@ -109,11 +171,13 @@ PixelInputType VSMain(VertexInputType input)
 
 float4 PSMain(PixelInputType input) : SV_TARGET
 {
-	float4 finalColour = ambientColour;
+	float4 finalColour;
 	float4 textureColour, specCol, normalMapCol;
-	float3 reflectionVector, bumpNormal;
+	float3 bumpNormal;
 
+	specCol = float4(0.f, 0.f, 0.f, 0.f);
 	textureColour = diffuseTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+	textureColour = textureColour * input.colour;
 
 #if USE_NORMAL_MAPS
 	normalMapCol = normalMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
@@ -127,39 +191,29 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 #else
 	bumpNormal = input.normal;
 #endif
-
-	textureColour = textureColour * input.colour;
-
-	specCol = float4(0.f, 0.f, 0.f, 0.f);
+	
 
 	//Invert the light direction
 	float3 lightDir = -lightDirection;
-	float lightIntensity = saturate(dot(bumpNormal, lightDir));
-
-	if (lightIntensity > 0.0f)
-	{
-		// Determine the final diffuse color based on the diffuse color and the amount of light intensity.
-		finalColour += (textureColour * lightIntensity);
-
-		finalColour = saturate(finalColour);
-
-		//Calculate reflection vector based on light and surface normal direction
-		reflectionVector = normalize(2 * lightIntensity * bumpNormal - lightDir);
-
-		//Calculate amount of specular light based on viewing pos
-		specCol = pow(saturate(dot(reflectionVector, input.viewDirection)), specularPower);
+	float4 specularIntensity;
 #if USE_SPECULAR_MAPS
-		float4 specularIntensity = specularMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
-		specCol = specCol * specularIntensity;
+	specularIntensity = specularMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 #else
-		specCol = specCol * specularColor;
+	specularIntensity = specularColor;
 #endif
-	}
 
-	//Multiply surface colour by light colour to get final colour
-	finalColour = finalColour * textureColour;
+	float4 col1 = BlinnPhongBRDF(input.lightPos1, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[0], textureColour, specCol);
+	float4 col2 = BlinnPhongBRDF(input.lightPos2, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[1], textureColour, specCol);
+	float4 col3 = BlinnPhongBRDF(input.lightPos3, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[2], textureColour, specCol);
+	float4 col4 = BlinnPhongBRDF(input.lightPos4, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[3], textureColour, specCol);
 
+	finalColour = ambientColour * textureColour;
+
+	finalColour += ((col1 +col2 + col3 + col4));
+	finalColour = saturate(finalColour);
 	finalColour = saturate(finalColour + specCol);
+
+
 #if USE_ALPHA_MASKS
 	float4 alpha = alphaMaskTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 	finalColour.a = alpha.r;
@@ -168,3 +222,4 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

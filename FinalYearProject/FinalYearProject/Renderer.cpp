@@ -122,17 +122,6 @@ bool Renderer::Update()
 
 bool Renderer::Render()
 {
-//TODO REMOVE THIS---------------------------------------
-// 	static float rotation = 0.0f;
-// 
-// 
-// 	// Update the rotation variable each frame.
-// 	rotation += (float)XM_PI * 0.01f;
-// 	if (rotation > 360.0f)
-// 	{
-// 		rotation -= 360.0f;
-// 	}
-//TODO: REMOVE THIS---------------------------------------
 
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
@@ -147,10 +136,16 @@ bool Renderer::Render()
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
 
-	//mWorld = mWorld * XMMatrixRotationY(rotation);
+	//TODO: Temporary point light setup, make this a bit more extendable/intuitive!
+	XMFLOAT4 lightPositions[4] = { XMFLOAT4(0.f, 0.f, 0.f, 0.f),XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f) };
+	XMFLOAT4 lightColours[4] = { XMFLOAT4(0.f, 0.f, 0.f, 0.f),XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f) };
+
+	lightPositions[0].y = 2000.f;
+	lightColours[0] = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
+	//////////////////////////////////////////////////
 
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
-	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
+	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition(), lightPositions, lightColours);
 
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
