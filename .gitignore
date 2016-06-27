@@ -5,3 +5,5 @@
 Assets/
 *.opendb
 x64/
+*.vspx
+*.psess

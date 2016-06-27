@@ -56,7 +56,7 @@ void Mesh::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], XMFLOAT4 vPointLightCol[])
+void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], PointLight arrPointLights[])
 {
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
@@ -67,7 +67,7 @@ void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XM
 		{
 			RenderBuffers(i, pDeviceContext);
 
-			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos, vPointLightPos, vPointLightCol))
+			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos, vPointLightPos, arrPointLights))
 			{
 				VS_LOG_VERBOSE("Unable to render object with shader");
 			}
@@ -80,7 +80,7 @@ void Mesh::Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XM
 		{
 			RenderBuffers(i, pDeviceContext);
 
-			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos, vPointLightPos, vPointLightCol))
+			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos, vPointLightPos, arrPointLights))
 			{
 				VS_LOG_VERBOSE("Unable to render object with shader");
 			}

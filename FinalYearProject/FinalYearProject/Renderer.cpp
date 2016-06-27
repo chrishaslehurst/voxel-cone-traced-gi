@@ -140,12 +140,21 @@ bool Renderer::Render()
 	XMFLOAT4 lightPositions[4] = { XMFLOAT4(0.f, 0.f, 0.f, 0.f),XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f) };
 	XMFLOAT4 lightColours[4] = { XMFLOAT4(0.f, 0.f, 0.f, 0.f),XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f), XMFLOAT4(0.f, 0.f, 0.f, 0.f) };
 
-	lightPositions[0].y = 2000.f;
+	lightPositions[0].y = 900.f;
 	lightColours[0] = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
+
+	PointLight lights[4];
+	for (int i = 0; i < 4; i++)
+	{
+		lights[i].SetDiffuseColour(lightColours[i].x, lightColours[i].y, lightColours[i].z, lightColours[i].w);
+		lights[i].SetPosition(lightPositions[i].x, lightPositions[i].y, lightPositions[i].z);
+		lights[i].SetRange(1000.f);
+
+	}
 	//////////////////////////////////////////////////
 
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
-	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition(), lightPositions, lightColours);
+	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition(), lightPositions, lights);
 
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();

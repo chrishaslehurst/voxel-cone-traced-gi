@@ -162,6 +162,7 @@
     <ClCompile Include="MaterialLibrary.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
@@ -175,6 +176,7 @@
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="MaterialLibrary.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="PointLight.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Timer.h" />

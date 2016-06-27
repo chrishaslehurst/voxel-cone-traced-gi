@@ -38,9 +38,17 @@ cbuffer PointLightPositionsBuffer
 	float4 lightPositions[NUM_LIGHTS];
 };
 
-cbuffer PointLightColoursBuffer
+struct PointLight
 {
-	float4 lightColours[NUM_LIGHTS];
+	float4 colour;
+	float range;
+	float3 padding;
+
+};
+
+cbuffer PointLightPixelBuffer
+{
+	PointLight pointLights[NUM_LIGHTS];
 };
 
 cbuffer CameraBuffer
@@ -80,11 +88,14 @@ struct PixelInputType
 //Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float4 BlinnPhongBRDF(float3 toLight, float3 viewDir, float3 surfaceNormal, float4 specularIntensity, float specularPower, float4 lightColour, float4 diffuseTexture, inout float4 specularColour)
+float4 BlinnPhongBRDF(float3 toLight, float3 viewDir, float3 surfaceNormal, float4 specularIntensity, float specularPower, float4 lightColour, float4 diffuseTexture, inout float4 specularColour, float lightRange)
 {
 	float4 colour = float4(0.f,0.f,0.f, 1.f);
 	float4 specCol = float4(0.f, 0.f, 0.f, 1.f);
-	float lightIntensity = saturate(dot(surfaceNormal, toLight));
+	float3 toLightNorm = normalize(toLight);
+	float lightIntensity = saturate(dot(surfaceNormal, toLightNorm));
+	float DistToLight = length(toLight);
+	
 
 	if (lightIntensity > 0.0f)
 	{
@@ -94,14 +105,19 @@ float4 BlinnPhongBRDF(float3 toLight, float3 viewDir, float3 surfaceNormal, floa
 		colour = saturate(colour * diffuseTexture);
 
 		//Calculate reflection vector based on light and surface normal direction
-		float3 reflectionVector = normalize(2 * lightIntensity * surfaceNormal - toLight);
+		float3 reflectionVector = normalize(2 * lightIntensity * surfaceNormal - toLightNorm);
 
 		//Calculate amount of specular light based on viewing pos
 		specCol = pow(saturate(dot(reflectionVector, viewDir)), specularPower);
 
 		specCol = specCol * specularIntensity;
-
 	}
+
+	//Attenuation
+	float DistToLightNorm = 1.f - saturate(DistToLight * lightRange); //Pointlightrangercp = 1/Range - can be sent through from the app as this..
+	float Attn = DistToLightNorm * DistToLightNorm;
+	colour *= Attn;
+	specCol *= Attn;
 
 	specularColour += specCol;
 
@@ -151,14 +167,7 @@ PixelInputType VSMain(VertexInputType input)
 	output.lightPos1.xyz = lightPositions[0].xyz - worldPos.xyz;
 	output.lightPos2.xyz = lightPositions[1].xyz - worldPos.xyz;
 	output.lightPos3.xyz = lightPositions[2].xyz - worldPos.xyz;
-	output.lightPos4.xyz = lightPositions[3].xyz - worldPos.xyz;
-
-	// Normalize the light position vectors.
-	output.lightPos1 = normalize(output.lightPos1);
-	output.lightPos2 = normalize(output.lightPos2);
-	output.lightPos3 = normalize(output.lightPos3);
-	output.lightPos4 = normalize(output.lightPos4);
-	
+	output.lightPos4.xyz = lightPositions[3].xyz - worldPos.xyz;	
 
 
 	return output;
@@ -202,10 +211,10 @@ float4 PSMain(PixelInputType input) : SV_TARGET
 	specularIntensity = specularColor;
 #endif
 
-	float4 col1 = BlinnPhongBRDF(input.lightPos1, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[0], textureColour, specCol);
-	float4 col2 = BlinnPhongBRDF(input.lightPos2, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[1], textureColour, specCol);
-	float4 col3 = BlinnPhongBRDF(input.lightPos3, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[2], textureColour, specCol);
-	float4 col4 = BlinnPhongBRDF(input.lightPos4, input.viewDirection, bumpNormal, specularIntensity, specularPower, lightColours[3], textureColour, specCol);
+	float4 col1 = BlinnPhongBRDF(input.lightPos1, input.viewDirection, bumpNormal, specularIntensity, specularPower, pointLights[0].colour, textureColour, specCol, pointLights[0].range);
+	float4 col2 = BlinnPhongBRDF(input.lightPos2, input.viewDirection, bumpNormal, specularIntensity, specularPower, pointLights[1].colour, textureColour, specCol, pointLights[1].range);
+	float4 col3 = BlinnPhongBRDF(input.lightPos3, input.viewDirection, bumpNormal, specularIntensity, specularPower, pointLights[2].colour, textureColour, specCol, pointLights[2].range);
+	float4 col4 = BlinnPhongBRDF(input.lightPos4, input.viewDirection, bumpNormal, specularIntensity, specularPower, pointLights[3].colour, textureColour, specCol, pointLights[3].range);
 
 	finalColour = ambientColour * textureColour;
 

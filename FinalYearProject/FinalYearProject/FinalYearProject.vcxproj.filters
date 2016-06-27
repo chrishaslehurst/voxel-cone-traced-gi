@@ -67,6 +67,9 @@
     <ClCompile Include="Timer.cpp">
       <Filter>Source\Application</Filter>
     </ClCompile>
+    <ClCompile Include="PointLight.cpp">
+      <Filter>Source\Lights</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -104,6 +107,9 @@
     </ClInclude>
     <ClInclude Include="Timer.h">
       <Filter>Source\Application</Filter>
+    </ClInclude>
+    <ClInclude Include="PointLight.h">
+      <Filter>Source\Lights</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

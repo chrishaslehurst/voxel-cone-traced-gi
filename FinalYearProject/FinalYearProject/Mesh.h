@@ -7,6 +7,7 @@
 #include <DirectXMath.h>
 #include <fstream>
 #include "MaterialLibrary.h"
+#include "Material.h"
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +109,7 @@ public:
 
 	bool Initialise(ID3D11Device* pDevice, HWND hwnd, char* modelFilename);
 	void Shutdown();
-	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], XMFLOAT4 vPointLightCol[]);
+	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], PointLight arrPointLights[]);
 
 	int GetIndexCount(int subMeshIndex);
 
