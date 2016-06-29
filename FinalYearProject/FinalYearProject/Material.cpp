@@ -66,10 +66,10 @@ void Material::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], PointLight arrPointLights[])
+bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	bool result;
-	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vDiffuseColour, vAmbientColour, vCameraPos, vPointLightPos, arrPointLights);
+	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vDiffuseColour, vAmbientColour, vCameraPos);
 	if (!result)
 	{
 		VS_LOG_VERBOSE("Failed to set shader parameters");
@@ -468,7 +468,7 @@ void Material::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCH
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], PointLight arrPointLights[])
+bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	//Matrices need to be transposed before sending them into the shader for dx11..
 	mWorldMatrix = XMMatrixTranspose(mWorldMatrix);
@@ -535,11 +535,15 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	// Get a pointer to the data in the constant buffer.
 	PointLightPositionBuffer* pLightPositionData = (PointLightPositionBuffer*)mappedResource.pData;
 
-	// Copy the light position variables into the constant buffer.
-	pLightPositionData->lightPosition[0] = arrPointLights[0].GetPosition();
-	pLightPositionData->lightPosition[1] = arrPointLights[1].GetPosition();
-	pLightPositionData->lightPosition[2] = arrPointLights[2].GetPosition();
-	pLightPositionData->lightPosition[3] = arrPointLights[3].GetPosition();
+	// Copy the light position variables into the constant buffer
+	LightManager* pLightManager = LightManager::Get();
+	if (pLightManager)
+	{
+		for (int i = 0; i < NUM_LIGHTS; i++)
+		{
+			pLightPositionData->lightPosition[i] = pLightManager->GetPointLight(i)->GetPosition();
+		}
+	}
 
 	// Unlock the constant buffer.
 	pDeviceContext->Unmap(m_pPointLightPositionBuffer, 0);
@@ -554,14 +558,14 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	PointLightPixelBuffer* pPointLightColourData = (PointLightPixelBuffer*)mappedResource.pData;
 
 	// Copy the light color variables into the constant buffer.
-	pPointLightColourData->pointLights[0].vDiffuseColour = arrPointLights[0].GetDiffuseColour();
-	pPointLightColourData->pointLights[1].vDiffuseColour = arrPointLights[1].GetDiffuseColour();
-	pPointLightColourData->pointLights[2].vDiffuseColour = arrPointLights[2].GetDiffuseColour();
-	pPointLightColourData->pointLights[3].vDiffuseColour = arrPointLights[3].GetDiffuseColour();
-	pPointLightColourData->pointLights[0].fRange = arrPointLights[0].GetRange();
-	pPointLightColourData->pointLights[1].fRange = arrPointLights[1].GetRange();
-	pPointLightColourData->pointLights[2].fRange = arrPointLights[2].GetRange();
-	pPointLightColourData->pointLights[3].fRange = arrPointLights[3].GetRange();
+	if (pLightManager)
+	{
+		for (int i = 0; i < NUM_LIGHTS; i++)
+		{
+			pPointLightColourData->pointLights[i].vDiffuseColour = pLightManager->GetPointLight(i)->GetDiffuseColour();
+			pPointLightColourData->pointLights[i].fRange = pLightManager->GetPointLight(i)->GetRange();
+		}
+	}
 
 	// Unlock the constant buffer.
 	pDeviceContext->Unmap(m_pPointLightColourBuffer, 0);

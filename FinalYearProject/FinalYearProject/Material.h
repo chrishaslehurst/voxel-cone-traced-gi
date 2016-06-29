@@ -8,12 +8,13 @@
 #include <fstream>
 
 #include "Texture.h"
-#include "PointLight.h"
+
+#include "LightManager.h"
 
 using namespace std;
 using namespace DirectX;
 
-#define NUM_LIGHTS 4
+
 
 enum MaterialFlags
 {
@@ -132,7 +133,7 @@ public:
 
 	bool Initialise(ID3D11Device* pDevice, HWND hwnd, WCHAR* textureFileName);
 	void Shutdown();
-	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], PointLight arrPointLights[]);
+	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
 	void SetSpecularProperties(float r, float g, float b, float power);
 	void SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename);
@@ -156,7 +157,7 @@ private:
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
-	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos, XMFLOAT4 vPointLightPos[], PointLight vPointLightCol[]);
+	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 	void RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 
 

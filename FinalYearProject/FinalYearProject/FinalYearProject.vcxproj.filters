@@ -70,6 +70,9 @@
     <ClCompile Include="PointLight.cpp">
       <Filter>Source\Lights</Filter>
     </ClCompile>
+    <ClCompile Include="LightManager.cpp">
+      <Filter>Source\Lights</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -109,6 +112,9 @@
       <Filter>Source\Application</Filter>
     </ClInclude>
     <ClInclude Include="PointLight.h">
+      <Filter>Source\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="LightManager.h">
       <Filter>Source\Lights</Filter>
     </ClInclude>
   </ItemGroup>

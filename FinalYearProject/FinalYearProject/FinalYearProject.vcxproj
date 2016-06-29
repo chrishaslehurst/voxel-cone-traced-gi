@@ -155,6 +155,7 @@
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DirectionalLight.cpp" />
+    <ClCompile Include="LightManager.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="D3DWrapper.cpp" />
     <ClCompile Include="InputManager.cpp" />
@@ -170,6 +171,7 @@
     <ClInclude Include="Application.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="DirectionalLight.h" />
+    <ClInclude Include="LightManager.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="D3DWrapper.h" />
     <ClInclude Include="Debugging.h" />
