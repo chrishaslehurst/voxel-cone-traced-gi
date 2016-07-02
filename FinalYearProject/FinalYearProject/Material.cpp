@@ -28,6 +28,8 @@ Material::Material()
 	m_defines[USE_SPECULAR_MAPS].Definition = "0";
 	m_defines[USE_ALPHA_MASKS].Name = "USE_ALPHA_MASKS";
 	m_defines[USE_ALPHA_MASKS].Definition = "0";
+	m_defines[USE_PHYSICALLY_BASED_SHADING].Name = "USE_PHYSICALLY_BASED_SHADING";
+	m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "0";
 	m_defines[NULLS].Name = nullptr;
 	m_defines[NULLS].Definition = nullptr;
 }
@@ -106,10 +108,28 @@ void Material::SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename)
 	m_defines[USE_NORMAL_MAPS].Definition = "1";
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void Material::SetAlphaMask(ID3D11Device* pDevice, WCHAR* alphaMaskFilename)
 {
 	m_pAlphaMask = LoadTexture(pDevice, alphaMaskFilename);
 	m_defines[USE_ALPHA_MASKS].Definition = "1";
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Material::SetRoughnessMap(ID3D11Device* pDevice, WCHAR* roughnessMapFilename)
+{
+	m_pRoughnessMap = LoadTexture(pDevice, roughnessMapFilename);
+	m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Material::SetMetallicMap(ID3D11Device* pDevice, WCHAR* metallicMapFilename)
+{
+	m_pMetallicMap = LoadTexture(pDevice, metallicMapFilename);
+	m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -609,6 +629,18 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	{
 		ID3D11ShaderResourceView* pAlphaMaskTexture = m_pAlphaMask->GetTexture();
 		pDeviceContext->PSSetShaderResources(slot, 1, &pAlphaMaskTexture);
+		slot++;
+	}
+	if (m_bHasRoughnessMap)
+	{
+		ID3D11ShaderResourceView* pRoughnessMap = m_pRoughnessMap->GetTexture();
+		pDeviceContext->PSSetShaderResources(slot, 1, &pRoughnessMap);
+		slot++;
+	}
+	if (m_bHasMetallicMap)
+	{
+		ID3D11ShaderResourceView* pMetallicMap = m_pMetallicMap->GetTexture();
+		pDeviceContext->PSSetShaderResources(slot, 1, &pMetallicMap);
 		slot++;
 	}
 	

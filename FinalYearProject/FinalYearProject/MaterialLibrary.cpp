@@ -54,7 +54,7 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			float KdR(0.f), KdG(0.f), KdB(0.f);
 			float KsR(0.f), KsG(0.f), KsB(0.f);
 			float KeR(0.f), KeG(0.f), KeB(0.f);
-			std::string map_Ka (""), map_Kd(""), map_d(""), map_Ks(""), map_bump(""), bump("");
+			std::string map_Ka (""), map_Kd(""), map_d(""), map_Ks(""), map_bump(""), bump(""), map_Ns("");
 
 			fin >> sMaterialName;
 			fin >> trashBuffer;
@@ -105,6 +105,10 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 				{
 					fin >> map_Ks;
 				}
+				if (s == "map_Ns")
+				{
+					fin >> map_Ns;
+				}
 				
 				fin >> s;
 			}
@@ -138,6 +142,29 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				pMat->SetHasSpecular(false);
 			}
+
+			if (map_Ns != "")
+			{
+				map_Ns = AssetFolderString + map_Ns;
+				wstring wideRoughName = wstring(map_Ns.begin(), map_Ns.end());
+				pMat->SetRoughnessMap(pDevice, &wideRoughName[0]);
+				pMat->SetHasRoughness(true);
+			}
+			else
+			{
+				pMat->SetHasRoughness(false);
+			}
+			if (map_Ka != "")
+			{
+				map_Ka = AssetFolderString + map_Ka;
+				wstring wideMetalName = wstring(map_Ka.begin(), map_Ka.end());
+				pMat->SetMetallicMap(pDevice, &wideMetalName[0]);
+				pMat->SetHasMetallic(true);
+			}
+			else
+			{
+				pMat->SetHasMetallic(false);
+			}
 			if (map_d != "")
 			{
 				map_d = AssetFolderString + map_d;
@@ -150,11 +177,12 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 				pMat->SetHasAlphaMask(false);
 			}
 
+			//TODO: Make this more like the other textures - ie. compile separately from texture load and dont depend on diffuse..
 			//Do this stage last as it compiles the shader and the defines need to be set before this.
-			if (map_Ka != "")
+			if (map_Kd != "")
 			{
-				map_Ka = AssetFolderString + map_Ka;
-				wstring wideDiffuseName = wstring(map_Ka.begin(), map_Ka.end());
+				map_Kd = AssetFolderString + map_Kd;
+				wstring wideDiffuseName = wstring(map_Kd.begin(), map_Kd.end());
 				pMat->Initialise(pDevice, hwnd, &wideDiffuseName[0]);
 			}
 			else

@@ -21,6 +21,7 @@ enum MaterialFlags
 	USE_NORMAL_MAPS,
 	USE_SPECULAR_MAPS,
 	USE_ALPHA_MASKS,
+	USE_PHYSICALLY_BASED_SHADING,
 	NULLS,
 	MAX
 };
@@ -139,6 +140,8 @@ public:
 	void SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename);
 	void SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename);
 	void SetAlphaMask(ID3D11Device* pDevice, WCHAR* alphaMaskFilename);
+	void SetRoughnessMap(ID3D11Device* pDevice, WCHAR* roughnessMapFilename);
+	void SetMetallicMap(ID3D11Device* pDevice, WCHAR* metallicMapFilename);
 
 	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
 	bool UsesNormalMaps() { return m_bHasNormalMap; }
@@ -148,6 +151,12 @@ public:
 
 	void SetHasAlphaMask(bool bHasMask) { m_bHasAlphaMask = bHasMask; }
 	bool UsesAlphaMaps() { return m_bHasAlphaMask; }
+
+	void SetHasRoughness(bool bHasRough) { m_bHasRoughnessMap = bHasRough; }
+	bool UsesRoughnessMaps() { return m_bHasRoughnessMap; }
+
+	void SetHasMetallic(bool bHasMetallic) { m_bHasMetallicMap = bHasMetallic; }
+	bool UsesMetallicMaps() { return m_bHasMetallicMap; }
 private:
 
 	Texture* LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
@@ -178,6 +187,10 @@ private:
 	Texture*			m_pNormalMap;
 	bool				m_bHasSpecularMap;
 	Texture*			m_pSpecularMap;
+	bool				m_bHasRoughnessMap;
+	Texture*			m_pRoughnessMap;
+	bool				m_bHasMetallicMap;
+	Texture*			m_pMetallicMap;
 
 	bool				m_bHasAlphaMask;
 	Texture*			m_pAlphaMask;
