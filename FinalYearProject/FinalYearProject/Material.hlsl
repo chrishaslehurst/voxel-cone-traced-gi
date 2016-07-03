@@ -129,7 +129,7 @@ float4 BlinnPhongBRDF(float3 toLight, float3 viewDir, float3 surfaceNormal, floa
 }
 
 
-float3 CalculateDiffuseBRDF(float3 DiffuseColour, float Metallic)
+float3 CalculateLambertDiffuseBRDF(float3 DiffuseColour, float Metallic)
 {
 
 	// Lerp with metallic value to find the good diffuse and specular.
@@ -146,15 +146,15 @@ float NormalDistributionFunction(float NdotH, float Roughness)
 	float DenomPart = (NdotHSquared * (aSquared - 1)) + 1;
 	float Denom = PI * (DenomPart * DenomPart);
 
-	return aSquared / Denom;
+	return abs(aSquared / Denom);
 }
 
 //Schlick Fresnel with spherical gaussian approximation ( same source as above)
 float SchlickFresnel(float Metallic, float VdotH)
 {
-	float MetalClamped = clamp(Metallic, 0.2f, 0.99f);
+	float MetalClamped = clamp(Metallic, 0.02f, 0.99f);
 	float SphericalGaussian = exp2((-5.55473f * VdotH - 6.98316f) * VdotH);
-	return(MetalClamped + (1.f - MetalClamped) * SphericalGaussian);
+	return saturate(MetalClamped + (1.f - MetalClamped) * SphericalGaussian);
 }
 
 //Schlick Geometric Attenuation with Disney modification ( same source as above)
@@ -164,7 +164,7 @@ float SchlickGeometricAttenuation(float Roughness, float NdotV, float NdotL)
 	float G1 = NdotV / ((NdotV * (1 - k)) + k);
 	float G2 = NdotL / ((NdotL * (1 - k)) + k);
 
-	return G1 * G2;
+	return saturate(G1 * G2);
 }
 
 
@@ -182,16 +182,17 @@ float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, f
 	float NdotV = abs(dot(SurfaceNormal, ToCamera)) + 1e-5f; //Add this really small number so this doesn't go to 0.. just to ensure no divide by 0 occurs..
 	float Denom = 4 * NdotL * NdotV;
 
+	// 0.03 default specular value for dielectric.]
+	float3 realSpecularColour = lerp(0.03f, DiffuseColour, Metallic);
+
 	float D = NormalDistributionFunction(NdotH, Roughness);
-	float F = SchlickFresnel(Metallic, VdotH);
+	float3 F = SchlickFresnel(Roughness, VdotH);
 	float G = SchlickGeometricAttenuation(Roughness, NdotV, NdotL);
 
 
-	// 0.03 default specular value for dielectric.
-	float3 realSpecularColor = lerp(0.03f, DiffuseColour, Metallic);
 
 
-	Colour.rgb = ((CalculateDiffuseBRDF(DiffuseColour, Metallic) * NdotH) + realSpecularColor * ((D * F * G ) / Denom));
+	Colour.rgb = (CalculateLambertDiffuseBRDF(DiffuseColour, Metallic) * NdotH) + (((D * F * G ) / Denom ) * realSpecularColour);
 	return saturate(Colour);
 }
 

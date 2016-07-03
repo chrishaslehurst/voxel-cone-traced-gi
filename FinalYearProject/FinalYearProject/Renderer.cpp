@@ -72,7 +72,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	LightManager* pLightManager = LightManager::Get();
 	if (pLightManager)
 	{
-		pLightManager->AddPointLight(XMFLOAT3(0.f, 900.f, 0.f), XMFLOAT4(1.f, 1.f, 1.f, 1.f), 5000.f);
+		pLightManager->AddPointLight(XMFLOAT3(0.f, 150.f, 0.f), XMFLOAT4(1.f, 1.f, 1.f, 1.f), 3000.f);
 		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 400.f);
 		pLightManager->AddPointLight(XMFLOAT3(-1270.f, 625.f, 425.f), XMFLOAT4(0.f, 1.f, 1.f, 1.f), 400.f);
 		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, 425.f), XMFLOAT4(1.f, 1.f, 0.f, 1.f), 400.f);
