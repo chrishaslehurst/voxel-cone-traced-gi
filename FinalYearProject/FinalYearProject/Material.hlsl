@@ -134,7 +134,7 @@ float3 CalculateLambertDiffuseBRDF(float3 DiffuseColour, float Metallic)
 
 	// Lerp with metallic value to find the good diffuse and specular.
 	float3 RealDiffuse = DiffuseColour - DiffuseColour * Metallic;
-	return (RealDiffuse * (1.f / PI));
+	return saturate(RealDiffuse * (1.f / PI));
 }
 
 //GGX/Trowbridge Reitz Normal Distribution Function (Disney/Epic: https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf)
@@ -150,11 +150,11 @@ float NormalDistributionFunction(float NdotH, float Roughness)
 }
 
 //Schlick Fresnel with spherical gaussian approximation ( same source as above)
-float SchlickFresnel(float Roughness, float VdotH)
+float SchlickFresnel(float Specular, float VdotH)
 {
-	float RoughClamped = clamp(Roughness, 0.02f, 0.99f);
+	float SpecularClamped = clamp(Specular, 0.02f, 0.99f);
 	float SphericalGaussian = exp2((-5.55473f * VdotH - 6.98316f) * VdotH);
-	return saturate(RoughClamped + (1.f - RoughClamped) * SphericalGaussian);
+	return saturate(SpecularClamped + (1.f - SpecularClamped) * SphericalGaussian);
 }
 
 //Schlick Geometric Attenuation with Disney modification ( same source as above)
@@ -190,9 +190,7 @@ float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, f
 	float G = SchlickGeometricAttenuation(Roughness, NdotV, NdotL);
 
 
-
-
-	Colour.rgb = (CalculateLambertDiffuseBRDF(DiffuseColour, Metallic) * (1.f - F)) + (((D * F * G ) / Denom ) );
+	Colour.rgb = (CalculateLambertDiffuseBRDF(DiffuseColour, Metallic) * NdotH * (1.f - F)) + (((D * F * G ) / Denom ) );
 	return saturate(Colour);
 }
 
@@ -300,7 +298,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float4 metallic = metallicMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
 	float4 col1 = CookTorranceBRDF(input.lightPos1, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb, pointLights[0].colour, pointLights[0].range);
-	col1 = col1 * CalculateAttenuation(input.lightPos1, pointLights[0].range) * pointLights[0].colour;
+	col1 = col1 * CalculateAttenuation(input.lightPos1, pointLights[0].range) * pointLights[0].colour * pointLights[0].colour.w;
 	float4 col2 = CookTorranceBRDF(input.lightPos2, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb, pointLights[1].colour, pointLights[1].range);
 	col2 = col2 * CalculateAttenuation(input.lightPos2, pointLights[1].range) * pointLights[1].colour;
 	float4 col3 = CookTorranceBRDF(input.lightPos3, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb, pointLights[2].colour, pointLights[2].range);
@@ -308,11 +306,11 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float4 col4 = CookTorranceBRDF(input.lightPos4, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb, pointLights[3].colour, pointLights[3].range);
 	col4 = col4 * CalculateAttenuation(input.lightPos4, pointLights[3].range) * pointLights[3].colour;
 
-	
+	float4 dirLightCol = CookTorranceBRDF(-lightDirection, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb, diffuseColour, 1.f);
 
-	FinalColour += saturate((col1 + col2 + col3 + col4));
+	FinalColour += saturate((dirLightCol + col1 + col2 + col3 + col4));
 	
-//	FinalColour = saturate(FinalColour);
+	FinalColour = saturate(FinalColour);
 #else
 	//Use the Blinn Phong Model
 	float4 col1 = BlinnPhongBRDF(input.lightPos1, input.viewDirection, SurfaceNormal, specularIntensity, specularPower, pointLights[0].colour, textureColour, specCol, pointLights[0].range);

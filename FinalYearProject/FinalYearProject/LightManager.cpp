@@ -108,7 +108,7 @@ int LightManager::AddPointLight(const XMFLOAT3& vPos, const XMFLOAT4& vCol, floa
 
 PointLight* LightManager::GetPointLight(int iIndex)
 {
-	if (iIndex < m_iNumPointLightsAllocated)
+	if (iIndex < m_arrPointLights.size())
 	{
 		return &m_arrPointLights[iIndex];
 	}

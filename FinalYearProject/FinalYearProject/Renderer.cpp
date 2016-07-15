@@ -67,12 +67,12 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 	m_pDirectionalLight->SetDiffuseColour(1.0f, 1.0f, 1.0f, 1.0f);
-	m_pDirectionalLight->SetDirection(0.0f, -0.5f, 0.5f);
+	m_pDirectionalLight->SetDirection(0.f, -0.5f, 0.f);
 
 	LightManager* pLightManager = LightManager::Get();
 	if (pLightManager)
 	{
-		pLightManager->AddPointLight(XMFLOAT3(0.f, 150.f, 0.f), XMFLOAT4(1.f, 1.f, 1.f, 1.f), 3000.f);
+		pLightManager->AddPointLight(XMFLOAT3(0.f, 150.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 0.f);
 		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 400.f);
 		pLightManager->AddPointLight(XMFLOAT3(-1270.f, 625.f, 425.f), XMFLOAT4(0.f, 1.f, 1.f, 1.f), 400.f);
 		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, 425.f), XMFLOAT4(1.f, 1.f, 0.f, 1.f), 400.f);
@@ -149,7 +149,7 @@ bool Renderer::Render()
 	//////////////////////////////////////////////////
 
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
-	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.f), m_pCamera->GetPosition());
+	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
 
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
