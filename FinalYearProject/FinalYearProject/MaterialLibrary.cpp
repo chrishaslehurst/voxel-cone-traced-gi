@@ -199,6 +199,8 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 	return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 Material* MaterialLibrary::GetMaterial(string sMaterialName)
 {
 	Material* pMat = m_MaterialMap[sMaterialName];
@@ -207,6 +209,16 @@ Material* MaterialLibrary::GetMaterial(string sMaterialName)
 		VS_LOG_VERBOSE("Unable to find material in library");
 	}
 	return pMat;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void MaterialLibrary::ReloadShaders(ID3D11Device* pDevice, HWND hwnd)
+{
+	for (map<string, Material*>::iterator it = m_MaterialMap.begin(); it != m_MaterialMap.end(); it++)
+	{
+		it->second->ReloadShader(pDevice, hwnd);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -190,7 +190,7 @@ float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, f
 	float G = SchlickGeometricAttenuation(Roughness, NdotV, NdotL);
 
 
-	Colour.rgb = (CalculateLambertDiffuseBRDF(DiffuseColour, Metallic) * NdotH * (1.f - F)) + (((D * F * G ) / Denom ) );
+	Colour.rgb = (CalculateLambertDiffuseBRDF(DiffuseColour, Metallic)  * (1.f - F)) + (((D * F * G ) / Denom ) );
 	return saturate(Colour);
 }
 

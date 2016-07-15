@@ -136,6 +136,8 @@ public:
 	void Shutdown();
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
+	void ReloadShader(ID3D11Device* pDevice, HWND hwnd);
+
 	void SetSpecularProperties(float r, float g, float b, float power);
 	void SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename);
 	void SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename);
@@ -168,7 +170,6 @@ private:
 
 	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 	void RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
-
 
 	ID3D11VertexShader* m_pVertexShader;
 	ID3D11PixelShader*  m_pPixelShader;

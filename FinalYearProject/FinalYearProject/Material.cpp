@@ -84,6 +84,16 @@ bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMA
 	return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Material::ReloadShader(ID3D11Device* pDevice, HWND hwnd)
+{
+	ShutdownShader();
+	InitialiseShader(pDevice, hwnd, L"Material.hlsl");
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void Material::SetSpecularProperties(float r, float g, float b, float power)
 {
 	m_vSpecularColour.x = r;
@@ -173,6 +183,7 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	ID3D10Blob* pErrorMessage( nullptr);
 	ID3D10Blob* pVertexShaderBuffer( nullptr);
 	ID3D10Blob* pPixelShaderBuffer( nullptr);
+	
 
 	//Compile the vertex shader code
 	result = D3DCompileFromFile(sShaderFilename, m_defines, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);

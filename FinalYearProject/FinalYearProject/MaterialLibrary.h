@@ -24,7 +24,7 @@ public:
 
 	bool LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, const char* filename);
 	Material* GetMaterial(string sMaterialName);
-
+	void ReloadShaders(ID3D11Device* pDevice, HWND hwnd);
 private:
 	map<string, Material*> m_MaterialMap;
 };

@@ -27,7 +27,7 @@ public:
 
 	bool Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd);
 	void Shutdown();
-	bool Update();
+	bool Update(HWND hwnd);
 
 private:
 	D3DWrapper* m_pD3D;

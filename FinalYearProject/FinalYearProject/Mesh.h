@@ -114,9 +114,10 @@ public:
 	int GetIndexCount(int subMeshIndex);
 
 	void SetMaterial(int subMeshIndex, Material* pMaterial) { m_arrSubMeshes[subMeshIndex]->m_pMaterial = pMaterial; }
-
+	void ReloadShaders(ID3D11Device* pDevice, HWND hwnd);
 private:
 
+	
 	bool LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filename);
 	bool LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename);
 	bool FindNumSubMeshes(char* filename);
@@ -133,7 +134,7 @@ private:
 	int m_iTotalTextureCoordCount;
 	int m_iTotalNormalCount;
 	std::vector<SubMesh*> m_arrSubMeshes;
-	MaterialLibrary* m_MatLib;
+	MaterialLibrary* m_pMatLib;
 	
 };
 

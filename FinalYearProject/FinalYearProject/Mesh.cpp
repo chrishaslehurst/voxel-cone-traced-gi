@@ -2,10 +2,11 @@
 #include "Debugging.h"
 #include "Timer.h"
 #include <sstream>
+#include "InputManager.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Mesh::Mesh()
-	: m_MatLib(nullptr)
+	: m_pMatLib(nullptr)
 {
 
 }
@@ -95,17 +96,25 @@ int Mesh::GetIndexCount(int subMeshIndex)
 	return m_arrSubMeshes[subMeshIndex]->m_iIndexCount;
 }
 
+void Mesh::ReloadShaders(ID3D11Device* pDevice, HWND hwnd)
+{
+	if (m_pMatLib)
+	{
+		m_pMatLib->ReloadShaders(pDevice, hwnd);
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filename)
 {
-	m_MatLib = new MaterialLibrary;
-	if (!m_MatLib)
+	m_pMatLib = new MaterialLibrary;
+	if (!m_pMatLib)
 	{
 		VS_LOG_VERBOSE("Unable to create new material library");
 		return false;
 	}
-	m_MatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");
+	m_pMatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");
 	
 	ifstream fin;
 	fin.open(filename);
@@ -166,8 +175,8 @@ bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filenam
 
 bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename)
 {
-	m_MatLib = new MaterialLibrary;
-	if (!m_MatLib)
+	m_pMatLib = new MaterialLibrary;
+	if (!m_pMatLib)
 	{
 		VS_LOG_VERBOSE("Unable to create new material library");
 		return false;
@@ -297,7 +306,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 				iFaceIndex = 0;
 				m_arrSubMeshes.push_back(new SubMesh());
 				
-				m_arrSubMeshes[iObjectIndex]->m_pMaterial = m_MatLib->GetMaterial(s);
+				m_arrSubMeshes[iObjectIndex]->m_pMaterial = m_pMatLib->GetMaterial(s);
 				double dModelCreateEndTime = Timer::Get()->GetCurrentTime();
 				dModelCreateTime += dModelCreateEndTime - dModelCreateStartTime;
 			}
@@ -319,7 +328,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 				fin >> sMaterialLibName;
 
 				sMaterialLibName = "../Assets/Shaders/" + sMaterialLibName;
-				m_MatLib->LoadMaterialLibrary(pDevice, hwnd, sMaterialLibName.c_str());
+				m_pMatLib->LoadMaterialLibrary(pDevice, hwnd, sMaterialLibName.c_str());
 			}
  			else
  			{
@@ -440,10 +449,10 @@ bool Mesh::ReadObjFileCounts(char* filename)
 
 void Mesh::ReleaseModel()
 {
-	if (m_MatLib)
+	if (m_pMatLib)
 	{
-		delete m_MatLib;
-		m_MatLib = nullptr;
+		delete m_pMatLib;
+		m_pMatLib = nullptr;
 	}
 
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
