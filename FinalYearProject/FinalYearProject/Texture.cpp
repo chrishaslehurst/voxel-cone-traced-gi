@@ -28,8 +28,7 @@ bool Texture::LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, 
 		VS_LOG_VERBOSE("Failed to load tex from file");
 		return false;
 	}
-	const Image* pImage = m_pImage->GetImage(0, 0, 0);
-	
+
 
 	hr = GenerateMipMaps(m_pImage->GetImages(), m_pImage->GetImageCount(), m_pImage->GetMetadata(), TEX_FILTER_DEFAULT, 0, mipChain);
 	if (FAILED(hr))

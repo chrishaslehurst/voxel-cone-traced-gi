@@ -1,5 +1,6 @@
 #include "Material.h"
 #include "Debugging.h"
+#include "LightManager.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Material::Material()
@@ -17,6 +18,7 @@ Material::Material()
 	, m_bHasSpecularMap(false)
 	, m_bHasNormalMap(false)
 	, m_bHasAlphaMask(false)
+	, m_pShadowMapSampler(nullptr)
 {
 	
 	m_vSpecularColour = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
@@ -410,6 +412,29 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 		return false;
 	}
 
+	//Create ShadowMap Sampler State
+	D3D11_SAMPLER_DESC descSampler;
+	descSampler.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+	descSampler.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	descSampler.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	descSampler.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	descSampler.MipLODBias = 0;
+	descSampler.MaxAnisotropy = 1;
+	descSampler.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+	descSampler.BorderColor[0] = 0.0f;
+	descSampler.BorderColor[1] = 0.0f;
+	descSampler.BorderColor[2] = 0.0f;
+	descSampler.BorderColor[3] = 0.0f;
+	descSampler.MinLOD = 0.0f;
+	descSampler.MaxLOD = 0.0f;
+
+	result = pDevice->CreateSamplerState(&descSampler, &m_pShadowMapSampler);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create shadow map sampler");
+		return result;
+	}
+
 	return true;
 }
 
@@ -594,7 +619,7 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 		for (int i = 0; i < NUM_LIGHTS; i++)
 		{
 			pPointLightColourData->pointLights[i].vDiffuseColour = pLightManager->GetPointLight(i)->GetDiffuseColour();
-			pPointLightColourData->pointLights[i].fRange = pLightManager->GetPointLight(i)->GetRange();
+			pPointLightColourData->pointLights[i].fRange = pLightManager->GetPointLight(i)->GetReciprocalRange();
 		}
 	}
 
@@ -630,12 +655,6 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 		pDeviceContext->PSSetShaderResources(slot, 1, &pNormalMapTexture);
 		slot++;
 	}
-	if (m_bHasSpecularMap)
-	{
-		ID3D11ShaderResourceView* pSpecularMapTexture = m_pSpecularMap->GetTexture();
-		pDeviceContext->PSSetShaderResources(slot, 1, &pSpecularMapTexture);
-		slot++;
-	}
 	if(m_bHasAlphaMask)
 	{
 		ID3D11ShaderResourceView* pAlphaMaskTexture = m_pAlphaMask->GetTexture();
@@ -655,6 +674,9 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 		slot++;
 	}
 	
+	ID3D11ShaderResourceView* pShadowCube = LightManager::Get()->GetPointLight(0)->GetShadowMap()->GetShadowMapShaderResource();
+	pDeviceContext->PSSetShaderResources(slot, 1, &pShadowCube);
+	slot++;
 
 
 	return true;
@@ -673,6 +695,7 @@ void Material::RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount
 
 	//Set the sampler state
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSampleState);
+	pDeviceContext->PSSetSamplers(1, 1, &m_pShadowMapSampler);
 
 	//Render the triangle
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);

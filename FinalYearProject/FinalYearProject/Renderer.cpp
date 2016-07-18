@@ -67,13 +67,14 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		VS_LOG_VERBOSE("Unable to create Directional Light");
 		return false;
 	}
-	m_pDirectionalLight->SetDiffuseColour(1.0f, 1.0f, 1.0f, 1.0f);
+	m_pDirectionalLight->SetDiffuseColour(1.0f, 1.0f, 1.0f, 0.0f);
 	m_pDirectionalLight->SetDirection(0.2f, -0.1f, 0.2f);
 
 	LightManager* pLightManager = LightManager::Get();
 	if (pLightManager)
 	{
-// 		pLightManager->AddPointLight(XMFLOAT3(0.f, 150.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 0.f);
+		pLightManager->AddPointLight(XMFLOAT3(0.f, 150.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
+		pLightManager->GetPointLight(0)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, SCREEN_DEPTH);
 // 		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 400.f);
 // 		pLightManager->AddPointLight(XMFLOAT3(-1270.f, 625.f, 425.f), XMFLOAT4(0.f, 1.f, 1.f, 1.f), 400.f);
 // 		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, 425.f), XMFLOAT4(1.f, 1.f, 0.f, 1.f), 400.f);
@@ -118,18 +119,6 @@ void Renderer::Shutdown()
 
 bool Renderer::Update(HWND hwnd)
 {
-	//Creates a cube map resource..
-
-
-	ID3D11ShaderResourceView* shadowMap;
-	TexMetadata meta;
-	meta.arraySize = 6;
-	meta.miscFlags = meta.miscFlags & TEX_MISC_TEXTURECUBE;
-	meta.depth = 1;
-	meta.height = 1024;
-	meta.width = 1024;
-	CreateShaderResourceView(m_pD3D->GetDevice(), nullptr, 0, meta, &shadowMap);
-	//Temp code for reference
 
 	m_pCamera->Update();
 
@@ -171,7 +160,7 @@ bool Renderer::Render()
 	
 
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
-	m_pModel->Render(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
+	m_pModel->Render(m_pD3D, m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
 
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();

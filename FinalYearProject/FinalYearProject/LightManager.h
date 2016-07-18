@@ -46,7 +46,6 @@ private:
 	DirectionalLight* m_pDirectionalLight;
 	XMFLOAT4 m_vAmbientColour;
 
-
 	int m_iNumPointLightsAllocated;
 };
 

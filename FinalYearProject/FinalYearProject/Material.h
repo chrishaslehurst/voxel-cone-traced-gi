@@ -196,7 +196,8 @@ private:
 	bool				m_bHasAlphaMask;
 	Texture*			m_pAlphaMask;
 
-	ID3D11SamplerState* m_pSampleState;
+	ID3D11SamplerState*		m_pSampleState;
+	ID3D11SamplerState*		m_pShadowMapSampler;
 
 
 	D3D_SHADER_MACRO m_defines[MaterialFlags::MAX];

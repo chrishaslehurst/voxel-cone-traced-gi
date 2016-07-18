@@ -9,6 +9,7 @@
 #include "MaterialLibrary.h"
 #include "Material.h"
 #include <vector>
+#include "D3DWrapper.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -109,7 +110,7 @@ public:
 
 	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* modelFilename);
 	void Shutdown();
-	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
+	void Render(D3DWrapper* pD3D, ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
 	int GetIndexCount(int subMeshIndex);
 

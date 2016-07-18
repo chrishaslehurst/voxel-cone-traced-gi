@@ -73,6 +73,9 @@
     <ClCompile Include="LightManager.cpp">
       <Filter>Source\Lights</Filter>
     </ClCompile>
+    <ClCompile Include="OmnidirectionalShadowMap.cpp">
+      <Filter>Source\Lights</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -117,9 +120,15 @@
     <ClInclude Include="LightManager.h">
       <Filter>Source\Lights</Filter>
     </ClInclude>
+    <ClInclude Include="OmnidirectionalShadowMap.h">
+      <Filter>Source\Lights</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Material.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="OmniShadowMap.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

@@ -2,6 +2,8 @@
 
 #define NUM_LIGHTS 4
 #define PI 3.14159265359
+
+static const float DepthBias = 0.0009f;
 //Globals
 cbuffer MatrixBuffer
 {
@@ -14,9 +16,7 @@ Texture2D diffuseTexture;
 #if USE_NORMAL_MAPS
 Texture2D normalMapTexture;
 #endif
-#if USE_SPECULAR_MAPS
-Texture2D specularMapTexture;
-#endif
+
 #if USE_ALPHA_MASKS
 Texture2D alphaMaskTexture;
 #endif
@@ -25,8 +25,10 @@ Texture2D roughnessMapTexture;
 Texture2D metallicMapTexture;
 #endif
 
+TextureCube			   ShadowMap;
 
 SamplerState SampleType;
+SamplerComparisonState ShadowMapSampler;
 
 cbuffer DirectionLightBuffer
 {
@@ -297,8 +299,11 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float roughness = roughnessMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y)).r;
 	float4 metallic = metallicMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
+	float LightDistance = length(lightDir);
+	float shadowFactor = ShadowMap.SampleCmp(ShadowMapSampler, normalize(lightDir), LightDistance * pointLights[0].range - DepthBias);
 	float4 col1 = CookTorranceBRDF(input.lightPos1, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
 	col1 = col1 * CalculateAttenuation(input.lightPos1, pointLights[0].range) * pointLights[0].colour * pointLights[0].colour.w;
+	col1 *= shadowFactor;
 	float4 col2 = CookTorranceBRDF(input.lightPos2, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
 	col2 = col2 * CalculateAttenuation(input.lightPos2, pointLights[1].range) * pointLights[1].colour * pointLights[0].colour.w;
 	float4 col3 = CookTorranceBRDF(input.lightPos3, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);

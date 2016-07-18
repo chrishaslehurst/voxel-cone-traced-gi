@@ -38,6 +38,8 @@ public:
 	void TurnOnAlphaBlending();
 	void TurnOffAlphaBlending();
 
+	void SetRenderOutputToScreen();
+
 private:
 	void Shutdown();
 
@@ -60,6 +62,7 @@ private:
 	ID3D11Texture2D*			m_pDepthStencilBuffer;
 	ID3D11DepthStencilState*	m_pDepthStencilState;
 	ID3D11DepthStencilView*		m_pDepthStencilView;
+	D3D11_VIEWPORT				m_viewport;
 
 	ID3D11BlendState*			m_alphaEnableBlendingState;
 	ID3D11BlendState*			m_alphaDisableBlendingState;

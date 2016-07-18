@@ -193,6 +193,17 @@ void D3DWrapper::TurnOffAlphaBlending()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void D3DWrapper::SetRenderOutputToScreen()
+{
+	//bind render target view and depth stencil buffer to output render pipeline
+	m_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_pDepthStencilView);
+
+	//Create the viewport
+	m_pDeviceContext->RSSetViewports(1, &m_viewport);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void D3DWrapper::Shutdown()
 {
 	if (m_pSwapChain)
@@ -596,16 +607,16 @@ bool D3DWrapper::CreateBlendState()
 
 void D3DWrapper::SetUpViewPort(int iScreenWidth, int iScreenHeight)
 {
-	D3D11_VIEWPORT viewport;
-	viewport.Width = (float)iScreenWidth;
-	viewport.Height = (float)iScreenHeight;
-	viewport.MinDepth = 0.0f;
-	viewport.MaxDepth = 1.0f;
-	viewport.TopLeftX = 0.0f;
-	viewport.TopLeftY = 0.0f;
+
+	m_viewport.Width = (float)iScreenWidth;
+	m_viewport.Height = (float)iScreenHeight;
+	m_viewport.MinDepth = 0.0f;
+	m_viewport.MaxDepth = 1.0f;
+	m_viewport.TopLeftX = 0.0f;
+	m_viewport.TopLeftY = 0.0f;
 
 	//Create the viewport
-	m_pDeviceContext->RSSetViewports(1, &viewport);
+	m_pDeviceContext->RSSetViewports(1, &m_viewport);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
