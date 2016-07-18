@@ -17,9 +17,10 @@ Texture::~Texture()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Texture::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
+bool Texture::LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename)
 {
 	m_pImage = new ScratchImage;
+	ScratchImage mipChain;
 	TexMetadata texMeta;
 	HRESULT hr = LoadFromTGAFile(filename, &texMeta, *m_pImage);
 	if (FAILED(hr))
@@ -27,16 +28,22 @@ bool Texture::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
 		VS_LOG_VERBOSE("Failed to load tex from file");
 		return false;
 	}
-
 	const Image* pImage = m_pImage->GetImage(0, 0, 0);
-	hr = CreateShaderResourceView(pDevice, pImage, 1, texMeta, &m_pTexture);
+	
+
+	hr = GenerateMipMaps(m_pImage->GetImages(), m_pImage->GetImageCount(), m_pImage->GetMetadata(), TEX_FILTER_DEFAULT, 0, mipChain);
+	if (FAILED(hr))
+	{
+		VS_LOG_VERBOSE("Failed to generate mip maps for texture");
+		return false;
+	}
+	
+	hr = CreateShaderResourceView(pDevice, mipChain.GetImages(), mipChain.GetImageCount(), mipChain.GetMetadata(), &m_pTexture);
 	if (FAILED(hr))
 	{
 		VS_LOG_VERBOSE("Texture failed to load");
 		return false;
 	}
-	
-	
 	return true;
 }
 

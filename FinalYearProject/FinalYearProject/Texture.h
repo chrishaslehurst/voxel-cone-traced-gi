@@ -12,7 +12,7 @@ public:
 	Texture();
 	~Texture();
 
-	bool LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
+	bool LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename);
 	void Shutdown();
 
 	ID3D11ShaderResourceView* GetTexture();

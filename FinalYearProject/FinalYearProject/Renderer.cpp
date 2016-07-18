@@ -54,7 +54,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	if (!m_pModel->Initialise(m_pD3D->GetDevice(), hwnd, "../Assets/Models/sponza_tri1.obj"))
+	if (!m_pModel->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, "../Assets/Models/sponza_tri1.obj"))
 	{
 		VS_LOG_VERBOSE("Unable to initialise mesh");
 		return false;
@@ -68,7 +68,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 	m_pDirectionalLight->SetDiffuseColour(1.0f, 1.0f, 1.0f, 1.0f);
-	m_pDirectionalLight->SetDirection(0.f, -0.25f, 0.f);
+	m_pDirectionalLight->SetDirection(0.2f, -0.1f, 0.2f);
 
 	LightManager* pLightManager = LightManager::Get();
 	if (pLightManager)
@@ -118,6 +118,19 @@ void Renderer::Shutdown()
 
 bool Renderer::Update(HWND hwnd)
 {
+	//Creates a cube map resource..
+
+
+	ID3D11ShaderResourceView* shadowMap;
+	TexMetadata meta;
+	meta.arraySize = 6;
+	meta.miscFlags = meta.miscFlags & TEX_MISC_TEXTURECUBE;
+	meta.depth = 1;
+	meta.height = 1024;
+	meta.width = 1024;
+	CreateShaderResourceView(m_pD3D->GetDevice(), nullptr, 0, meta, &shadowMap);
+	//Temp code for reference
+
 	m_pCamera->Update();
 
 	if (InputManager::Get()->IsKeyPressed(DIK_R))

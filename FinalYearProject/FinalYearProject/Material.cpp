@@ -43,13 +43,13 @@ Material::~Material()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::Initialise(ID3D11Device* pDevice, HWND hwnd, WCHAR* textureFileName)
+bool Material::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, WCHAR* textureFileName)
 {
 	if (!InitialiseShader(pDevice, hwnd, L"Material.hlsl"))
 	{
 		return false;
 	}
-	m_pDiffuseTexture = LoadTexture(pDevice, textureFileName);
+	m_pDiffuseTexture = LoadTexture(pDevice, pContext, textureFileName);
 	if (!m_pDiffuseTexture)
 	{
 		return false;
@@ -104,47 +104,47 @@ void Material::SetSpecularProperties(float r, float g, float b, float power)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename)
+void Material::SetSpecularMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* specMapFilename)
 {
-	m_pSpecularMap = LoadTexture(pDevice, specMapFilename);
+	m_pSpecularMap = LoadTexture(pDevice, pContext, specMapFilename);
 	m_defines[USE_SPECULAR_MAPS].Definition = "1";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename)
+void Material::SetNormalMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* normalMapFilename)
 {
-	m_pNormalMap = LoadTexture(pDevice, normalMapFilename);
+	m_pNormalMap = LoadTexture(pDevice, pContext, normalMapFilename);
 	m_defines[USE_NORMAL_MAPS].Definition = "1";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::SetAlphaMask(ID3D11Device* pDevice, WCHAR* alphaMaskFilename)
+void Material::SetAlphaMask(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* alphaMaskFilename)
 {
-	m_pAlphaMask = LoadTexture(pDevice, alphaMaskFilename);
+	m_pAlphaMask = LoadTexture(pDevice, pContext, alphaMaskFilename);
 	m_defines[USE_ALPHA_MASKS].Definition = "1";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::SetRoughnessMap(ID3D11Device* pDevice, WCHAR* roughnessMapFilename)
+void Material::SetRoughnessMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* roughnessMapFilename)
 {
-	m_pRoughnessMap = LoadTexture(pDevice, roughnessMapFilename);
+	m_pRoughnessMap = LoadTexture(pDevice, pContext, roughnessMapFilename);
 	m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::SetMetallicMap(ID3D11Device* pDevice, WCHAR* metallicMapFilename)
+void Material::SetMetallicMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* metallicMapFilename)
 {
-	m_pMetallicMap = LoadTexture(pDevice, metallicMapFilename);
+	m_pMetallicMap = LoadTexture(pDevice, pContext, metallicMapFilename);
 	m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Texture* Material::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
+Texture* Material::LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename)
 {
 	Texture* pTexture = new Texture;
 	if(!pTexture)
@@ -153,7 +153,7 @@ Texture* Material::LoadTexture(ID3D11Device* pDevice, WCHAR* filename)
 		return false;
 	}
 
-	if (!pTexture->LoadTexture(pDevice, filename))
+	if (!pTexture->LoadTexture(pDevice, pContext, filename))
 	{
 		VS_LOG_VERBOSE("Failed to load texture from file");
 		return false;

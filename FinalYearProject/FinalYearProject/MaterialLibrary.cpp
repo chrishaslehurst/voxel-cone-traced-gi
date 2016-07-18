@@ -20,7 +20,7 @@ MaterialLibrary::~MaterialLibrary()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, const char* filename)
+bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, const char* filename)
 {
 	fstream fin;
 	fin.open(filename);
@@ -123,7 +123,7 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				map_bump = AssetFolderString + map_bump;
 				wstring wideBumpName = wstring(map_bump.begin(), map_bump.end());
-				pMat->SetNormalMap(pDevice, &wideBumpName[0]);
+				pMat->SetNormalMap(pDevice, pContext, &wideBumpName[0]);
 				pMat->SetHasNormal(true);
 			}
 			else
@@ -135,7 +135,7 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				map_Ks = AssetFolderString + map_Ks;
 				wstring wideSpecName = wstring(map_Ks.begin(), map_Ks.end());
-				pMat->SetSpecularMap(pDevice, &wideSpecName[0]);
+				pMat->SetSpecularMap(pDevice, pContext, &wideSpecName[0]);
 				pMat->SetHasSpecular(true);
 			}
 			else
@@ -147,7 +147,7 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				map_Ns = AssetFolderString + map_Ns;
 				wstring wideRoughName = wstring(map_Ns.begin(), map_Ns.end());
-				pMat->SetRoughnessMap(pDevice, &wideRoughName[0]);
+				pMat->SetRoughnessMap(pDevice, pContext, &wideRoughName[0]);
 				pMat->SetHasRoughness(true);
 			}
 			else
@@ -158,7 +158,7 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				map_Ka = AssetFolderString + map_Ka;
 				wstring wideMetalName = wstring(map_Ka.begin(), map_Ka.end());
-				pMat->SetMetallicMap(pDevice, &wideMetalName[0]);
+				pMat->SetMetallicMap(pDevice, pContext, &wideMetalName[0]);
 				pMat->SetHasMetallic(true);
 			}
 			else
@@ -169,7 +169,7 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				map_d = AssetFolderString + map_d;
 				wstring wideMaskName = wstring(map_d.begin(), map_d.end());
-				pMat->SetAlphaMask(pDevice, &wideMaskName[0]);
+				pMat->SetAlphaMask(pDevice, pContext, &wideMaskName[0]);
 				pMat->SetHasAlphaMask(true);
 			}
 			else
@@ -183,12 +183,12 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, HWND hwnd, cons
 			{
 				map_Kd = AssetFolderString + map_Kd;
 				wstring wideDiffuseName = wstring(map_Kd.begin(), map_Kd.end());
-				pMat->Initialise(pDevice, hwnd, &wideDiffuseName[0]);
+				pMat->Initialise(pDevice, pContext, hwnd, &wideDiffuseName[0]);
 			}
 			else
 			{
 				//TODO: FIGURE OUT WHY SOME DONT HAVE A TEX
-				pMat->Initialise(pDevice, hwnd, L"textures\vase_hanging.tga");
+				pMat->Initialise(pDevice, pContext, hwnd, L"textures\vase_hanging.tga");
 			}
 
 			m_MaterialMap[sMaterialName] = pMat;

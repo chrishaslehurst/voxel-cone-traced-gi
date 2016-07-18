@@ -20,10 +20,10 @@ Mesh::~Mesh()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::Initialise(ID3D11Device* pDevice, HWND hwnd, char* filename)
+bool Mesh::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename)
 {
 	//Load in the model data
-	if (!LoadModelFromObjFile(pDevice, hwnd, filename))
+	if (!LoadModelFromObjFile(pDevice, pContext, hwnd, filename))
 	{
 		return false;
 	}
@@ -106,7 +106,7 @@ void Mesh::ReloadShaders(ID3D11Device* pDevice, HWND hwnd)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filename)
+bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename)
 {
 	m_pMatLib = new MaterialLibrary;
 	if (!m_pMatLib)
@@ -114,7 +114,7 @@ bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filenam
 		VS_LOG_VERBOSE("Unable to create new material library");
 		return false;
 	}
-	m_pMatLib->LoadMaterialLibrary(pDevice, hwnd, "../Assets/Shaders/sponza.mtl");
+	m_pMatLib->LoadMaterialLibrary(pDevice, pContext, hwnd, "../Assets/Shaders/sponza.mtl");
 	
 	ifstream fin;
 	fin.open(filename);
@@ -173,7 +173,7 @@ bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filenam
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename)
+bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename)
 {
 	m_pMatLib = new MaterialLibrary;
 	if (!m_pMatLib)
@@ -328,7 +328,7 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename
 				fin >> sMaterialLibName;
 
 				sMaterialLibName = "../Assets/Shaders/" + sMaterialLibName;
-				m_pMatLib->LoadMaterialLibrary(pDevice, hwnd, sMaterialLibName.c_str());
+				m_pMatLib->LoadMaterialLibrary(pDevice, pContext, hwnd, sMaterialLibName.c_str());
 			}
  			else
  			{

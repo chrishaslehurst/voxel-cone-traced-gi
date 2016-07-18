@@ -107,7 +107,7 @@ public:
 	Mesh();
 	~Mesh();
 
-	bool Initialise(ID3D11Device* pDevice, HWND hwnd, char* modelFilename);
+	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* modelFilename);
 	void Shutdown();
 	void Render(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
@@ -118,8 +118,8 @@ public:
 private:
 
 	
-	bool LoadModelFromTextFile(ID3D11Device* pDevice, HWND hwnd, char* filename);
-	bool LoadModelFromObjFile(ID3D11Device* pDevice, HWND hwnd, char* filename);
+	bool LoadModelFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename);
+	bool LoadModelFromObjFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename);
 	bool FindNumSubMeshes(char* filename);
 	bool ReadObjFileCounts(char* filename);
 	void ReleaseModel();

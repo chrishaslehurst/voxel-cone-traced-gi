@@ -37,8 +37,6 @@ private:
 	XMFLOAT4 m_vPosition;
 	float m_fRange;
 
-
-
 };
 
 #endif //! LIGHT_H

@@ -132,18 +132,18 @@ public:
 	Material();
 	~Material();
 
-	bool Initialise(ID3D11Device* pDevice, HWND hwnd, WCHAR* textureFileName);
+	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, WCHAR* textureFileName);
 	void Shutdown();
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
 	void ReloadShader(ID3D11Device* pDevice, HWND hwnd);
 
 	void SetSpecularProperties(float r, float g, float b, float power);
-	void SetSpecularMap(ID3D11Device* pDevice, WCHAR* specMapFilename);
-	void SetNormalMap(ID3D11Device* pDevice, WCHAR* normalMapFilename);
-	void SetAlphaMask(ID3D11Device* pDevice, WCHAR* alphaMaskFilename);
-	void SetRoughnessMap(ID3D11Device* pDevice, WCHAR* roughnessMapFilename);
-	void SetMetallicMap(ID3D11Device* pDevice, WCHAR* metallicMapFilename);
+	void SetSpecularMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* specMapFilename);
+	void SetNormalMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* normalMapFilename);
+	void SetAlphaMask(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* alphaMaskFilename);
+	void SetRoughnessMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* roughnessMapFilename);
+	void SetMetallicMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* metallicMapFilename);
 
 	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
 	bool UsesNormalMaps() { return m_bHasNormalMap; }
@@ -161,7 +161,7 @@ public:
 	bool UsesMetallicMaps() { return m_bHasMetallicMap; }
 private:
 
-	Texture* LoadTexture(ID3D11Device* pDevice, WCHAR* filename);
+	Texture* LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename);
 	void ReleaseTexture();
 
 	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename);
