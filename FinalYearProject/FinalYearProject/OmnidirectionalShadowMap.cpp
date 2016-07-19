@@ -313,31 +313,29 @@ void OmnidirectionalShadowMap::SetRenderOutputToShadowMap(ID3D11DeviceContext* p
 	pDeviceContext->RSSetViewports(1, &m_ShadowMapViewport);
 }
 
-bool OmnidirectionalShadowMap::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld)
+void OmnidirectionalShadowMap::SetRenderStart(ID3D11DeviceContext* pDeviceContext)
 {
-
-	
-
-	SetShaderParams(pDeviceContext, lightPosition, lightRange, mWorld);
-
 	//Set the vertex input layout
 	pDeviceContext->IASetInputLayout(m_pLayout);
 
 	pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
 	pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
-	pDeviceContext->GSSetShader(m_pGeometryShader, NULL, 0);
+	pDeviceContext->GSSetShader(m_pGeometryShader, nullptr, 0);
+}
 
-	//Set the sampler state
-	//pDeviceContext->PSSetSamplers(0, 1, &m_pShadowMapSampler);
-
+bool OmnidirectionalShadowMap::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
+{
 	//Render the triangle
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
 
-	pDeviceContext->GSSetShader(NULL, NULL, 0);
-	pDeviceContext->VSSetShader(NULL, NULL, 0);
-	pDeviceContext->PSSetShader(NULL, NULL, 0);
-
 	return true;
+}
+
+void OmnidirectionalShadowMap::SetRenderFinished(ID3D11DeviceContext* pDeviceContext)
+{
+	pDeviceContext->GSSetShader(nullptr, nullptr, 0);
+	pDeviceContext->VSSetShader(nullptr, nullptr, 0);
+	pDeviceContext->PSSetShader(nullptr, nullptr, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

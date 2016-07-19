@@ -29,7 +29,6 @@ bool Mesh::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND
 	}
 
 	//Calculate the binormals and tangent vectors
-	
 	CalculateModelVectors();
 	
 	//Initialise the buffers
@@ -70,12 +69,15 @@ void Mesh::Render(D3DWrapper* pD3D, ID3D11DeviceContext* pDeviceContext, XMMATRI
 		if (pShadowMap)
 		{
 			pShadowMap->SetRenderOutputToShadowMap(pDeviceContext);
+			pShadowMap->SetShaderParams(pDeviceContext, pLight->GetPosition(), pLight->GetRange(), mWorldMatrix);
+			pShadowMap->SetRenderStart(pDeviceContext);
 			for (int i = 0; i < m_iSubMeshCount; i++)
 			{
 				RenderBuffers(i, pDeviceContext);
 				//TODO: Do this for each light 
-				pShadowMap->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, pLight->GetPosition(), pLight->GetRange(), mWorldMatrix);
+				pShadowMap->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount);
 			}
+			pShadowMap->SetRenderFinished(pDeviceContext);
 		}
 	}
 

@@ -96,15 +96,15 @@ public:
 
 	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void SetRenderOutputToShadowMap(ID3D11DeviceContext* pDeviceContext);
-	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld);
-
+	void SetRenderStart(ID3D11DeviceContext* pDeviceContext);
+	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
+	void SetRenderFinished(ID3D11DeviceContext* pDeviceContext);
+	bool SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld);
 	ID3D11ShaderResourceView* GetShadowMapShaderResource() { return m_pShadowMapCubeShaderView; }
 
 	void Shutdown();
 private:
 
-
-	bool SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld);
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
 	D3D11_VIEWPORT			m_ShadowMapViewport;

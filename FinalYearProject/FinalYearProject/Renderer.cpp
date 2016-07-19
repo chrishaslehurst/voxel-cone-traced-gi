@@ -149,7 +149,6 @@ bool Renderer::Render()
 	//Generate view matrix based on camera position
 	m_pCamera->Render();
 
-
 	XMMATRIX mView, mProjection, mWorld;
 	//Get the world, view and proj matrix from the camera and d3d objects..
 	m_pCamera->GetViewMatrix(mView);
