@@ -195,7 +195,17 @@ void D3DWrapper::TurnOffAlphaBlending()
 
 void D3DWrapper::SetRenderOutputToScreen()
 {
+
+	float colour[4];
+
+	//Setup the colour to clear the buffer to
+	colour[0] = 0.5f;
+	colour[1] = 0.5f;
+	colour[2] = 0.5f;
+	colour[3] = 0.5f;
 	//bind render target view and depth stencil buffer to output render pipeline
+	m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, colour);
+	m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 	m_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_pDepthStencilView);
 
 	//Create the viewport
@@ -431,8 +441,8 @@ bool D3DWrapper::SetUpSwapChainAndDevice(HWND hwnd, bool bFullScreenEnabled, int
 	pCont->QueryInterface<ID3D11DeviceContext3>(&m_pDeviceContext);
 
 	//check for tiled resources support - need tier 3 for Volume Tiled Resources..
-	D3D11_FEATURE_DATA_D3D11_OPTIONS1 featureData;
-	m_pDevice->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &featureData, sizeof(featureData));
+//	D3D11_FEATURE_DATA_D3D11_OPTIONS1 featureData;
+//	m_pDevice->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &featureData, sizeof(featureData));
 
 	//Get ptr to the back buffer
 	ID3D11Texture2D* pBackBuffer;

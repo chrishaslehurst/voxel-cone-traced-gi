@@ -73,7 +73,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	LightManager* pLightManager = LightManager::Get();
 	if (pLightManager)
 	{
-		pLightManager->AddPointLight(XMFLOAT3(0.f, 150.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
+		pLightManager->AddPointLight(XMFLOAT3(0.f, 750.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
 		pLightManager->GetPointLight(0)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, SCREEN_DEPTH);
 // 		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 400.f);
 // 		pLightManager->AddPointLight(XMFLOAT3(-1270.f, 625.f, 425.f), XMFLOAT4(0.f, 1.f, 1.f, 1.f), 400.f);
@@ -153,11 +153,6 @@ bool Renderer::Render()
 	m_pCamera->GetViewMatrix(mView);
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
-
-	
-	//////////////////////////////////////////////////
-
-	
 
 	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
 	m_pModel->Render(m_pD3D, m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, m_pDirectionalLight->GetDirection(), m_pDirectionalLight->GetDiffuseColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());

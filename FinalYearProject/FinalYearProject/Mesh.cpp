@@ -62,17 +62,24 @@ void Mesh::Render(D3DWrapper* pD3D, ID3D11DeviceContext* pDeviceContext, XMMATRI
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
 	//Shadowing Pass
-	for (int i = 0; i < m_iSubMeshCount; i++)
+	PointLight* pLight = LightManager::Get()->GetPointLight(0);
+	if (pLight)
 	{
-		RenderBuffers(i, pDeviceContext);
-		
-		//TODO: Do this for each light 
-		PointLight* pLight = LightManager::Get()->GetPointLight(0);
-		if (pLight)
+		OmnidirectionalShadowMap* pShadowMap = pLight->GetShadowMap();
+		if (pShadowMap)
 		{
-			pLight->GetShadowMap()->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, pLight->GetPosition(), pLight->GetRange(), mWorldMatrix);
+			pShadowMap->ClearDepthStencilView(pDeviceContext);
+			for (int i = 0; i < m_iSubMeshCount; i++)
+			{
+				RenderBuffers(i, pDeviceContext);
+
+				//TODO: Do this for each light 
+
+				pShadowMap->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, pLight->GetPosition(), pLight->GetRange(), mWorldMatrix);
+			}
 		}
 	}
+
 	pD3D->SetRenderOutputToScreen();
 	//Opaque pass
 	for (int i = 0; i < m_iSubMeshCount; i++)

@@ -176,21 +176,21 @@ bool MaterialLibrary::LoadMaterialLibrary(ID3D11Device* pDevice, ID3D11DeviceCon
 			{
 				pMat->SetHasAlphaMask(false);
 			}
-
-			//TODO: Make this more like the other textures - ie. compile separately from texture load and dont depend on diffuse..
-			//Do this stage last as it compiles the shader and the defines need to be set before this.
 			if (map_Kd != "")
 			{
 				map_Kd = AssetFolderString + map_Kd;
 				wstring wideDiffuseName = wstring(map_Kd.begin(), map_Kd.end());
-				pMat->Initialise(pDevice, pContext, hwnd, &wideDiffuseName[0]);
+				pMat->SetDiffuseTexture(pDevice, pContext, &wideDiffuseName[0]);
+				pMat->SetHasDiffuseTexture(true);
+			
 			}
 			else
 			{
-				//TODO: FIGURE OUT WHY SOME DONT HAVE A TEX
-				pMat->Initialise(pDevice, pContext, hwnd, L"textures\vase_hanging.tga");
+				pMat->SetHasDiffuseTexture(false);
 			}
 
+
+			pMat->Initialise(pDevice, pContext, hwnd);
 			m_MaterialMap[sMaterialName] = pMat;
 		}
 		

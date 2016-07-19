@@ -301,8 +301,17 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11Device
 	return result;
 }
 
+void OmnidirectionalShadowMap::ClearDepthStencilView(ID3D11DeviceContext* pDeviceContext)
+{
+	pDeviceContext->ClearDepthStencilView(m_pShadowMapCubeDepthView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	pDeviceContext->OMSetRenderTargets(0, NULL, m_pShadowMapCubeDepthView);
+	pDeviceContext->RSSetViewports(1, &m_ShadowMapViewport);
+}
+
 bool OmnidirectionalShadowMap::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld)
 {
+
+	
 
 	SetShaderParams(pDeviceContext, lightPosition, lightRange, mWorld);
 
@@ -320,6 +329,8 @@ bool OmnidirectionalShadowMap::Render(ID3D11DeviceContext* pDeviceContext, int i
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
 
 	pDeviceContext->GSSetShader(NULL, NULL, 0);
+	pDeviceContext->VSSetShader(NULL, NULL, 0);
+	pDeviceContext->PSSetShader(NULL, NULL, 0);
 
 	return true;
 }
@@ -338,9 +349,7 @@ bool OmnidirectionalShadowMap::SetShaderParams(ID3D11DeviceContext* pDeviceConte
 	m_LightViewProjMatrices[4] = XMMatrixLookAtLH(lightPos, lightPos + XMVectorSet(0.0f, 0.0f, 10.0f, 0.0f), XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)) * m_LightProjMatrix;
 	m_LightViewProjMatrices[5] = XMMatrixLookAtLH(lightPos, lightPos + XMVectorSet(0.0f, 0.0f, -10.0f, 0.0f), XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)) * m_LightProjMatrix;
 
-	pDeviceContext->ClearDepthStencilView(m_pShadowMapCubeDepthView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-	pDeviceContext->OMSetRenderTargets(0, NULL, m_pShadowMapCubeDepthView);
-	pDeviceContext->RSSetViewports(1, &m_ShadowMapViewport);
+	
 
 	pDeviceContext->VSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
 	pDeviceContext->VSSetConstantBuffers(1, 1, &m_pLightBuffer);
@@ -380,6 +389,7 @@ bool OmnidirectionalShadowMap::SetShaderParams(ID3D11DeviceContext* pDeviceConte
 	}
 
 	pDeviceContext->PSSetConstantBuffers(0, 1, &m_pLightRangeBuffer);
+
 	result = pDeviceContext->Map(m_pLightRangeBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (SUCCEEDED(result))
 	{
@@ -389,7 +399,7 @@ bool OmnidirectionalShadowMap::SetShaderParams(ID3D11DeviceContext* pDeviceConte
 		pDeviceContext->Unmap(m_pLightRangeBuffer, 0);
 	}
 
-
+	
 	return true;
 }
 

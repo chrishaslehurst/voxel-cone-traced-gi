@@ -18,6 +18,7 @@ using namespace DirectX;
 
 enum MaterialFlags
 {
+	USE_TEXTURE,
 	USE_NORMAL_MAPS,
 	USE_SPECULAR_MAPS,
 	USE_ALPHA_MASKS,
@@ -132,18 +133,22 @@ public:
 	Material();
 	~Material();
 
-	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, WCHAR* textureFileName);
+	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void Shutdown();
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 
 	void ReloadShader(ID3D11Device* pDevice, HWND hwnd);
 
 	void SetSpecularProperties(float r, float g, float b, float power);
+	void SetDiffuseTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* diffuseTexFilename);
 	void SetSpecularMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* specMapFilename);
 	void SetNormalMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* normalMapFilename);
 	void SetAlphaMask(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* alphaMaskFilename);
 	void SetRoughnessMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* roughnessMapFilename);
 	void SetMetallicMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* metallicMapFilename);
+
+	void SetHasDiffuseTexture(bool bHasTexture) { m_bHasDiffuseTexture = bHasTexture; }
+	bool UsesDiffuseTexture() { return m_bHasDiffuseTexture; }
 
 	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
 	bool UsesNormalMaps() { return m_bHasNormalMap; }
@@ -182,6 +187,7 @@ private:
 
 	float				m_fSpecularPower;
 	XMFLOAT4			m_vSpecularColour;
+	bool				m_bHasDiffuseTexture;
 	Texture*			m_pDiffuseTexture;
 
 	bool				m_bHasNormalMap;
@@ -198,7 +204,7 @@ private:
 
 	ID3D11SamplerState*		m_pSampleState;
 	ID3D11SamplerState*		m_pShadowMapSampler;
-
+	int						pixelShaderResourceCount;
 
 	D3D_SHADER_MACRO m_defines[MaterialFlags::MAX];
 };

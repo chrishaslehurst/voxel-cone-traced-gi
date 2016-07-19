@@ -114,7 +114,8 @@ PointLight* LightManager::GetPointLight(int iIndex)
 	}
 	else
 	{
-		VS_LOG_VERBOSE("Light index out of range!")
+		VS_LOG_VERBOSE("Light index out of range!");
+		return nullptr;
 	}
 }
 

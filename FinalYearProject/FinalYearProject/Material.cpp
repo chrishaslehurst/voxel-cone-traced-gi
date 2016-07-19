@@ -19,11 +19,14 @@ Material::Material()
 	, m_bHasNormalMap(false)
 	, m_bHasAlphaMask(false)
 	, m_pShadowMapSampler(nullptr)
+	, m_bHasDiffuseTexture(false)
 {
 	
 	m_vSpecularColour = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
 	m_fSpecularPower = 1.f;
 
+	m_defines[USE_TEXTURE].Name = "USE_TEXTURE";
+	m_defines[USE_TEXTURE].Definition = "0";
 	m_defines[USE_NORMAL_MAPS].Name = "USE_NORMAL_MAPS";
 	m_defines[USE_NORMAL_MAPS].Definition = "0";
 	m_defines[USE_SPECULAR_MAPS].Name = "USE_SPECULAR_MAPS";
@@ -45,14 +48,13 @@ Material::~Material()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, WCHAR* textureFileName)
+bool Material::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
 {
-	if (!InitialiseShader(pDevice, hwnd, L"Material.hlsl"))
+	if (m_bHasRoughnessMap && m_bHasMetallicMap)
 	{
-		return false;
+		m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
 	}
-	m_pDiffuseTexture = LoadTexture(pDevice, pContext, textureFileName);
-	if (!m_pDiffuseTexture)
+	if (!InitialiseShader(pDevice, hwnd, L"Material.hlsl"))
 	{
 		return false;
 	}
@@ -106,6 +108,14 @@ void Material::SetSpecularProperties(float r, float g, float b, float power)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Material::SetDiffuseTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* diffuseTexFilename)
+{
+	m_pDiffuseTexture = LoadTexture(pDevice, pContext, diffuseTexFilename);
+	m_defines[USE_TEXTURE].Definition = "1";
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void Material::SetSpecularMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* specMapFilename)
 {
 	m_pSpecularMap = LoadTexture(pDevice, pContext, specMapFilename);
@@ -133,7 +143,7 @@ void Material::SetAlphaMask(ID3D11Device* pDevice, ID3D11DeviceContext* pContext
 void Material::SetRoughnessMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* roughnessMapFilename)
 {
 	m_pRoughnessMap = LoadTexture(pDevice, pContext, roughnessMapFilename);
-	m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
+	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +151,7 @@ void Material::SetRoughnessMap(ID3D11Device* pDevice, ID3D11DeviceContext* pCont
 void Material::SetMetallicMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* metallicMapFilename)
 {
 	m_pMetallicMap = LoadTexture(pDevice, pContext, metallicMapFilename);
-	m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
+	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -642,42 +652,43 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	u_iBufferNumber = 2;
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pCameraBuffer);
 
-	UINT slot = 0;
+	pixelShaderResourceCount = 0;
+	
 	if (m_pDiffuseTexture)
 	{
 		ID3D11ShaderResourceView* pDiffuseTexture = m_pDiffuseTexture->GetTexture();
-		pDeviceContext->PSSetShaderResources(slot, 1, &pDiffuseTexture);
-		slot++;
+		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pDiffuseTexture);
+		pixelShaderResourceCount++;
 	}
 	if (m_bHasNormalMap)
 	{
 		ID3D11ShaderResourceView* pNormalMapTexture = m_pNormalMap->GetTexture();
-		pDeviceContext->PSSetShaderResources(slot, 1, &pNormalMapTexture);
-		slot++;
+		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pNormalMapTexture);
+		pixelShaderResourceCount++;
 	}
 	if(m_bHasAlphaMask)
 	{
 		ID3D11ShaderResourceView* pAlphaMaskTexture = m_pAlphaMask->GetTexture();
-		pDeviceContext->PSSetShaderResources(slot, 1, &pAlphaMaskTexture);
-		slot++;
+		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pAlphaMaskTexture);
+		pixelShaderResourceCount++;
 	}
 	if (m_bHasRoughnessMap)
 	{
 		ID3D11ShaderResourceView* pRoughnessMap = m_pRoughnessMap->GetTexture();
-		pDeviceContext->PSSetShaderResources(slot, 1, &pRoughnessMap);
-		slot++;
+		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pRoughnessMap);
+		pixelShaderResourceCount++;
 	}
 	if (m_bHasMetallicMap)
 	{
 		ID3D11ShaderResourceView* pMetallicMap = m_pMetallicMap->GetTexture();
-		pDeviceContext->PSSetShaderResources(slot, 1, &pMetallicMap);
-		slot++;
+		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pMetallicMap);
+		pixelShaderResourceCount++;
 	}
 	
 	ID3D11ShaderResourceView* pShadowCube = LightManager::Get()->GetPointLight(0)->GetShadowMap()->GetShadowMapShaderResource();
-	pDeviceContext->PSSetShaderResources(slot, 1, &pShadowCube);
-	slot++;
+	pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pShadowCube);
 
+	pixelShaderResourceCount++;
 
 	return true;
 }
@@ -699,6 +710,12 @@ void Material::RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount
 
 	//Render the triangle
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
+
+	ID3D11ShaderResourceView* nullSRV[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+	pDeviceContext->PSSetShaderResources(0, 6, nullSRV);
+	
+	ID3D11SamplerState* sample[2] = { nullptr, nullptr };
+	pDeviceContext->PSSetSamplers(0, 2, sample);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

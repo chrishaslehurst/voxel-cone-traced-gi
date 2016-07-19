@@ -12,7 +12,11 @@ cbuffer MatrixBuffer
 	matrix mProjectionMatrix;
 };
 
+
+#if USE_TEXTURE
 Texture2D diffuseTexture;
+#endif
+
 #if USE_NORMAL_MAPS
 Texture2D normalMapTexture;
 #endif
@@ -25,7 +29,7 @@ Texture2D roughnessMapTexture;
 Texture2D metallicMapTexture;
 #endif
 
-TextureCube			   ShadowMap;
+TextureCube	ShadowMap;
 
 SamplerState SampleType;
 SamplerComparisonState ShadowMapSampler;
@@ -269,8 +273,12 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float4 specCol = float4(0.f, 0.f, 0.f, 0.f);
 
 	//Sample the diffuse colour from the texture.
+#if USE_TEXTURE
 	textureColour = diffuseTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 	textureColour = textureColour * input.colour;
+#else
+	textureColour = input.colour;
+#endif
 
 	//Invert the light direction
 	float3 lightDir = -lightDirection;
@@ -299,11 +307,11 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float roughness = roughnessMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y)).r;
 	float4 metallic = metallicMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
-	float LightDistance = length(lightDir);
-	float shadowFactor = ShadowMap.SampleCmp(ShadowMapSampler, normalize(lightDir), LightDistance * pointLights[0].range - DepthBias);
+	float LightDistance = dot(input.lightPos1, input.lightPos1);
+	float shadowFactor = ShadowMap.SampleCmp(ShadowMapSampler, normalize(-input.lightPos1), LightDistance * (pointLights[0].range * pointLights[0].range) - DepthBias);
 	float4 col1 = CookTorranceBRDF(input.lightPos1, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
 	col1 = col1 * CalculateAttenuation(input.lightPos1, pointLights[0].range) * pointLights[0].colour * pointLights[0].colour.w;
-	col1 *= shadowFactor;
+	col1.rgb *= shadowFactor;
 	float4 col2 = CookTorranceBRDF(input.lightPos2, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
 	col2 = col2 * CalculateAttenuation(input.lightPos2, pointLights[1].range) * pointLights[1].colour * pointLights[0].colour.w;
 	float4 col3 = CookTorranceBRDF(input.lightPos3, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
