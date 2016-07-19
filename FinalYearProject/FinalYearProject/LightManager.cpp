@@ -119,6 +119,12 @@ PointLight* LightManager::GetPointLight(int iIndex)
 	}
 }
 
+void LightManager::Shutdown()
+{
+	delete s_pTheInstance;
+	s_pTheInstance = nullptr;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 LightManager::LightManager()

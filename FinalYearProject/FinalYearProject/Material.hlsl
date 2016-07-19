@@ -137,7 +137,6 @@ float4 BlinnPhongBRDF(float3 toLight, float3 viewDir, float3 surfaceNormal, floa
 
 float3 CalculateLambertDiffuseBRDF(float3 DiffuseColour, float Metallic)
 {
-
 	// Lerp with metallic value to find the good diffuse and specular.
 	float3 RealDiffuse = DiffuseColour - DiffuseColour * Metallic;
 	return saturate(RealDiffuse * (1.f / PI));
@@ -178,10 +177,8 @@ float SchlickGeometricAttenuation(float Roughness, float NdotV, float NdotL)
 float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, float Roughness, float Metallic, float3 DiffuseColour)
 {
 	float4 Colour = float4(1.f, 1.f, 1.f, 1.f);
-
-	float3 ToC = normalize(ToCamera);
-	float3 ToL = normalize(ToLight);
-	float3 H = normalize(ToC + ToL);
+	
+	float3 H = normalize(ToCamera + ToLight);
 	float NdotH = saturate(dot(SurfaceNormal, H));
 	float VdotH = saturate(dot(ToCamera, H));
 	float NdotL = saturate(dot(SurfaceNormal, ToLight));
@@ -195,18 +192,17 @@ float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, f
 	float3 F = SchlickFresnel(1.f - Roughness, VdotH) * realSpecularColour;
 	float G = SchlickGeometricAttenuation(Roughness, NdotV, NdotL);
 
-
 	Colour.rgb = (CalculateLambertDiffuseBRDF(DiffuseColour, Metallic) * NdotH * (1.f - F)) + (((D * F * G ) / Denom ) );
 	return saturate(Colour);
 }
 
 
 //Calculate the attenuation based on the distance to the light, and the lights range.
-float CalculateAttenuation(float3 ToLight, float LightRange)
+float CalculateAttenuation(float DistToLight, float LightRange)
 {
-	float DistToLight = length(ToLight);
 	//Attenuation
-	float DistToLightNorm = 1.f - saturate(DistToLight * LightRange); //Pointlightrangercp = 1/Range - can be sent through from the app as this..
+
+	float DistToLightNorm = 1.f - saturate(sqrt(DistToLight) * LightRange); //Pointlightrangercp = 1/Range - can be sent through from the app as this..
 	return DistToLightNorm * DistToLightNorm;
 }
 
@@ -268,9 +264,6 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float4 FinalColour;
 	float4 textureColour, normalMapCol;
 	float3 SurfaceNormal;
-	float4 specularIntensity;
-
-	float4 specCol = float4(0.f, 0.f, 0.f, 0.f);
 
 	//Sample the diffuse colour from the texture.
 #if USE_TEXTURE
@@ -281,7 +274,6 @@ float4 PSMain(PixelInput input) : SV_TARGET
 #endif
 
 	//Invert the light direction
-	float3 lightDir = -lightDirection;
 	FinalColour = ambientColour * textureColour;
 	//Get the surface normal, either from the normal map or from the vertex shader output...
 #if USE_NORMAL_MAPS
@@ -294,24 +286,18 @@ float4 PSMain(PixelInput input) : SV_TARGET
 #else
 	SurfaceNormal = input.normal;
 #endif
-	
-	//Find the specular intensity from the map if using them, otherwise from the material property
-#if USE_SPECULAR_MAPS
-	specularIntensity = specularMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
-#else
-	specularIntensity = specularColor;
-#endif
 
 #if USE_PHYSICALLY_BASED_SHADING
 
 	float roughness = roughnessMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y)).r;
 	float4 metallic = metallicMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
-	float LightDistance = dot(input.lightPos1, input.lightPos1);
-	float shadowFactor = ShadowMap.SampleCmp(ShadowMapSampler, normalize(-input.lightPos1), LightDistance * (pointLights[0].range * pointLights[0].range) - DepthBias);
-	float4 col1 = CookTorranceBRDF(input.lightPos1, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
-	col1 = col1 * CalculateAttenuation(input.lightPos1, pointLights[0].range) * pointLights[0].colour * pointLights[0].colour.w;
-	col1.rgb *= shadowFactor;
+	float LightDistanceSq = dot(input.lightPos1, input.lightPos1);
+	float3 normLightDir1 = normalize(input.lightPos1);
+	float shadowFactor = ShadowMap.SampleCmp(ShadowMapSampler, -normLightDir1, LightDistanceSq * (pointLights[0].range * pointLights[0].range) - DepthBias);
+	float4 col1 = CookTorranceBRDF(normLightDir1, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
+	col1 = col1 * CalculateAttenuation(LightDistanceSq, pointLights[0].range) * pointLights[0].colour * pointLights[0].colour.w * shadowFactor;
+
 	float4 col2 = CookTorranceBRDF(input.lightPos2, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
 	col2 = col2 * CalculateAttenuation(input.lightPos2, pointLights[1].range) * pointLights[1].colour * pointLights[0].colour.w;
 	float4 col3 = CookTorranceBRDF(input.lightPos3, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
@@ -319,23 +305,11 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float4 col4 = CookTorranceBRDF(input.lightPos4, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
 	col4 = col4 * CalculateAttenuation(input.lightPos4, pointLights[3].range) * pointLights[3].colour * pointLights[0].colour.w;
 
-	float4 dirLightCol = CookTorranceBRDF(-lightDirection, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
-	dirLightCol = dirLightCol * diffuseColour.w;
+	float4 dirLightCol = CookTorranceBRDF(-lightDirection, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb) * diffuseColour.w;
 
-	FinalColour += saturate((dirLightCol + col1 + col2 + col3 + col4));
-	
-	FinalColour = saturate(FinalColour);
-#else
-	//Use the Blinn Phong Model
-	float4 col1 = BlinnPhongBRDF(input.lightPos1, input.viewDirection, SurfaceNormal, specularIntensity, specularPower, pointLights[0].colour, textureColour, specCol, pointLights[0].range);
-	float4 col2 = BlinnPhongBRDF(input.lightPos2, input.viewDirection, SurfaceNormal, specularIntensity, specularPower, pointLights[1].colour, textureColour, specCol, pointLights[1].range);
-	float4 col3 = BlinnPhongBRDF(input.lightPos3, input.viewDirection, SurfaceNormal, specularIntensity, specularPower, pointLights[2].colour, textureColour, specCol, pointLights[2].range);
-	float4 col4 = BlinnPhongBRDF(input.lightPos4, input.viewDirection, SurfaceNormal, specularIntensity, specularPower, pointLights[3].colour, textureColour, specCol, pointLights[3].range);
-
-	FinalColour += saturate((col1 + col2 + col3 + col4));
-	FinalColour = saturate(FinalColour);
-	FinalColour = saturate(FinalColour + specCol);
+	FinalColour += ((dirLightCol + col1 + col2 + col3 + col4));
 #endif
+	FinalColour = saturate(FinalColour);
 
 	//Perform any masking being used for transparency
 #if USE_ALPHA_MASKS

@@ -15,6 +15,11 @@ OmnidirectionalShadowMap::OmnidirectionalShadowMap(float fScreenNear, float fScr
 	m_LightProjMatrix = XMMatrixPerspectiveFovLH(XM_PIDIV2, (FLOAT)kShadowMapSize / (FLOAT)kShadowMapSize, fScreenNear, fScreenDepth);
 }
 
+OmnidirectionalShadowMap::~OmnidirectionalShadowMap()
+{
+	Shutdown();
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
@@ -301,7 +306,7 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11Device
 	return result;
 }
 
-void OmnidirectionalShadowMap::ClearDepthStencilView(ID3D11DeviceContext* pDeviceContext)
+void OmnidirectionalShadowMap::SetRenderOutputToShadowMap(ID3D11DeviceContext* pDeviceContext)
 {
 	pDeviceContext->ClearDepthStencilView(m_pShadowMapCubeDepthView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 	pDeviceContext->OMSetRenderTargets(0, NULL, m_pShadowMapCubeDepthView);
@@ -333,6 +338,38 @@ bool OmnidirectionalShadowMap::Render(ID3D11DeviceContext* pDeviceContext, int i
 	pDeviceContext->PSSetShader(NULL, NULL, 0);
 
 	return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void OmnidirectionalShadowMap::Shutdown()
+{
+
+	m_pLayout->Release();
+	m_pLayout = nullptr;
+
+	m_pVertexShader->Release();
+	m_pVertexShader = nullptr;
+	m_pPixelShader->Release();
+	m_pPixelShader = nullptr;
+	m_pGeometryShader->Release();
+	m_pGeometryShader = nullptr;
+
+	m_pMatrixBuffer->Release();
+	m_pMatrixBuffer = nullptr;
+	m_pLightBuffer->Release();
+	m_pLightBuffer = nullptr;
+	m_pLightRangeBuffer->Release();
+	m_pLightRangeBuffer = nullptr;
+	m_pLightProjectionBuffer->Release();
+	m_pLightProjectionBuffer = nullptr;
+
+	m_pShadowMapCubeTexture->Release();
+	m_pShadowMapCubeTexture = nullptr;
+	m_pShadowMapCubeDepthView->Release();
+	m_pShadowMapCubeDepthView = nullptr;
+	m_pShadowMapCubeShaderView->Release();
+	m_pShadowMapCubeShaderView = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

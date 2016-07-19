@@ -92,12 +92,15 @@ public:
 	}
 
 	OmnidirectionalShadowMap(float fScreenNear = 0.1f, float fScreenDepth = 5000.f);
+	~OmnidirectionalShadowMap();
 
 	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
-	void ClearDepthStencilView(ID3D11DeviceContext* pDeviceContext);
+	void SetRenderOutputToShadowMap(ID3D11DeviceContext* pDeviceContext);
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld);
 
 	ID3D11ShaderResourceView* GetShadowMapShaderResource() { return m_pShadowMapCubeShaderView; }
+
+	void Shutdown();
 private:
 
 

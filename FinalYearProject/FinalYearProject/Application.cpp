@@ -53,6 +53,8 @@ void Application::Shutdown()
 		m_pRenderer = nullptr;
 	}
 
+	
+
 	//Shutdown window
 	ShutdownWindows();
 }

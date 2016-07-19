@@ -36,6 +36,8 @@ public:
 	int GetNumLightsAllocated() { return m_iNumPointLightsAllocated; }
 	PointLight* GetPointLight(int iIndex);
 
+	void Shutdown();
+	
 private:
 	LightManager();
 	~LightManager();
