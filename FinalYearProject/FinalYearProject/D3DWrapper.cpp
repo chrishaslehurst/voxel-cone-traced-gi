@@ -425,7 +425,7 @@ bool D3DWrapper::SetUpSwapChainAndDevice(HWND hwnd, bool bFullScreenEnabled, int
 	swapChainDesc.Flags = 0;
 
 	//Set the feature level to DX12_1
-	D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_11_1);
+	D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_11_0);
 
 	//now the description is filled out, the swap chain can be created..
 	//Pass D3D11_CREATE_DEVICE_DEBUG in instead of 0 to catch any problems..

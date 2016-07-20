@@ -3,7 +3,8 @@
 #define NUM_LIGHTS 4
 #define PI 3.14159265359
 
-static const float DepthBias = 0.0009f;
+
+static const float DepthBias = 0.001f;
 //Globals
 cbuffer MatrixBuffer
 {
@@ -294,7 +295,19 @@ float4 PSMain(PixelInput input) : SV_TARGET
 
 	float LightDistanceSq = dot(input.lightPos1, input.lightPos1);
 	float3 normLightDir1 = normalize(input.lightPos1);
-	float shadowFactor = ShadowMap.SampleCmp(ShadowMapSampler, -normLightDir1, LightDistanceSq * (pointLights[0].range * pointLights[0].range) - DepthBias);
+	float shadowFactor, x, y, z;
+	for (z = -1.5; z <= 1.5; z += 1.5)
+	{
+		for (y = -1.5; y <= 1.5; y += 1.5)
+		{
+			for (x = -1.5; x <= 1.5; x += 1.5)
+			{
+				shadowFactor += saturate(ShadowMap.SampleCmp(ShadowMapSampler, -input.lightPos1 + float3(x,y,z), (LightDistanceSq * (pointLights[0].range * pointLights[0].range)) - DepthBias));
+			}
+		}
+	}
+	shadowFactor /= 27.0;
+
 	float4 col1 = CookTorranceBRDF(normLightDir1, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
 	col1 = col1 * CalculateAttenuation(LightDistanceSq, pointLights[0].range) * pointLights[0].colour * pointLights[0].colour.w * shadowFactor;
 
@@ -308,6 +321,8 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float4 dirLightCol = CookTorranceBRDF(-lightDirection, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb) * diffuseColour.w;
 
 	FinalColour += ((dirLightCol + col1 + col2 + col3 + col4));
+
+
 #endif
 	FinalColour = saturate(FinalColour);
 

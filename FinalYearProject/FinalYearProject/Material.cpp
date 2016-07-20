@@ -424,12 +424,12 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 
 	//Create ShadowMap Sampler State
 	D3D11_SAMPLER_DESC descSampler;
-	descSampler.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
-	descSampler.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-	descSampler.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-	descSampler.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	descSampler.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	descSampler.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
+	descSampler.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
+	descSampler.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
 	descSampler.MipLODBias = 0;
-	descSampler.MaxAnisotropy = 1;
+	descSampler.MaxAnisotropy = 4;
 	descSampler.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
 	descSampler.BorderColor[0] = 0.0f;
 	descSampler.BorderColor[1] = 0.0f;
