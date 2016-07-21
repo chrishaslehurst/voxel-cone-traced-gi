@@ -30,7 +30,7 @@ Texture2D roughnessMapTexture;
 Texture2D metallicMapTexture;
 #endif
 
-TextureCube	ShadowMap;
+TextureCube ShadowMap[NUM_LIGHTS];
 
 SamplerState SampleType;
 SamplerComparisonState ShadowMapSampler;
@@ -90,10 +90,7 @@ struct PixelInput
 	float3 viewDirection : TEXCOORD1;
 	float3 tangent : TANGENT;
 	float3 binormal : BINORMAL;
-	float3 lightPos1 : TEXCOORD2;
-	float3 lightPos2 : TEXCOORD3;
-	float3 lightPos3 : TEXCOORD4;
-	float3 lightPos4 : TEXCOORD5;
+	float3 lightPos[4] : TEXCOORD2;
 };
 
 //Functions
@@ -179,10 +176,11 @@ float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, f
 {
 	float4 Colour = float4(1.f, 1.f, 1.f, 1.f);
 	
-	float3 H = normalize(ToCamera + ToLight);
+	float3 ToL = normalize(ToLight);
+	float3 H = normalize(ToCamera + ToL);
 	float NdotH = saturate(dot(SurfaceNormal, H));
 	float VdotH = saturate(dot(ToCamera, H));
-	float NdotL = saturate(dot(SurfaceNormal, ToLight));
+	float NdotL = saturate(dot(SurfaceNormal, ToL));
 	float NdotV = abs(dot(SurfaceNormal, ToCamera)) + 1e-5f; //Add this really small number so this doesn't go to 0.. just to ensure no divide by 0 occurs..
 	float Denom = 4 * NdotL * NdotV;
 
@@ -199,12 +197,30 @@ float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, f
 
 
 //Calculate the attenuation based on the distance to the light, and the lights range.
-float CalculateAttenuation(float DistToLight, float LightRange)
+float CalculateAttenuation(float3 ToLight, float LightRange)
 {
 	//Attenuation
-
-	float DistToLightNorm = 1.f - saturate(sqrt(DistToLight) * LightRange); //Pointlightrangercp = 1/Range - can be sent through from the app as this..
+	float DistToLight = length(ToLight);
+	float DistToLightNorm = 1.f - saturate(DistToLight * LightRange); //Pointlightrangercp = 1/Range - can be sent through from the app as this..
 	return DistToLightNorm * DistToLightNorm;
+}
+
+float CalculateShadowFactor(int lightIdx, float3 ToLight, float ReciprocalRange)
+{
+	float LightDistanceSq = dot(ToLight, ToLight);
+	float shadowFactor, x, y, z;
+
+	for (z = -1.5; z <= 1.5; z += 1.5)
+	{
+		for (y = -1.5; y <= 1.5; y += 1.5)
+		{
+			for (x = -1.5; x <= 1.5; x += 1.5)
+			{
+				shadowFactor += saturate(ShadowMap[lightIdx].SampleCmp(ShadowMapSampler, -ToLight + float3(x, y, z), (LightDistanceSq * (ReciprocalRange * ReciprocalRange)) - DepthBias));
+			}
+		}
+	}
+	return (shadowFactor / 27.0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,10 +263,10 @@ PixelInput VSMain(VertexInput input)
 
 	
 	//Turn the light positions into 'ToLight' vectors
-	output.lightPos1.xyz = lightPositions[0].xyz - worldPos.xyz;
-	output.lightPos2.xyz = lightPositions[1].xyz - worldPos.xyz;
-	output.lightPos3.xyz = lightPositions[2].xyz - worldPos.xyz;
-	output.lightPos4.xyz = lightPositions[3].xyz - worldPos.xyz;	
+	output.lightPos[0].xyz = lightPositions[0].xyz - worldPos.xyz;
+	output.lightPos[1].xyz = lightPositions[1].xyz - worldPos.xyz;
+	output.lightPos[2].xyz = lightPositions[2].xyz - worldPos.xyz;
+	output.lightPos[3].xyz = lightPositions[3].xyz - worldPos.xyz;	
 
 
 	return output;
@@ -273,8 +289,6 @@ float4 PSMain(PixelInput input) : SV_TARGET
 #else
 	textureColour = input.colour;
 #endif
-
-	//Invert the light direction
 	FinalColour = ambientColour * textureColour;
 	//Get the surface normal, either from the normal map or from the vertex shader output...
 #if USE_NORMAL_MAPS
@@ -289,47 +303,26 @@ float4 PSMain(PixelInput input) : SV_TARGET
 #endif
 
 #if USE_PHYSICALLY_BASED_SHADING
-
+	//sample the roughness and metallic maps
 	float roughness = roughnessMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y)).r;
 	float4 metallic = metallicMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 
-	float LightDistanceSq = dot(input.lightPos1, input.lightPos1);
-	float3 normLightDir1 = normalize(input.lightPos1);
-	float shadowFactor, x, y, z;
-	for (z = -1.5; z <= 1.5; z += 1.5)
+	//Compute lighting/shadow for all spotlights
+	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
-		for (y = -1.5; y <= 1.5; y += 1.5)
-		{
-			for (x = -1.5; x <= 1.5; x += 1.5)
-			{
-				shadowFactor += saturate(ShadowMap.SampleCmp(ShadowMapSampler, -input.lightPos1 + float3(x,y,z), (LightDistanceSq * (pointLights[0].range * pointLights[0].range)) - DepthBias));
-			}
-		}
+		float4 Light = CookTorranceBRDF(input.lightPos[i], input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
+		FinalColour += Light * CalculateAttenuation(input.lightPos[i], pointLights[i].range) * pointLights[i].colour * pointLights[i].colour.w * CalculateShadowFactor(i, input.lightPos[i], pointLights[i].range);
 	}
-	shadowFactor /= 27.0;
-
-	float4 col1 = CookTorranceBRDF(normLightDir1, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
-	col1 = col1 * CalculateAttenuation(LightDistanceSq, pointLights[0].range) * pointLights[0].colour * pointLights[0].colour.w * shadowFactor;
-
-	float4 col2 = CookTorranceBRDF(input.lightPos2, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
-	col2 = col2 * CalculateAttenuation(input.lightPos2, pointLights[1].range) * pointLights[1].colour * pointLights[0].colour.w;
-	float4 col3 = CookTorranceBRDF(input.lightPos3, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
-	col3 = col3 * CalculateAttenuation(input.lightPos3, pointLights[2].range) * pointLights[2].colour * pointLights[0].colour.w;
-	float4 col4 = CookTorranceBRDF(input.lightPos4, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb);
-	col4 = col4 * CalculateAttenuation(input.lightPos4, pointLights[3].range) * pointLights[3].colour * pointLights[0].colour.w;
-
-	float4 dirLightCol = CookTorranceBRDF(-lightDirection, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb) * diffuseColour.w;
-
-	FinalColour += ((dirLightCol + col1 + col2 + col3 + col4));
-
-
+	
+	//compute the direction light
+	float4 DirectionalLight = CookTorranceBRDF(-lightDirection, input.viewDirection, SurfaceNormal, roughness, metallic.r, textureColour.rgb) * diffuseColour.w;
+	FinalColour += DirectionalLight;
 #endif
 	FinalColour = saturate(FinalColour);
 
 	//Perform any masking being used for transparency
 #if USE_ALPHA_MASKS
-	float4 alpha = alphaMaskTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
-	FinalColour.a = alpha.r;
+	FinalColour.a = alphaMaskTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y)).r;
 #endif
 	return FinalColour;
 }

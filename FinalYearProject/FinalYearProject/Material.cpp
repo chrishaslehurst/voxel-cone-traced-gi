@@ -684,9 +684,21 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pMetallicMap);
 		pixelShaderResourceCount++;
 	}
-	
-	ID3D11ShaderResourceView* pShadowCube = LightManager::Get()->GetPointLight(0)->GetShadowMap()->GetShadowMapShaderResource();
-	pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pShadowCube);
+	ID3D11ShaderResourceView* pShadowCubeArray[NUM_LIGHTS];
+	ID3D11ShaderResourceView* nullSRV = nullptr;
+	for (int i = 0; i < NUM_LIGHTS; i++)
+	{
+		OmnidirectionalShadowMap* pShadowMap = LightManager::Get()->GetPointLight(i)->GetShadowMap();
+		if (pShadowMap)
+		{
+			pShadowCubeArray[i] = pShadowMap->GetShadowMapShaderResource();
+		}
+		else
+		{
+			pShadowCubeArray[i] = nullSRV;
+		}
+	}
+	pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, NUM_LIGHTS, pShadowCubeArray);
 
 	pixelShaderResourceCount++;
 
