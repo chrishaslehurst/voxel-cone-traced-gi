@@ -700,7 +700,7 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	}
 	pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, NUM_LIGHTS, pShadowCubeArray);
 
-	pixelShaderResourceCount++;
+	pixelShaderResourceCount += NUM_LIGHTS;
 
 	return true;
 }
@@ -723,8 +723,8 @@ void Material::RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount
 	//Render the triangle
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
 
-	ID3D11ShaderResourceView* nullSRV[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-	pDeviceContext->PSSetShaderResources(0, 6, nullSRV);
+	ID3D11ShaderResourceView* nullSRV[9] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+	pDeviceContext->PSSetShaderResources(0, 9, nullSRV);
 	
 	ID3D11SamplerState* sample[2] = { nullptr, nullptr };
 	pDeviceContext->PSSetSamplers(0, 2, sample);
