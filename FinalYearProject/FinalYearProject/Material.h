@@ -47,88 +47,6 @@ class Material
 		}
 	};
 
-	__declspec(align(16)) struct DirectionalLightBuffer
-	{
-		XMFLOAT4 ambientColour;
-		XMFLOAT4 diffuseColour;
-		XMFLOAT3 lightDirection;
-		float specularPower;
-		XMFLOAT4 specularColour;
-
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
-	__declspec(align(16)) struct CameraBuffer
-	{
-		XMFLOAT3 cameraPosition;
-		float padding;
-
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
-	__declspec(align(16)) struct PointLightPixelStruct
-	{
-		XMFLOAT4 vDiffuseColour;
-		float	 fRange;
-		XMFLOAT3 padding;
-
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
-	__declspec(align(16)) struct PointLightPixelBuffer
-	{
-		PointLightPixelStruct pointLights[NUM_LIGHTS];
-
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
-	__declspec(align(16)) struct PointLightPositionBuffer
-	{
-		XMFLOAT4 lightPosition[NUM_LIGHTS];
-
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
 public:
 	Material();
 	~Material();
@@ -173,7 +91,7 @@ private:
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
-	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
+	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
 	void RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 
 	ID3D11VertexShader* m_pVertexShader;

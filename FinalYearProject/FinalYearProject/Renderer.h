@@ -7,6 +7,8 @@
 #include "Camera.h"
 #include "Mesh.h"
 #include "DirectionalLight.h"
+#include "DeferredRender.h"
+#include "OrthoWindow.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -35,9 +37,9 @@ private:
 
 	//TODO: These things should probably go elsewhere long term!
 	Mesh*		m_pModel;
-	DirectionalLight* m_pDirectionalLight;
 
-
+	DeferredRender m_DeferredBuffers;
+	OrthoWindow* m_pFullScreenWindow;
 
 	bool Render();
 };

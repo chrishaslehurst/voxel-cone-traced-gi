@@ -32,6 +32,8 @@ public:
 
 	void Update();
 	void Render();
+	void RenderBaseViewMatrix();
+	void GetBaseViewMatrix(XMMATRIX& mBaseView);
 	void GetViewMatrix(XMMATRIX& mViewMatrix);
 private:
 
@@ -43,6 +45,7 @@ private:
 	XMFLOAT3 m_vRotation;
 
 	XMMATRIX m_mViewMatrix;
+	XMMATRIX m_mBaseView;
 	XMMATRIX m_mRotationMatrix;
 
 	XMFLOAT3 m_vForward;

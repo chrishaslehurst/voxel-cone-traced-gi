@@ -76,6 +76,12 @@
     <ClCompile Include="OmnidirectionalShadowMap.cpp">
       <Filter>Source\Lights</Filter>
     </ClCompile>
+    <ClCompile Include="OrthoWindow.cpp">
+      <Filter>Source\Renderables</Filter>
+    </ClCompile>
+    <ClCompile Include="DeferredRender.cpp">
+      <Filter>Source\Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -123,12 +129,24 @@
     <ClInclude Include="OmnidirectionalShadowMap.h">
       <Filter>Source\Lights</Filter>
     </ClInclude>
+    <ClInclude Include="OrthoWindow.h">
+      <Filter>Source\Renderables</Filter>
+    </ClInclude>
+    <ClInclude Include="DeferredRender.h">
+      <Filter>Source\Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Material.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="OmniShadowMap.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="DeferredShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="LightingPass.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

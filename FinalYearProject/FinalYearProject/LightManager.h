@@ -20,8 +20,11 @@ public:
 		return s_pTheInstance;
 	}
 
-	void SetDirectionalLightDirection(const XMFLOAT4& vDir);
+	void SetDirectionalLightDirection(const XMFLOAT3& vDir);
 	void SetDirectionalLightColour(const XMFLOAT4& vCol);
+	const XMFLOAT3& GetDirectionalLightDirection() { return m_pDirectionalLight->GetDirection(); }
+	const XMFLOAT4& GetDirectionalLightColour() { return m_pDirectionalLight->GetDiffuseColour(); }
+
 	void AddDirectionalLight();
 
 	void SetPointLightRange(int iIndex, float fRange);

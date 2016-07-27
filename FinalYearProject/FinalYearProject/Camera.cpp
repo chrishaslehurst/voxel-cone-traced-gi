@@ -147,6 +147,32 @@ void Camera::Render()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Camera::RenderBaseViewMatrix()
+{
+	XMFLOAT3 position = XMFLOAT3(0.f, 0.f, -1.f);
+	XMFLOAT3 f3lookAt;
+
+	f3lookAt.x = 0.f;
+	f3lookAt.y = 0.f;
+	f3lookAt.z = 1.f;
+
+	XMVECTOR up, pos, lookAt;
+	up = XMLoadFloat3(&m_vUpVector);
+	lookAt = XMLoadFloat3(&f3lookAt);
+	pos = XMLoadFloat3(&position);
+
+	m_mBaseView = XMMatrixLookAtLH(pos, lookAt, up);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Camera::GetBaseViewMatrix(XMMATRIX& mBaseView)
+{
+	mBaseView = m_mBaseView;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void Camera::GetViewMatrix(XMMATRIX& mViewMatrix)
 {
 	mViewMatrix = m_mViewMatrix;

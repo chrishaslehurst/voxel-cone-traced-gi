@@ -7,7 +7,7 @@ LightManager* LightManager::s_pTheInstance = nullptr;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void LightManager::SetDirectionalLightDirection(const XMFLOAT4& vDir)
+void LightManager::SetDirectionalLightDirection(const XMFLOAT3& vDir)
 {
 	if (m_pDirectionalLight)
 	{

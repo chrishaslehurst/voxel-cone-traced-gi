@@ -12,6 +12,7 @@ D3DWrapper::D3DWrapper()
 	, m_pDepthStencilState(nullptr)
 	, m_pDepthStencilView(nullptr)
 	, m_pRasterState(nullptr)
+	, m_pDepthDisabledStencilState(nullptr)
 {
 
 }
@@ -55,7 +56,7 @@ bool D3DWrapper::Initialise(int iScreenWidth, int iScreenHeight, bool bVsyncEnab
 	{
 		return false;
 	}
-	TurnOnAlphaBlending();
+	//TurnOnAlphaBlending();
 	SetUpViewPort(iScreenWidth, iScreenHeight);
 
 	//Setup the projection matrix
@@ -214,6 +215,21 @@ void D3DWrapper::SetRenderOutputToScreen()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+void D3DWrapper::TurnZBufferOn()
+{
+	m_pDeviceContext->OMSetDepthStencilState(m_pDepthStencilState, 1);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void D3DWrapper::TurnZBufferOff()
+{
+	m_pDeviceContext->OMSetDepthStencilState(m_pDepthDisabledStencilState, 1);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void D3DWrapper::Shutdown()
 {
 	if (m_pSwapChain)
@@ -235,6 +251,11 @@ void D3DWrapper::Shutdown()
 	{
 		m_pDepthStencilState->Release();
 		m_pDepthStencilState = nullptr;
+	}
+	if (m_pDepthDisabledStencilState)
+	{
+		m_pDepthDisabledStencilState->Release();
+		m_pDepthDisabledStencilState = nullptr;
 	}
 
 	if (m_pDepthStencilBuffer)
@@ -521,10 +542,35 @@ bool D3DWrapper::SetUpDepthBufferAndDepthStencilState(int iScreenWidth, int iScr
 	//Create depth stencil state
 	if (FAILED(m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pDepthStencilState)))
 	{
-		VS_LOG_VERBOSE("Failed to create the depth stencil state")
-			return false;
+		VS_LOG_VERBOSE("Failed to create the depth stencil state");
+		return false;
 	}
 	m_pDeviceContext->OMSetDepthStencilState(m_pDepthStencilState, 1);
+
+	D3D11_DEPTH_STENCIL_DESC depthDisabledStencilDesc;
+	ZeroMemory(&depthDisabledStencilDesc, sizeof(depthDisabledStencilDesc));
+
+	// Now create a second depth stencil state which turns off the Z buffer for 2D rendering. 
+	depthDisabledStencilDesc.DepthEnable = false;
+	depthDisabledStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	depthDisabledStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	depthDisabledStencilDesc.StencilEnable = true;
+	depthDisabledStencilDesc.StencilReadMask = 0xFF;
+	depthDisabledStencilDesc.StencilWriteMask = 0xFF;
+	depthDisabledStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+	depthDisabledStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	depthDisabledStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+	depthDisabledStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+	if (FAILED(m_pDevice->CreateDepthStencilState(&depthDisabledStencilDesc, &m_pDepthDisabledStencilState)))
+	{
+		VS_LOG_VERBOSE("Failed to create depth disabled stencil state");
+		return false;
+	}
 
 	return true;
 }

@@ -82,13 +82,10 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11Device
 		return result;
 	}
 
-	
-
 	ID3D10Blob* pErrorMessage(nullptr);
 	ID3D10Blob* pVertexShaderBuffer(nullptr);
 	ID3D10Blob* pPixelShaderBuffer(nullptr);
 	ID3D10Blob* pGeometryShaderBuffer(nullptr);
-
 
 	//Compile the vertex shader code
 	result = D3DCompileFromFile(L"OmniShadowMap.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);

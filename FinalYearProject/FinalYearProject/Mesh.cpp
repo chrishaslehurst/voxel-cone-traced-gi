@@ -56,10 +56,42 @@ void Mesh::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::Render(D3DWrapper* pD3D, ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
+void Mesh::DeferredRenderPass(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
+	
+	//pD3D->SetRenderOutputToScreen();
+	//Opaque pass
+	for (int i = 0; i < m_iSubMeshCount; i++)
+	{
+		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
+		{
+			RenderBuffers(i, pDeviceContext);
+			
+			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
+			{
+				VS_LOG_VERBOSE("Unable to render object with shader");
+			}
+		}
+	}
+	//Transparent pass..
+	for (int i = 0; i < m_iSubMeshCount; i++)
+	{
+		if (m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
+		{
+			//RenderBuffers(i, pDeviceContext);
+
+			//if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
+			//{
+			//	VS_LOG_VERBOSE("Unable to render object with shader");
+			//}
+		}
+	}
+}
+
+void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
+{
 	//Shadowing Pass
 	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
@@ -79,34 +111,6 @@ void Mesh::Render(D3DWrapper* pD3D, ID3D11DeviceContext* pDeviceContext, XMMATRI
 					pShadowMap->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount);
 				}
 				pShadowMap->SetRenderFinished(pDeviceContext);
-			}
-		}
-	}
-
-	pD3D->SetRenderOutputToScreen();
-	//Opaque pass
-	for (int i = 0; i < m_iSubMeshCount; i++)
-	{
-		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
-		{
-			RenderBuffers(i, pDeviceContext);
-			
-			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
-			{
-				VS_LOG_VERBOSE("Unable to render object with shader");
-			}
-		}
-	}
-	//Transparent pass..
-	for (int i = 0; i < m_iSubMeshCount; i++)
-	{
-		if (m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
-		{
-			RenderBuffers(i, pDeviceContext);
-
-			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
-			{
-				VS_LOG_VERBOSE("Unable to render object with shader");
 			}
 		}
 	}
@@ -523,7 +527,6 @@ bool Mesh::InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice)
 		vertices[i].position = pSubMesh->m_arrModel[i].pos;  // Bottom left.
 		vertices[i].normal = pSubMesh->m_arrModel[i].norm;
 		vertices[i].texture = pSubMesh->m_arrModel[i].tex;
-		vertices[i].color = XMFLOAT4(1.f, 1.f, 1.f, 1.f);
 		vertices[i].tangent = pSubMesh->m_arrModel[i].tangent;
 		vertices[i].binormal = pSubMesh->m_arrModel[i].binormal;
 

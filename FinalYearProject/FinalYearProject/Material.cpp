@@ -54,7 +54,7 @@ bool Material::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, 
 	{
 		m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
 	}
-	if (!InitialiseShader(pDevice, hwnd, L"Material.hlsl"))
+	if (!InitialiseShader(pDevice, hwnd, L"DeferredShader.hlsl"))
 	{
 		return false;
 	}
@@ -75,7 +75,7 @@ void Material::Shutdown()
 bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	bool result;
-	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vDiffuseColour, vAmbientColour, vCameraPos);
+	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix);
 	if (!result)
 	{
 		VS_LOG_VERBOSE("Failed to set shader parameters");
@@ -93,7 +93,7 @@ bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMA
 void Material::ReloadShader(ID3D11Device* pDevice, HWND hwnd)
 {
 	ShutdownShader();
-	InitialiseShader(pDevice, hwnd, L"Material.hlsl");
+	InitialiseShader(pDevice, hwnd, L"DeferredShader.hlsl");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +245,7 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 		return false;
 	}
 
-	D3D11_INPUT_ELEMENT_DESC polyLayout[6];
+	D3D11_INPUT_ELEMENT_DESC polyLayout[5];
 	//Setup data layout for the shader, needs to match the VertexType struct in the Mesh class and in the shader code.
 	polyLayout[0].SemanticName = "POSITION";
 	polyLayout[0].SemanticIndex = 0;
@@ -272,30 +272,21 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	polyLayout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[2].InstanceDataStepRate = 0;
 
-
-	polyLayout[3].SemanticName = "COLOR";
+	polyLayout[3].SemanticName = "TANGENT";
 	polyLayout[3].SemanticIndex = 0;
-	polyLayout[3].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	polyLayout[3].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polyLayout[3].InputSlot = 0;
 	polyLayout[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[3].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[3].InstanceDataStepRate = 0;
 
-	polyLayout[4].SemanticName = "TANGENT";
+	polyLayout[4].SemanticName = "BINORMAL";
 	polyLayout[4].SemanticIndex = 0;
 	polyLayout[4].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polyLayout[4].InputSlot = 0;
 	polyLayout[4].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[4].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[4].InstanceDataStepRate = 0;
-
-	polyLayout[5].SemanticName = "BINORMAL";
-	polyLayout[5].SemanticIndex = 0;
-	polyLayout[5].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	polyLayout[5].InputSlot = 0;
-	polyLayout[5].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-	polyLayout[5].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	polyLayout[5].InstanceDataStepRate = 0;
 
 	//Get the number of elements in the layout
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
@@ -333,72 +324,6 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 		return false;
 	}
 
-	D3D11_BUFFER_DESC lightBufferDesc;
-	//Setup description of the light dynamic constant buffer in the pixel shader
-	lightBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	lightBufferDesc.ByteWidth = sizeof(DirectionalLightBuffer);
-	lightBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	lightBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	lightBufferDesc.MiscFlags = 0;
-	lightBufferDesc.StructureByteStride = 0;
-
-	//Create the buffer so we can access it from within this class
-	result = pDevice->CreateBuffer(&lightBufferDesc, nullptr, &m_pLightBuffer);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create light buffer");
-		return false;
-	}
-
-	D3D11_BUFFER_DESC PointLightColourBufferDesc;
-	// Setup the description of the dynamic constant buffer that is in the pixel shader.
-	PointLightColourBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	PointLightColourBufferDesc.ByteWidth = sizeof(PointLightPixelBuffer);
-	PointLightColourBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	PointLightColourBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	PointLightColourBufferDesc.MiscFlags = 0;
-	PointLightColourBufferDesc.StructureByteStride = 0;
-
-	// Create the constant buffer pointer so we can access the pixel shader constant buffer from within this class.
-	result = pDevice->CreateBuffer(&PointLightColourBufferDesc, NULL, &m_pPointLightColourBuffer);
-	if (FAILED(result))
-	{
-		return false;
-	}
-
-	D3D11_BUFFER_DESC PointLightPositionBufferDesc;
-	// Setup the description of the dynamic constant buffer that is in the vertex shader.
-	PointLightPositionBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	PointLightPositionBufferDesc.ByteWidth = sizeof(PointLightPositionBuffer);
-	PointLightPositionBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	PointLightPositionBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	PointLightPositionBufferDesc.MiscFlags = 0;
-	PointLightPositionBufferDesc.StructureByteStride = 0;
-
-	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-	result = pDevice->CreateBuffer(&PointLightPositionBufferDesc, NULL, &m_pPointLightPositionBuffer);
-	if (FAILED(result))
-	{
-		return false;
-	}
-
-	D3D11_BUFFER_DESC cameraBufferDesc;
-	// Setup the description of the camera dynamic constant buffer that is in the vertex shader.
-	cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	cameraBufferDesc.ByteWidth = sizeof(CameraBuffer);
-	cameraBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	cameraBufferDesc.MiscFlags = 0;
-	cameraBufferDesc.StructureByteStride = 0;
-
-	// Create the camera constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-	result = pDevice->CreateBuffer(&cameraBufferDesc, NULL, &m_pCameraBuffer);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create camera buffer");
-		return false;
-	}
-
 	D3D11_SAMPLER_DESC samplerDesc;
 	// Create a texture sampler state description.
 	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
@@ -420,29 +345,6 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	if (FAILED(result))
 	{
 		return false;
-	}
-
-	//Create ShadowMap Sampler State
-	D3D11_SAMPLER_DESC descSampler;
-	descSampler.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
-	descSampler.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
-	descSampler.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
-	descSampler.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
-	descSampler.MipLODBias = 0;
-	descSampler.MaxAnisotropy = 4;
-	descSampler.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
-	descSampler.BorderColor[0] = 0.0f;
-	descSampler.BorderColor[1] = 0.0f;
-	descSampler.BorderColor[2] = 0.0f;
-	descSampler.BorderColor[3] = 0.0f;
-	descSampler.MinLOD = 0.0f;
-	descSampler.MaxLOD = 0.0f;
-
-	result = pDevice->CreateSamplerState(&descSampler, &m_pShadowMapSampler);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create shadow map sampler");
-		return result;
 	}
 
 	return true;
@@ -534,7 +436,7 @@ void Material::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCH
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
+bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
 {
 	//Matrices need to be transposed before sending them into the shader for dx11..
 	mWorldMatrix = XMMatrixTranspose(mWorldMatrix);
@@ -560,97 +462,11 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	//Unlock the buffer
 	pDeviceContext->Unmap(m_pMatrixBuffer, 0);
 
-	DirectionalLightBuffer* pLightData;
-	//Lock the lightBuffer, set the lighting info and then unlock it
-	result = pDeviceContext->Map(m_pLightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to lock the light buffer");
-		return false;
-	}
-
-	pLightData = (DirectionalLightBuffer*)mappedResource.pData;
-	pLightData->ambientColour = vAmbientColour;
-	pLightData->diffuseColour = vDiffuseColour;
-	pLightData->lightDirection = vLightDirection;
-	pLightData->specularPower = m_fSpecularPower;
-	pLightData->specularColour = m_vSpecularColour;
-
-	//Unlock the buffer
-	pDeviceContext->Unmap(m_pLightBuffer, 0);
-
-	CameraBuffer* pCameraData;
-	result = pDeviceContext->Map(m_pCameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to lock camera buffer");
-		return false;
-	}
-	pCameraData = (CameraBuffer*)mappedResource.pData;
-	pCameraData->cameraPosition = vCameraPos;
-	pCameraData->padding = 0.f;
-
-	pDeviceContext->Unmap(m_pCameraBuffer, 0);
-
-	// Lock the light position constant buffer so it can be written to.
-	if (FAILED(pDeviceContext->Map(m_pPointLightPositionBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource)))
-	{
-		return false;
-	}
-
-	// Get a pointer to the data in the constant buffer.
-	PointLightPositionBuffer* pLightPositionData = (PointLightPositionBuffer*)mappedResource.pData;
-
-	// Copy the light position variables into the constant buffer
-	LightManager* pLightManager = LightManager::Get();
-	if (pLightManager)
-	{
-		for (int i = 0; i < NUM_LIGHTS; i++)
-		{
-			pLightPositionData->lightPosition[i] = pLightManager->GetPointLight(i)->GetPosition();
-		}
-	}
-
-	// Unlock the constant buffer.
-	pDeviceContext->Unmap(m_pPointLightPositionBuffer, 0);
-
-	
-	if (FAILED(pDeviceContext->Map(m_pPointLightColourBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource)))
-	{
-		return false;
-	}
-
-	// Get a pointer to the data in the constant buffer.
-	PointLightPixelBuffer* pPointLightColourData = (PointLightPixelBuffer*)mappedResource.pData;
-
-	// Copy the light color variables into the constant buffer.
-	if (pLightManager)
-	{
-		for (int i = 0; i < NUM_LIGHTS; i++)
-		{
-			pPointLightColourData->pointLights[i].vDiffuseColour = pLightManager->GetPointLight(i)->GetDiffuseColour();
-			pPointLightColourData->pointLights[i].fRange = pLightManager->GetPointLight(i)->GetReciprocalRange();
-		}
-	}
-
-	// Unlock the constant buffer.
-	pDeviceContext->Unmap(m_pPointLightColourBuffer, 0);
-
 	//Set the position of the buffer in the HLSL shader
 	unsigned int u_iBufferNumber = 0;
 
 	//Finally, set the buffers in the shader to the new values
 	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pMatrixBuffer);
-
-	pDeviceContext->PSSetConstantBuffers(u_iBufferNumber, 1, &m_pLightBuffer);
-
-	u_iBufferNumber = 1;
-	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pPointLightPositionBuffer);
-
-	pDeviceContext->PSSetConstantBuffers(u_iBufferNumber, 1, &m_pPointLightColourBuffer);
-
-	u_iBufferNumber = 2;
-	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pCameraBuffer);
 
 	pixelShaderResourceCount = 0;
 	
@@ -666,12 +482,7 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pNormalMapTexture);
 		pixelShaderResourceCount++;
 	}
-	if(m_bHasAlphaMask)
-	{
-		ID3D11ShaderResourceView* pAlphaMaskTexture = m_pAlphaMask->GetTexture();
-		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pAlphaMaskTexture);
-		pixelShaderResourceCount++;
-	}
+	
 	if (m_bHasRoughnessMap)
 	{
 		ID3D11ShaderResourceView* pRoughnessMap = m_pRoughnessMap->GetTexture();
@@ -684,23 +495,6 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pMetallicMap);
 		pixelShaderResourceCount++;
 	}
-	ID3D11ShaderResourceView* pShadowCubeArray[NUM_LIGHTS];
-	ID3D11ShaderResourceView* nullSRV = nullptr;
-	for (int i = 0; i < NUM_LIGHTS; i++)
-	{
-		OmnidirectionalShadowMap* pShadowMap = LightManager::Get()->GetPointLight(i)->GetShadowMap();
-		if (pShadowMap)
-		{
-			pShadowCubeArray[i] = pShadowMap->GetShadowMapShaderResource();
-		}
-		else
-		{
-			pShadowCubeArray[i] = nullSRV;
-		}
-	}
-	pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, NUM_LIGHTS, pShadowCubeArray);
-
-	pixelShaderResourceCount += NUM_LIGHTS;
 
 	return true;
 }
@@ -718,7 +512,6 @@ void Material::RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount
 
 	//Set the sampler state
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSampleState);
-	pDeviceContext->PSSetSamplers(1, 1, &m_pShadowMapSampler);
 
 	//Render the triangle
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
@@ -726,8 +519,8 @@ void Material::RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount
 	ID3D11ShaderResourceView* nullSRV[9] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 	pDeviceContext->PSSetShaderResources(0, 9, nullSRV);
 	
-	ID3D11SamplerState* sample[2] = { nullptr, nullptr };
-	pDeviceContext->PSSetSamplers(0, 2, sample);
+	ID3D11SamplerState* sample = { nullptr };
+	pDeviceContext->PSSetSamplers(0, 1, &sample);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
