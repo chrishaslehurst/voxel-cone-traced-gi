@@ -449,10 +449,14 @@ bool D3DWrapper::SetUpSwapChainAndDevice(HWND hwnd, bool bFullScreenEnabled, int
 	D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_11_0);
 
 	//now the description is filled out, the swap chain can be created..
-	//Pass D3D11_CREATE_DEVICE_DEBUG in instead of 0 to catch any problems..
+	UINT createDeviceFlags = 0;
+#ifdef _DEBUG
+	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
 	ID3D11Device* pDev;
 	ID3D11DeviceContext* pCont;
-	HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, &m_pSwapChain, &pDev, nullptr, &pCont);
+	HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, &featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, &m_pSwapChain, &pDev, nullptr, &pCont);
 	if (FAILED(hr))
 	{
 		VS_LOG_VERBOSE("Failed to create device and swap chain");
