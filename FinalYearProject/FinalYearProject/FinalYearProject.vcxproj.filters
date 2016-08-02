@@ -29,6 +29,9 @@
     <Filter Include="Source\Lights">
       <UniqueIdentifier>{8c14f6fb-8d7f-4dac-9e47-c083f9a0fa18}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FW1FontWrapper">
+      <UniqueIdentifier>{dd7b8484-5213-4462-8fd2-841838bbef3d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -134,6 +137,9 @@
     </ClInclude>
     <ClInclude Include="DeferredRender.h">
       <Filter>Source\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FW1FontWrapper\FW1FontWrapper.h">
+      <Filter>FW1FontWrapper</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
