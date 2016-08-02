@@ -109,7 +109,7 @@ public:
 
 	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* modelFilename);
 	void Shutdown();
-	void DeferredRenderPass(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
+	void RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
 	void RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 	int GetIndexCount(int subMeshIndex);
 
@@ -117,11 +117,7 @@ public:
 	void ReloadShaders(ID3D11Device* pDevice, HWND hwnd);
 private:
 
-	
-	bool LoadModelFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename);
 	bool LoadModelFromObjFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename);
-	bool FindNumSubMeshes(char* filename);
-	bool ReadObjFileCounts(char* filename);
 	void ReleaseModel();
 	bool InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice);
 	void ShutdownBuffers();
@@ -129,10 +125,6 @@ private:
 
 	void CalculateModelVectors();
 
-	int m_iSubMeshCount;
-	int m_iTotalVerticesCount;
-	int m_iTotalTextureCoordCount;
-	int m_iTotalNormalCount;
 	std::vector<SubMesh*> m_arrSubMeshes;
 	MaterialLibrary* m_pMatLib;
 	

@@ -168,7 +168,7 @@ void D3DWrapper::TurnOnAlphaBlending()
 	blendFactor[3] = 0.0f;
 
 	// Turn on the alpha blending.
-	m_pDeviceContext->OMSetBlendState(m_alphaEnableBlendingState, blendFactor, 0xffffffff);
+	m_pDeviceContext->OMSetBlendState(m_pAlphaEnableBlendingState, blendFactor, 0xffffffff);
 
 	return;
 }
@@ -187,7 +187,7 @@ void D3DWrapper::TurnOffAlphaBlending()
 	blendFactor[3] = 0.0f;
 
 	// Turn off the alpha blending.
-	m_pDeviceContext->OMSetBlendState(m_alphaDisableBlendingState, blendFactor, 0xffffffff);
+	m_pDeviceContext->OMSetBlendState(m_pAlphaDisableBlendingState, blendFactor, 0xffffffff);
 
 	return;
 }
@@ -236,6 +236,16 @@ void D3DWrapper::Shutdown()
 	{
 		m_pSwapChain->SetFullscreenState(false, NULL);
 	}
+	if (m_pAlphaEnableBlendingState)
+	{
+		m_pAlphaEnableBlendingState->Release();
+		m_pAlphaEnableBlendingState = nullptr;
+	}
+	if (m_pAlphaDisableBlendingState)
+	{
+		m_pAlphaDisableBlendingState->Release();
+		m_pAlphaDisableBlendingState = nullptr;
+	}
 	if (m_pRasterState)
 	{
 		m_pRasterState->Release();
@@ -270,11 +280,22 @@ void D3DWrapper::Shutdown()
 		m_pRenderTargetView = nullptr;
 	}
 
+
+
 	if (m_pDeviceContext)
 	{
+		m_pDeviceContext->ClearState();
 		m_pDeviceContext->Release();
 		m_pDeviceContext = nullptr;
 	}
+
+#ifdef _DEBUG
+	ID3D11Debug* DebugDevice = nullptr;
+	HRESULT res = m_pDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&DebugDevice);
+	DebugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+	DebugDevice->Release();
+	DebugDevice = nullptr;
+#endif
 
 	if (m_pDevice)
 	{
@@ -646,7 +667,7 @@ bool D3DWrapper::CreateBlendState()
 	blendStateDescription.RenderTarget[0].RenderTargetWriteMask = 0x0f;
 
 	// Create the blend state using the description.
-	if (FAILED(m_pDevice->CreateBlendState(&blendStateDescription, &m_alphaEnableBlendingState)))
+	if (FAILED(m_pDevice->CreateBlendState(&blendStateDescription, &m_pAlphaEnableBlendingState)))
 	{
 		VS_LOG_VERBOSE("Failed to create alpha enabled blend state");
 		return false;
@@ -656,7 +677,7 @@ bool D3DWrapper::CreateBlendState()
 	blendStateDescription.RenderTarget[0].BlendEnable = FALSE;
 
 	// Create the blend state using the description.
-	if (FAILED(m_pDevice->CreateBlendState(&blendStateDescription, &m_alphaDisableBlendingState)))
+	if (FAILED(m_pDevice->CreateBlendState(&blendStateDescription, &m_pAlphaDisableBlendingState)))
 	{
 		VS_LOG_VERBOSE("Failed to create alpha disabled blend state");
 		return false;

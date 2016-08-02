@@ -8,6 +8,7 @@ Renderer::Renderer()
 	: m_pD3D(nullptr)
 	, m_pCamera(nullptr)
 	, m_pModel(nullptr)
+	, m_pFullScreenWindow(nullptr)
 {
 
 }
@@ -57,7 +58,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	if (FAILED(m_DeferredBuffers.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, iScreenWidth, iScreenHeight, SCREEN_DEPTH, SCREEN_NEAR)))
+	if (FAILED(m_DeferredRender.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, iScreenWidth, iScreenHeight, SCREEN_DEPTH, SCREEN_NEAR)))
 	{
 		VS_LOG_VERBOSE("Failed to initialise deferred buffers");
 		return false;
@@ -103,20 +104,31 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 
 void Renderer::Shutdown()
 {
-	
+	m_DeferredRender.Shutdown();
 
+	//deallocate the model
 	if (m_pModel)
 	{
-		m_pModel->Shutdown();
 		delete m_pModel;
 		m_pModel = nullptr;
 	}
 
+	//deallocate the camera
 	if (m_pCamera)
 	{
 		delete m_pCamera;
 		m_pCamera = nullptr;
 	}
+
+	
+
+	if (m_pFullScreenWindow)
+	{
+		delete m_pFullScreenWindow;
+		m_pFullScreenWindow = nullptr;
+	}
+
+	LightManager::Get()->Shutdown();
 
 	//deallocate the D3DWrapper
 	if (m_pD3D)
@@ -124,16 +136,6 @@ void Renderer::Shutdown()
 		delete m_pD3D;
 		m_pD3D = nullptr;
 	}
-
-	m_DeferredBuffers.Shutdown();
-
-	if (m_pFullScreenWindow)
-	{
-		m_pFullScreenWindow->Shutdown();
-		m_pFullScreenWindow = nullptr;
-	}
-
-	LightManager::Get()->Shutdown();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,10 +172,13 @@ bool Renderer::Render()
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
 
-	m_DeferredBuffers.SetRenderTargets(m_pD3D->GetDeviceContext());
-	m_DeferredBuffers.ClearRenderTargets(m_pD3D->GetDeviceContext(), 0.f, 0.f, 0.f, 1.f);
-	//Put the model vert and ind buffers on the graphics pipeline to prep them for drawing..
-	m_pModel->DeferredRenderPass(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
+	m_DeferredRender.SetRenderTargets(m_pD3D->GetDeviceContext());
+	m_DeferredRender.ClearRenderTargets(m_pD3D->GetDeviceContext(), 0.f, 0.f, 0.f, 1.f);
+	
+	//Render the model to the deferred buffers
+	m_pModel->RenderToBuffers(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection);
+
+	//Render the model to the shadow maps
 	m_pModel->RenderShadows(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
 	
 	//Clear buffers to begin the scene
@@ -188,8 +193,9 @@ bool Renderer::Render()
 	m_pD3D->TurnZBufferOff();
 	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
 
-	m_DeferredBuffers.RenderLightingPass(m_pD3D->GetDeviceContext(), m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
+	m_DeferredRender.RenderLightingPass(m_pD3D->GetDeviceContext(), m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
 
+	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();

@@ -35,10 +35,10 @@ private:
 	D3DWrapper* m_pD3D;
 	Camera*		m_pCamera;
 
-	//TODO: These things should probably go elsewhere long term!
+	//TODO: Model should probably go elsewhere long term!
 	Mesh*		m_pModel;
 
-	DeferredRender m_DeferredBuffers;
+	DeferredRender m_DeferredRender;
 	OrthoWindow* m_pFullScreenWindow;
 
 	bool Render();

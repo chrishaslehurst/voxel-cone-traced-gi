@@ -29,7 +29,6 @@ DeferredRender::DeferredRender()
 
 DeferredRender::~DeferredRender()
 {
-	Shutdown();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -464,6 +463,12 @@ void DeferredRender::ShutdownShader()
 	{
 		m_pSampleState->Release();
 		m_pSampleState = nullptr;
+	}
+
+	if (m_pShadowMapSampleState)
+	{
+		m_pShadowMapSampleState->Release();
+		m_pShadowMapSampleState = nullptr;
 	}
 
 	if (m_pLayout)

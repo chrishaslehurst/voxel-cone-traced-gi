@@ -15,7 +15,7 @@ Mesh::Mesh()
 
 Mesh::~Mesh()
 {
-
+	Shutdown();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@ bool Mesh::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND
 	
 	//Initialise the buffers
 	bool result(true);
-	for (int i = 0; i < m_iSubMeshCount; i++)
+	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
 		result = InitialiseBuffers(i, pDevice);
 		if (!result)
@@ -56,38 +56,37 @@ void Mesh::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::DeferredRenderPass(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
+void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
 {
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
 	
-	//pD3D->SetRenderOutputToScreen();
 	//Opaque pass
-	for (int i = 0; i < m_iSubMeshCount; i++)
+	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
 		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
 		{
 			RenderBuffers(i, pDeviceContext);
 			
-			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
+			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix))
 			{
 				VS_LOG_VERBOSE("Unable to render object with shader");
 			}
 		}
 	}
 	//Transparent pass..
-	for (int i = 0; i < m_iSubMeshCount; i++)
-	{
-		if (m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
-		{
+	//for (int i = 0; i < m_arrSubMeshes.size(); i++)
+	//{
+	//	if (m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
+	//	{
 			//RenderBuffers(i, pDeviceContext);
 
 			//if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
 			//{
 			//	VS_LOG_VERBOSE("Unable to render object with shader");
 			//}
-		}
-	}
+	//	}
+	//}
 }
 
 void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
@@ -104,10 +103,9 @@ void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMat
 				pShadowMap->SetRenderOutputToShadowMap(pDeviceContext);
 				pShadowMap->SetShaderParams(pDeviceContext, pLight->GetPosition(), pLight->GetRange(), mWorldMatrix);
 				pShadowMap->SetRenderStart(pDeviceContext);
-				for (int i = 0; i < m_iSubMeshCount; i++)
+				for (int i = 0; i < m_arrSubMeshes.size(); i++)
 				{
 					RenderBuffers(i, pDeviceContext);
-					//TODO: Do this for each light 
 					pShadowMap->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount);
 				}
 				pShadowMap->SetRenderFinished(pDeviceContext);
@@ -129,73 +127,6 @@ void Mesh::ReloadShaders(ID3D11Device* pDevice, HWND hwnd)
 	{
 		m_pMatLib->ReloadShaders(pDevice, hwnd);
 	}
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool Mesh::LoadModelFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename)
-{
-	m_pMatLib = new MaterialLibrary;
-	if (!m_pMatLib)
-	{
-		VS_LOG_VERBOSE("Unable to create new material library");
-		return false;
-	}
-	m_pMatLib->LoadMaterialLibrary(pDevice, pContext, hwnd, "../Assets/Shaders/sponza.mtl");
-	
-	ifstream fin;
-	fin.open(filename);
-	
-	//did the file open?
-	if (fin.fail())
-	{
-		VS_LOG_VERBOSE("Failed to load model, could not open file..");
-		return false;
-	}
-	
-	char input;
-	//read up to the value of vertex count.
-	fin.get(input);
-	while (input != ':')
-	{
-		fin.get(input);
-	}
-
-	
-	m_arrSubMeshes.push_back(new SubMesh());
-	
-
-	//read in the vert count
-	fin >> m_arrSubMeshes[0]->m_iVertexCount;
-	m_arrSubMeshes[0]->m_iIndexCount = m_arrSubMeshes[0]->m_iVertexCount;
-
-	//create the model array..
-	m_arrSubMeshes[0]->m_arrModel.reserve(m_arrSubMeshes[0]->m_iVertexCount);
-
-	//Read up to the beginning of the data
-	fin.get(input);
-	while (input != ':')
-	{
-		fin.get(input);
-	}
-	fin.get(input);
-	fin.get(input);
-
-	//Read in the vertex data
-	for (int i = 0; i < m_arrSubMeshes[0]->m_iVertexCount; i++)
-	{
-		if (i + 1 > m_arrSubMeshes[0]->m_arrModel.size())
-		{
-			m_arrSubMeshes[0]->m_arrModel.push_back(ModelType());
-		}
-		fin >> m_arrSubMeshes[0]->m_arrModel[i].pos.x >> m_arrSubMeshes[0]->m_arrModel[i].pos.y >> m_arrSubMeshes[0]->m_arrModel[i].pos.z;
-		fin >> m_arrSubMeshes[0]->m_arrModel[i].tex.x >> m_arrSubMeshes[0]->m_arrModel[i].tex.y;
-		fin >> m_arrSubMeshes[0]->m_arrModel[i].norm.x >> m_arrSubMeshes[0]->m_arrModel[i].norm.y >> m_arrSubMeshes[0]->m_arrModel[i].norm.z;
-	}
-
-	fin.close();
-
-	return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -369,106 +300,11 @@ bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, ID3D11DeviceContext* pCon
 		}
 	}
 
-
-	m_iTotalVerticesCount = Verts.size();
-	m_iTotalNormalCount = Normals.size();
-	m_iTotalTextureCoordCount = TexCoords.size();
-	m_iSubMeshCount = m_arrSubMeshes.size();
 	double dEndTime = Timer::Get()->GetCurrentTime();
 	stringstream output;
 	output << "Time to process data: " << (dEndTime - dStartTime) << '\n' << "Time To read in faces: " << dFaceReadTime << '\n' << "Time to create models: " << dModelCreateTime;
 	VS_LOG(output.str().c_str());
 
-	return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool Mesh::FindNumSubMeshes(char* filename)
-{
-	m_iSubMeshCount = 0;
-	ifstream fin;
-	fin.open(filename);
-
-	//did the file open?
-	if (fin.fail())
-	{
-		VS_LOG_VERBOSE("Failed to load model, could not open file..");
-		return false;
-	}
-	string s;
-	while (fin)
-	{
-		if (s == "usemtl")
-		{
-			m_iSubMeshCount++;
-		}
-		fin >> s;
-
-	}
-	return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool Mesh::ReadObjFileCounts(char* filename)
-{
-	fstream fin;
-	fin.open(filename);
-
-	//did the file open?
-	if (fin.fail())
-	{
-		VS_LOG_VERBOSE("Failed to load model, could not open file..");
-		return false;
-	}
-	int iFaceIndex = 0;
-	int iSubMeshCount = 0;
-	string s;
-	while (fin)
-	{
-		
-		if (s == "v")
-		{
-			//vertex
-			m_iTotalVerticesCount++;
-			fin >> s;
-		}
-		else if (s == "vt")
-		{
-			m_iTotalTextureCoordCount++;
-			fin >> s;
-		}
-		else if (s == "vn")
-		{
-			m_iTotalNormalCount++;
-			fin >> s;
-		}
-		else if (s == "usemtl")
-		{
-			//get the mat name
-			fin >> s;
-
-			if (iFaceIndex > 0)
-			{
-				m_arrSubMeshes[iSubMeshCount]->m_iFaceCount = iFaceIndex;
-				iSubMeshCount++;
-			}
-			iFaceIndex = 0;
-			fin >> s;
-		}
-		else if (s == "f")
-		{
-			iFaceIndex++;
-			fin >> s;
-		}
-		else
-		{
-			fin >> s;
-		}
-	}
-	//append the last face
-	m_arrSubMeshes[iSubMeshCount]->m_iFaceCount = iFaceIndex;
 	return true;
 }
 
@@ -593,7 +429,7 @@ bool Mesh::InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice)
 
 void Mesh::ShutdownBuffers()
 {
-	for (int i = 0; i < m_iSubMeshCount; i++)
+	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
 		if (m_arrSubMeshes[i]->m_pIndexBuffer)
 		{

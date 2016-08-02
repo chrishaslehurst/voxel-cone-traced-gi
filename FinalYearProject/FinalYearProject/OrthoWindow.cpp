@@ -10,7 +10,7 @@ OrthoWindow::OrthoWindow()
 
 OrthoWindow::~OrthoWindow()
 {
-
+	Shutdown();
 }
 
 bool OrthoWindow::Initialize(ID3D11Device* pDevice, int windowWidth, int windowHeight)
@@ -148,14 +148,14 @@ void OrthoWindow::ShutdownBuffers()
 	if (m_indexBuffer)
 	{
 		m_indexBuffer->Release();
-		m_indexBuffer = 0;
+		m_indexBuffer = nullptr;
 	}
 
 	// Release the vertex buffer.
 	if (m_vertexBuffer)
 	{
 		m_vertexBuffer->Release();
-		m_vertexBuffer = 0;
+		m_vertexBuffer = nullptr;
 	}
 
 }

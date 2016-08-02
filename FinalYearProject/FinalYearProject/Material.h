@@ -53,7 +53,7 @@ public:
 
 	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void Shutdown();
-	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
+	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
 
 	void ReloadShader(ID3D11Device* pDevice, HWND hwnd);
 
@@ -85,7 +85,7 @@ public:
 private:
 
 	Texture* LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename);
-	void ReleaseTexture();
+	void ReleaseTextures();
 
 	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename);
 	void ShutdownShader();
@@ -98,10 +98,6 @@ private:
 	ID3D11PixelShader*  m_pPixelShader;
 	ID3D11InputLayout*  m_pLayout;
 	ID3D11Buffer*		m_pMatrixBuffer;
-	ID3D11Buffer*		m_pLightBuffer;
-	ID3D11Buffer*		m_pCameraBuffer;
-	ID3D11Buffer*		m_pPointLightColourBuffer;
-	ID3D11Buffer*		m_pPointLightPositionBuffer;
 
 	float				m_fSpecularPower;
 	XMFLOAT4			m_vSpecularColour;

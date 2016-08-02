@@ -68,8 +68,8 @@ private:
 	ID3D11DepthStencilView*		m_pDepthStencilView;
 	D3D11_VIEWPORT				m_viewport;
 
-	ID3D11BlendState*			m_alphaEnableBlendingState;
-	ID3D11BlendState*			m_alphaDisableBlendingState;
+	ID3D11BlendState*			m_pAlphaEnableBlendingState;
+	ID3D11BlendState*			m_pAlphaDisableBlendingState;
 	ID3D11RasterizerState*		m_pRasterState;
 	XMMATRIX					m_mProjectionMatrix;
 	XMMATRIX					m_mWorldMatrix;

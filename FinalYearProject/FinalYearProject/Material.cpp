@@ -10,11 +10,11 @@ Material::Material()
 	, m_pMatrixBuffer(nullptr)
 	, m_pDiffuseTexture(nullptr)
 	, m_pNormalMap(nullptr)
+	, m_pRoughnessMap(nullptr)
+	, m_pSpecularMap(nullptr)
+	, m_pMetallicMap(nullptr)
+	, m_pAlphaMask(nullptr)
 	, m_pSampleState(nullptr)
-	, m_pLightBuffer(nullptr)
-	, m_pCameraBuffer(nullptr)
-	, m_pPointLightPositionBuffer(nullptr)
-	, m_pPointLightColourBuffer(nullptr)
 	, m_bHasSpecularMap(false)
 	, m_bHasNormalMap(false)
 	, m_bHasAlphaMask(false)
@@ -43,7 +43,7 @@ Material::Material()
 
 Material::~Material()
 {
-
+	Shutdown();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,14 +65,14 @@ bool Material::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, 
 
 void Material::Shutdown()
 {
-	ReleaseTexture();
+	ReleaseTextures();
 
 	ShutdownShader();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
+bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
 {
 	bool result;
 	result = SetShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix);
@@ -177,13 +177,42 @@ Texture* Material::LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pCont
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::ReleaseTexture()
+void Material::ReleaseTextures()
 {
 	if (m_pDiffuseTexture)
 	{
-		m_pDiffuseTexture->Shutdown();
 		delete m_pDiffuseTexture;
 		m_pDiffuseTexture = nullptr;
+	}
+
+	if (m_pNormalMap)
+	{
+		delete m_pNormalMap;
+		m_pNormalMap = nullptr;
+	}
+
+	if (m_pSpecularMap)
+	{
+		delete m_pSpecularMap;
+		m_pSpecularMap = nullptr;
+	}
+
+	if (m_pRoughnessMap)
+	{
+		delete m_pRoughnessMap;
+		m_pRoughnessMap = nullptr;
+	}
+
+	if (m_pMetallicMap)
+	{
+		delete m_pMetallicMap;
+		m_pMetallicMap = nullptr;
+	}
+
+	if (m_pAlphaMask)
+	{
+		delete m_pAlphaMask;
+		m_pAlphaMask = nullptr;
 	}
 }
 
@@ -355,32 +384,15 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 void Material::ShutdownShader()
 {
 
-	// Release the light constant buffers.
-	if (m_pPointLightColourBuffer)
-	{
-		m_pPointLightColourBuffer->Release();
-		m_pPointLightColourBuffer = nullptr;
-	}
-	if (m_pPointLightPositionBuffer)
-	{
-		m_pPointLightPositionBuffer->Release();
-		m_pPointLightPositionBuffer = nullptr;
-	}
-	if (m_pCameraBuffer)
-	{
-		m_pCameraBuffer->Release();
-		m_pCameraBuffer = nullptr;
-	}
-	if (m_pLightBuffer)
-	{
-		m_pLightBuffer->Release();
-		m_pLightBuffer = nullptr;
-	}
-
 	if (m_pSampleState)
 	{
 		m_pSampleState->Release();
 		m_pSampleState = nullptr;
+	}
+	if (m_pShadowMapSampler)
+	{
+		m_pShadowMapSampler->Release();
+		m_pShadowMapSampler = nullptr;
 	}
 
 	if (m_pMatrixBuffer)
