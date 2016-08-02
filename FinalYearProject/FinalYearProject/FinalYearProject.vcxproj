@@ -108,7 +108,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>false</TreatWarningAsError>
-      <AdditionalIncludeDirectories>C:\Users\Chris\Desktop\FYPApp\finalyearproject\FinalYearProject\FW1FontWrapper;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\FW1FontWrapper;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -159,6 +159,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DeferredRender.cpp" />
     <ClCompile Include="DirectionalLight.cpp" />
+    <ClCompile Include="GPUProfiler.cpp" />
     <ClCompile Include="LightManager.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="D3DWrapper.cpp" />
@@ -179,6 +180,7 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="DeferredRender.h" />
     <ClInclude Include="DirectionalLight.h" />
+    <ClInclude Include="GPUProfiler.h" />
     <ClInclude Include="LightManager.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="D3DWrapper.h" />

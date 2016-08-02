@@ -85,6 +85,9 @@
     <ClCompile Include="DeferredRender.cpp">
       <Filter>Source\Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="GPUProfiler.cpp">
+      <Filter>Source\Application</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -140,6 +143,9 @@
     </ClInclude>
     <ClInclude Include="..\FW1FontWrapper\FW1FontWrapper.h">
       <Filter>FW1FontWrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUProfiler.h">
+      <Filter>Source\Application</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

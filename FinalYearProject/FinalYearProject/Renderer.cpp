@@ -1,7 +1,7 @@
 #include "Renderer.h"
 #include "Debugging.h"
 #include "InputManager.h"
-#include "../FW1FontWrapper/FW1FontWrapper.h"
+#include "GPUProfiler.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Renderer::Renderer()
@@ -24,6 +24,7 @@ Renderer::~Renderer()
 
 bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 {
+	
 	m_pD3D = new D3DWrapper;
 	if (!m_pD3D)
 	{
@@ -97,6 +98,8 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		pLightManager->SetDirectionalLightDirection(XMFLOAT3(0.2f, -0.1f, 0.2f));
 	}
 
+	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
+
 	return true;
 }
 
@@ -164,6 +167,7 @@ bool Renderer::Update(HWND hwnd)
 bool Renderer::Render()
 {
 	//Generate view matrix based on camera position
+	GPUProfiler::Get()->BeginFrame(m_pD3D->GetDeviceContext());
 	m_pCamera->Render();
 
 	XMMATRIX mView, mProjection, mWorld, mOrtho, mBaseView;
@@ -195,24 +199,9 @@ bool Renderer::Render()
 
 	m_DeferredRender.RenderLightingPass(m_pD3D->GetDeviceContext(), m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
 
-	IFW1Factory *pFW1Factory;
-	HRESULT hResult = FW1CreateFactory(FW1_VERSION, &pFW1Factory);
-
-	IFW1FontWrapper *pFontWrapper;
-	hResult = pFW1Factory->CreateFontWrapper(m_pD3D->GetDevice(), L"Arial", &pFontWrapper);
-
-	pFontWrapper->DrawString(
-		m_pD3D->GetDeviceContext(),
-		L"Text",// String
-		128.0f,// Font size
-		100.0f,// X position
-		50.0f,// Y position
-		0xff0099ff,// Text color, 0xAaBbGgRr
-		0// Flags (for example FW1_RESTORESTATE to keep context states unchanged)
-		);
-	m_pD3D->GetDeviceContext()->GSSetShader(nullptr, nullptr, 0);
-	pFontWrapper->Release();
-	pFW1Factory->Release();
+	GPUProfiler::Get()->EndFrame(m_pD3D->GetDeviceContext());
+	GPUProfiler::Get()->DisplayTimes(m_pD3D->GetDeviceContext());
+	
 
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
