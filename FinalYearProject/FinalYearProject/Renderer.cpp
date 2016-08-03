@@ -2,6 +2,7 @@
 #include "Debugging.h"
 #include "InputManager.h"
 #include "GPUProfiler.h"
+#include "Timer.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Renderer::Renderer()
@@ -10,7 +11,7 @@ Renderer::Renderer()
 	, m_pModel(nullptr)
 	, m_pFullScreenWindow(nullptr)
 {
-
+	m_dCPUFrameStartTime = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -166,8 +167,15 @@ bool Renderer::Update(HWND hwnd)
 
 bool Renderer::Render()
 {
+	double dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
+	double dCPUFrameTime = (dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
+
+	m_dCPUFrameStartTime = dCPUFrameEndTime;
+
+	ID3D11DeviceContext* pContext = m_pD3D->GetDeviceContext();
+
 	//Generate view matrix based on camera position
-	GPUProfiler::Get()->BeginFrame(m_pD3D->GetDeviceContext());
+	GPUProfiler::Get()->BeginFrame(pContext);
 	m_pCamera->Render();
 
 	XMMATRIX mView, mProjection, mWorld, mOrtho, mBaseView;
@@ -176,15 +184,19 @@ bool Renderer::Render()
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
 
-	m_DeferredRender.SetRenderTargets(m_pD3D->GetDeviceContext());
-	m_DeferredRender.ClearRenderTargets(m_pD3D->GetDeviceContext(), 0.f, 0.f, 0.f, 1.f);
+	m_DeferredRender.SetRenderTargets(pContext);
+	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
 	
 	//Render the model to the deferred buffers
-	m_pModel->RenderToBuffers(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection);
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
+	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection);
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
 
 	//Render the model to the shadow maps
-	m_pModel->RenderShadows(m_pD3D->GetDeviceContext(), mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
-	
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psShadowRender);
+	m_pModel->RenderShadows(pContext, mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psShadowRender);
+
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
 
@@ -195,12 +207,13 @@ bool Renderer::Render()
 
 	m_pD3D->SetRenderOutputToScreen();
 	m_pD3D->TurnZBufferOff();
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
 	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
 
 	m_DeferredRender.RenderLightingPass(m_pD3D->GetDeviceContext(), m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
-
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
 	GPUProfiler::Get()->EndFrame(m_pD3D->GetDeviceContext());
-	GPUProfiler::Get()->DisplayTimes(m_pD3D->GetDeviceContext());
+	GPUProfiler::Get()->DisplayTimes(m_pD3D->GetDeviceContext(), static_cast<float>(dCPUFrameTime));
 	
 
 	//Go back to 3D rendering

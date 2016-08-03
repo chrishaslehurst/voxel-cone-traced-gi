@@ -88,6 +88,9 @@
     <ClCompile Include="GPUProfiler.cpp">
       <Filter>Source\Application</Filter>
     </ClCompile>
+    <ClCompile Include="OnScreenLog.cpp">
+      <Filter>Source\Application</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -145,6 +148,9 @@
       <Filter>FW1FontWrapper</Filter>
     </ClInclude>
     <ClInclude Include="GPUProfiler.h">
+      <Filter>Source\Application</Filter>
+    </ClInclude>
+    <ClInclude Include="OnScreenLog.h">
       <Filter>Source\Application</Filter>
     </ClInclude>
   </ItemGroup>
