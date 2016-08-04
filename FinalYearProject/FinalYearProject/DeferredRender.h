@@ -16,9 +16,8 @@ using namespace DirectX;
 enum BufferType
 {
 	btWorldPos,
-	btDiffuse,
+	btDiffuse, //metallic is stored in the w component of the diffuse
 	btNormals, //roughness is stored in the w component of the normals texture
-	btMetallic,
 	btMax
 };
 

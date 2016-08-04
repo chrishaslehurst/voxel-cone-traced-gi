@@ -48,9 +48,8 @@ struct PixelInput
 
 //Resources
 Texture2D	WorldPosition;
-Texture2D	DiffuseColour;
+Texture2D	DiffuseColour;		//Metallic stored in the w component
 Texture2D	Normals;			//Roughness stored in the w component
-Texture2D	Metallic;
 TextureCube ShadowMap[NUM_LIGHTS];
 
 //Sample State
@@ -177,7 +176,8 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float Roughness = NormalSample.a;
 	float4 DiffuseColourSample = DiffuseColour.Sample(SampleTypePoint, input.tex);
 	float4 WorldPositionSample = WorldPosition.Sample(SampleTypePoint, input.tex);
-	float4 MetallicSample = Metallic.Sample(SampleTypePoint, input.tex);
+	float4 MetallicSample = DiffuseColourSample.a;
+	DiffuseColourSample.a = 1.f;
 
 	float3 ToCamera = cameraPosition.xyz - WorldPositionSample.xyz;
 	ToCamera = normalize(ToCamera);

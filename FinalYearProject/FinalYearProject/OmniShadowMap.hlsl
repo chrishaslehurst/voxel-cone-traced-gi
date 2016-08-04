@@ -65,7 +65,7 @@ void GSMain(uint shadowMapId : SV_GSInstanceID, triangle GSInput input[3], inout
 {
 	PSInput output;
 	output.shadowMapIndex = shadowMapId;
-
+	[unroll]
 	for (uint vertexIndex = 0; vertexIndex < 3; ++vertexIndex)
 	{
 		output.worldSpaceLightDirection = input[vertexIndex].worldSpaceLightDirection;

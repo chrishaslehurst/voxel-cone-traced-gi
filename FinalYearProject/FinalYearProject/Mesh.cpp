@@ -2,6 +2,7 @@
 #include "Debugging.h"
 #include "Timer.h"
 #include <sstream>
+#include "DebugLog.h"
 #include "InputManager.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,10 +63,18 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
 	
 	//Opaque pass
+
+	//TODO: This needs to be tidier.. just a quick hack to only set the shader once..
+	m_arrSubMeshes[0]->m_pMaterial->SetShadersAndSamplers(pDeviceContext);
+	m_arrSubMeshes[0]->m_pMaterial->SetPerFrameShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix);
+	int iModelsRenderedInGBufferPass = 0;
+	int iNumPolysRenderedInGBufferPass = 0;
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
 		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
 		{
+			iModelsRenderedInGBufferPass++;
+			iNumPolysRenderedInGBufferPass += m_arrSubMeshes[i]->GetNumPolys();
 			RenderBuffers(i, pDeviceContext);
 			
 			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix))
@@ -74,6 +83,15 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 			}
 		}
 	}
+	stringstream ss;
+	ss << "Models Rendered In G Buffer Pass: " << iModelsRenderedInGBufferPass;
+	DebugLog::Get()->OutputString(ss.str());
+
+	stringstream ss2;
+	ss2 << "Polygons Rendered In G Buffer Pass: " << iNumPolysRenderedInGBufferPass;
+	DebugLog::Get()->OutputString(ss2.str());
+
+
 	//Transparent pass..
 	//for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	//{
@@ -92,7 +110,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	//Shadowing Pass
-	for (int i = 0; i < NUM_LIGHTS; i++)
+	for (int i = 0; NUM_LIGHTS < 1; i++)
 	{
 		PointLight* pLight = LightManager::Get()->GetPointLight(i);
 		if (pLight)

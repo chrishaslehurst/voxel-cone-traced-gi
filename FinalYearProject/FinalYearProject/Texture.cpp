@@ -36,7 +36,7 @@ bool Texture::LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, 
 		VS_LOG_VERBOSE("Failed to generate mip maps for texture");
 		return false;
 	}
-	
+ 	
 	hr = CreateShaderResourceView(pDevice, mipChain.GetImages(), mipChain.GetImageCount(), mipChain.GetMetadata(), &m_pTexture);
 	if (FAILED(hr))
 	{

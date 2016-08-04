@@ -69,9 +69,6 @@ __declspec(align(16)) class Mesh
 		ID3D11Buffer* m_pVertexBuffer;
 		ID3D11Buffer* m_pIndexBuffer;
 		int			  m_iVertexCount;
-		int			  m_iTextureCoordCount;
-		int			  m_iNormalCount;
-		int			  m_iFaceCount;
 		int			  m_iIndexCount;
 
 		SubMesh() 
@@ -79,12 +76,11 @@ __declspec(align(16)) class Mesh
 		, m_pIndexBuffer(nullptr)
 		, m_pMaterial(nullptr)
 		, m_iVertexCount(0)
-		, m_iFaceCount(0)
-		, m_iNormalCount(0)
 		, m_iIndexCount(0)
-		, m_iTextureCoordCount(0)
 		{
 		}
+
+		int GetNumPolys() { return m_iVertexCount / 3; }
 	};
 
 	struct Face

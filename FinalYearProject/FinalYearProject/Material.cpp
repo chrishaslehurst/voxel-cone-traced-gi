@@ -1,6 +1,9 @@
 #include "Material.h"
 #include "Debugging.h"
 #include "LightManager.h"
+
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Material::Material()
@@ -450,35 +453,6 @@ void Material::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCH
 
 bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
 {
-	//Matrices need to be transposed before sending them into the shader for dx11..
-	mWorldMatrix = XMMatrixTranspose(mWorldMatrix);
-	mViewMatrix = XMMatrixTranspose(mViewMatrix);
-	mProjectionMatrix = XMMatrixTranspose(mProjectionMatrix);
-
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	//Lock the matrixBuffer, set new matrices inside it, then unlock it.
-	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to lock the matrix buffer");
-		return false;
-	}
-	MatrixBuffer* pMatrixData;
-	//Get pointer to the buffer data
-	pMatrixData = (MatrixBuffer*)mappedResource.pData;
-
-	pMatrixData->world = mWorldMatrix;
-	pMatrixData->view = mViewMatrix;
-	pMatrixData->projection = mProjectionMatrix;
-
-	//Unlock the buffer
-	pDeviceContext->Unmap(m_pMatrixBuffer, 0);
-
-	//Set the position of the buffer in the HLSL shader
-	unsigned int u_iBufferNumber = 0;
-
-	//Finally, set the buffers in the shader to the new values
-	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pMatrixBuffer);
 
 	pixelShaderResourceCount = 0;
 	
@@ -515,6 +489,48 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 
 void Material::RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
 {
+	//Render the triangle
+	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
+
+}
+
+bool Material::SetPerFrameShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
+{
+	//Matrices need to be transposed before sending them into the shader for dx11..
+	mWorldMatrix = XMMatrixTranspose(mWorldMatrix);
+	mViewMatrix = XMMatrixTranspose(mViewMatrix);
+	mProjectionMatrix = XMMatrixTranspose(mProjectionMatrix);
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	//Lock the matrixBuffer, set new matrices inside it, then unlock it.
+	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to lock the matrix buffer");
+		return false;
+	}
+	MatrixBuffer* pMatrixData;
+	//Get pointer to the buffer data
+	pMatrixData = (MatrixBuffer*)mappedResource.pData;
+
+	pMatrixData->world = mWorldMatrix;
+	pMatrixData->view = mViewMatrix;
+	pMatrixData->projection = mProjectionMatrix;
+
+	//Unlock the buffer
+	pDeviceContext->Unmap(m_pMatrixBuffer, 0);
+
+	//Set the position of the buffer in the HLSL shader
+	unsigned int u_iBufferNumber = 0;
+
+	//Finally, set the buffers in the shader to the new values
+	pDeviceContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pMatrixBuffer);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Material::SetShadersAndSamplers(ID3D11DeviceContext* pDeviceContext)
+{
 	//Set the vertex input layout
 	pDeviceContext->IASetInputLayout(m_pLayout);
 
@@ -524,15 +540,4 @@ void Material::RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount
 
 	//Set the sampler state
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSampleState);
-
-	//Render the triangle
-	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
-
-	ID3D11ShaderResourceView* nullSRV[9] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-	pDeviceContext->PSSetShaderResources(0, 9, nullSRV);
-	
-	ID3D11SamplerState* sample = { nullptr };
-	pDeviceContext->PSSetSamplers(0, 1, &sample);
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -30,26 +30,22 @@ struct PixelInput
 struct PixelOutput
 {
 	float4 position : SV_Target0;
-	float4 colour : SV_Target1;
+	float4 colour : SV_Target1; //metallic is just one float so store in final element of colour
 	float4 normal : SV_Target2; //roughness is just a float value so stored in the final element of the normal
-	float4 metallic : SV_Target3;
+//	float4 metallic : SV_Target3;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 //Resources
 
-#if USE_TEXTURE
+
 Texture2D diffuseTexture;
-#endif
 
-#if USE_NORMAL_MAPS
 Texture2D normalMapTexture;
-#endif
 
-#if USE_PHYSICALLY_BASED_SHADING
 Texture2D roughnessMapTexture;
 Texture2D metallicMapTexture;
-#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //Sample State
@@ -96,31 +92,20 @@ PixelOutput PSMain(PixelInput input) : SV_TARGET
 	
 	output.position = input.worldPosition;
 
-#if USE_TEXTURE
-	output.colour = diffuseTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
-#else
-	output.colour = float4(1.f, 1.f, 1.f, 1.f);
-#endif
 
-#if USE_NORMAL_MAPS
+	output.colour = diffuseTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
+
 	normalMapCol = normalMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
 	//Expand range of normal map to -1 / +1
 	normalMapCol = (normalMapCol * 2) - 1.f;
 	// Calculate normal from the data in normal map.
 	output.normal.rgb = (normalMapCol.x * input.tangent) + (normalMapCol.y * input.binormal) + (normalMapCol.z * input.normal);
 	output.normal.rgb = normalize(output.normal.rgb);
-#else
-	output.normal.rgb = input.normal;
-#endif
 
-#if USE_PHYSICALLY_BASED_SHADING
 	//sample the roughness and metallic maps
 	output.normal.w = roughnessMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y)).r;
-	output.metallic = metallicMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
-#else
-	output.normal.w = 0.f;
-	output.metallic = float4(0.f, 0.f, 0.f, 0.f);
-#endif
+	output.colour.w = metallicMapTexture.SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y)).r;
+
 
 	return output;
 }

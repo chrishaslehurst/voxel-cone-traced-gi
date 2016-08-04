@@ -47,6 +47,7 @@ class Material
 		}
 	};
 
+
 public:
 	Material();
 	~Material();
@@ -82,6 +83,9 @@ public:
 
 	void SetHasMetallic(bool bHasMetallic) { m_bHasMetallicMap = bHasMetallic; }
 	bool UsesMetallicMaps() { return m_bHasMetallicMap; }
+
+	bool SetPerFrameShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
+	void SetShadersAndSamplers(ID3D11DeviceContext* pDeviceContext);
 private:
 
 	Texture* LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename);

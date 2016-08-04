@@ -2,6 +2,7 @@
 #include "Debugging.h"
 #include "InputManager.h"
 #include "GPUProfiler.h"
+#include "DebugLog.h"
 #include "Timer.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -100,6 +101,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	}
 
 	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
+	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
 
 	return true;
 }
@@ -167,6 +169,8 @@ bool Renderer::Update(HWND hwnd)
 
 bool Renderer::Render()
 {
+
+	
 	double dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 	double dCPUFrameTime = (dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
 
@@ -189,6 +193,7 @@ bool Renderer::Render()
 	
 	//Render the model to the deferred buffers
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
+	m_pD3D->TurnOffAlphaBlending();
 	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
 
@@ -200,7 +205,7 @@ bool Renderer::Render()
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
 
-	//Prep for 2D rendering..
+	//Prep for 2D rendering..	
 	m_pD3D->GetOrthoMatrix(mOrtho);
 	m_pCamera->RenderBaseViewMatrix();
 	m_pCamera->GetBaseViewMatrix(mBaseView);
@@ -210,11 +215,11 @@ bool Renderer::Render()
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
 	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
 
-	m_DeferredRender.RenderLightingPass(m_pD3D->GetDeviceContext(), m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
+	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
-	GPUProfiler::Get()->EndFrame(m_pD3D->GetDeviceContext());
-	GPUProfiler::Get()->DisplayTimes(m_pD3D->GetDeviceContext(), static_cast<float>(dCPUFrameTime));
-	
+	GPUProfiler::Get()->EndFrame(pContext);
+	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
+	DebugLog::Get()->PrintLogToScreen(pContext);
 
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
