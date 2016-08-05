@@ -646,6 +646,13 @@ bool D3DWrapper::SetUpRasteriser()
 		return false;
 	}
 
+	rasterDesc.FrontCounterClockwise = true;
+	if (FAILED(m_pDevice->CreateRasterizerState(&rasterDesc, &m_pDrawBackFacesRasterState)))
+	{
+		VS_LOG_VERBOSE("Failed to create back face rasterizer state");
+		return false;
+	}
+
 	m_pDeviceContext->RSSetState(m_pRasterState);
 	return true;
 }

@@ -43,6 +43,9 @@ public:
 	void TurnZBufferOn();
 	void TurnZBufferOff();
 
+	void RenderBackFacesOn() { m_pDeviceContext->RSSetState(m_pDrawBackFacesRasterState); }
+	void RenderBackFacesOff() {	m_pDeviceContext->RSSetState(m_pRasterState); }
+
 private:
 	void Shutdown();
 
@@ -71,6 +74,7 @@ private:
 	ID3D11BlendState*			m_pAlphaEnableBlendingState;
 	ID3D11BlendState*			m_pAlphaDisableBlendingState;
 	ID3D11RasterizerState*		m_pRasterState;
+	ID3D11RasterizerState*		m_pDrawBackFacesRasterState;
 	XMMATRIX					m_mProjectionMatrix;
 	XMMATRIX					m_mWorldMatrix;
 	XMMATRIX					m_mOrthoMatrix;

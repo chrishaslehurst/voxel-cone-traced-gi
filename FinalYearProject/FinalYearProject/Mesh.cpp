@@ -110,7 +110,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	//Shadowing Pass
-	for (int i = 0; NUM_LIGHTS < 1; i++)
+	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
 		PointLight* pLight = LightManager::Get()->GetPointLight(i);
 		if (pLight)

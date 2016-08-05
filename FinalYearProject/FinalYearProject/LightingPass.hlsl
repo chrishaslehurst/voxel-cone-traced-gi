@@ -1,7 +1,7 @@
 #define NUM_LIGHTS 4
 #define PI 3.14159265359
 
-static const float DepthBias = 0.001f;
+static const float DepthBias = 0.00001f;
 
 //Globals
 cbuffer MatrixBuffer

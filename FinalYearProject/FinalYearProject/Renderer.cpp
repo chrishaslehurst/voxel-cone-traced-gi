@@ -199,7 +199,9 @@ bool Renderer::Render()
 
 	//Render the model to the shadow maps
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psShadowRender);
+	m_pD3D->RenderBackFacesOn();
 	m_pModel->RenderShadows(pContext, mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
+	m_pD3D->RenderBackFacesOff();
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psShadowRender);
 
 	//Clear buffers to begin the scene
