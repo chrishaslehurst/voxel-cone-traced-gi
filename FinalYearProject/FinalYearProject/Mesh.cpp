@@ -4,6 +4,9 @@
 #include <sstream>
 #include "DebugLog.h"
 #include "InputManager.h"
+
+bool SortByDistanceToCameraAscending(const SubMesh* lhs, const SubMesh* rhs) { return lhs->m_fDistanceToCamera < rhs->m_fDistanceToCamera; }
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Mesh::Mesh()
@@ -60,6 +63,7 @@ void Mesh::Shutdown()
 
 void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera)
 {
+	m_arrMeshesToRender.clear();
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
 	
@@ -76,14 +80,23 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 		{
 			iModelsRenderedInGBufferPass++;
 			iNumPolysRenderedInGBufferPass += m_arrSubMeshes[i]->GetNumPolys();
-			RenderBuffers(i, pDeviceContext);
-			
-			if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix))
-			{
-				VS_LOG_VERBOSE("Unable to render object with shader");
-			}
+			m_arrSubMeshes[i]->CalculateDistanceToCamera(pCamera);
+			m_arrSubMeshes[i]->m_iBufferIndex = i;
+			m_arrMeshesToRender.push_back(m_arrSubMeshes[i]);
 		}
 	}
+
+	std::sort(m_arrMeshesToRender.begin(), m_arrMeshesToRender.end(), SortByDistanceToCameraAscending);
+	for (int i = 0; i < m_arrMeshesToRender.size(); i++)
+	{
+		RenderBuffers(m_arrMeshesToRender[i]->m_iBufferIndex, pDeviceContext);
+
+		if (!m_arrMeshesToRender[i]->m_pMaterial->Render(pDeviceContext, m_arrMeshesToRender[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix))
+		{
+			VS_LOG_VERBOSE("Unable to render object with shader");
+		}
+	}
+
 	stringstream ss;
 	ss << "Models Rendered In G Buffer Pass: " << iModelsRenderedInGBufferPass;
 	DebugLog::Get()->OutputString(ss.str());
@@ -555,7 +568,7 @@ void Mesh::CalculateModelVectors()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::SubMesh::CalculateBoundingBox()
+void SubMesh::CalculateBoundingBox()
 {
 	XMFLOAT3 min = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
 	XMFLOAT3 max = XMFLOAT3(0.f, 0.f, 0.f);
@@ -590,4 +603,19 @@ void Mesh::SubMesh::CalculateBoundingBox()
 
 	m_BoundingBox.Max = max;
 	m_BoundingBox.Min = min;
+}
+
+void SubMesh::CalculateDistanceToCamera(Camera* pCamera)
+{
+	XMVECTOR vMin, vMax, vMid, vHalfSize, vCam, vToCam;
+	vMax = XMLoadFloat3(&m_BoundingBox.Max);
+	vMin = XMLoadFloat3(&m_BoundingBox.Min);
+	vHalfSize = (vMax - vMin) * 0.5f;
+	vMid = vHalfSize + vMin;
+
+	vCam = XMLoadFloat3(&pCamera->GetPosition());
+
+	vToCam = vCam - vMid;
+
+	m_fDistanceToCamera = abs(XMVector3Length(vToCam).m128_f32[0] - XMVector3Length(vHalfSize).m128_f32[0]);
 }

@@ -267,7 +267,6 @@ bool Camera::CheckPointInsidePlane(int index, float x, float y, float z)
 
 bool Camera::CheckBoundingBoxInsideViewFrustum(const AABB& boundingBox)
 {
-
 	for (int i = 0; i < 6; i++)
 	{
 		//Check all the corners of the box to see if any are inside the frustum..

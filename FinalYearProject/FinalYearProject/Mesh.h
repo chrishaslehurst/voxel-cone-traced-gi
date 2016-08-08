@@ -18,6 +18,59 @@
 using namespace DirectX;
 using namespace std;
 
+__declspec(align(16)) struct ModelType
+{
+	XMFLOAT3 pos;
+	XMFLOAT2 tex;
+	XMFLOAT3 norm;
+	XMFLOAT3 tangent;
+	XMFLOAT3 binormal;
+
+	void* operator new(size_t i)
+	{
+		return _mm_malloc(i, 16);
+	}
+
+		void operator delete(void* p)
+	{
+		_mm_free(p);
+	}
+};
+
+struct SubMesh
+{
+	std::vector<ModelType>	  m_arrModel;
+	Material*				  m_pMaterial;
+
+	ID3D11Buffer* m_pVertexBuffer;
+	ID3D11Buffer* m_pIndexBuffer;
+	int			  m_iVertexCount;
+	int			  m_iIndexCount;
+
+	AABB		  m_BoundingBox;
+	float		  m_fDistanceToCamera;
+	int			  m_iBufferIndex;
+
+	void CalculateBoundingBox();
+	void CalculateDistanceToCamera(Camera* pCamera);
+
+	bool operator<(const SubMesh& A) const
+	{
+		return m_fDistanceToCamera < A.m_fDistanceToCamera;
+	}
+
+	SubMesh()
+		: m_pVertexBuffer(nullptr)
+		, m_pIndexBuffer(nullptr)
+		, m_pMaterial(nullptr)
+		, m_iVertexCount(0)
+		, m_iIndexCount(0)
+	{
+	}
+
+	int GetNumPolys() { return m_iVertexCount / 3; }
+};
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __declspec(align(16)) class Mesh
@@ -44,50 +97,9 @@ __declspec(align(16)) class Mesh
 	};
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	__declspec(align(16)) struct ModelType
-	{
-		XMFLOAT3 pos;
-		XMFLOAT2 tex;
-		XMFLOAT3 norm;
-		XMFLOAT3 tangent;
-		XMFLOAT3 binormal;
+	
 
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
-	struct SubMesh
-	{
-		std::vector<ModelType>	  m_arrModel;
-		Material*				  m_pMaterial;
-
-		ID3D11Buffer* m_pVertexBuffer;
-		ID3D11Buffer* m_pIndexBuffer;
-		int			  m_iVertexCount;
-		int			  m_iIndexCount;
-
-		AABB		  m_BoundingBox;
-
-		void CalculateBoundingBox();
-
-		SubMesh() 
-		: m_pVertexBuffer(nullptr)
-		, m_pIndexBuffer(nullptr)
-		, m_pMaterial(nullptr)
-		, m_iVertexCount(0)
-		, m_iIndexCount(0)
-		{
-		}
-
-		int GetNumPolys() { return m_iVertexCount / 3; }
-	};
+	
 
 	struct Face
 	{
@@ -128,6 +140,7 @@ private:
 	void CalculateModelVectors();
 
 	std::vector<SubMesh*> m_arrSubMeshes;
+	std::vector<SubMesh*> m_arrMeshesToRender;
 	MaterialLibrary* m_pMatLib;
 	
 };
