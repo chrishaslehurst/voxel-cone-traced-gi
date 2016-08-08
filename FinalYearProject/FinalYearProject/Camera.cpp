@@ -178,4 +178,135 @@ void Camera::GetViewMatrix(XMMATRIX& mViewMatrix)
 	mViewMatrix = m_mViewMatrix;
 }
 
+void Camera::CalculateViewFrustum(float fScreenDepth, XMMATRIX mProjectionMatrix)
+{
+	XMFLOAT4X4 projection;
+	XMStoreFloat4x4(&projection, mProjectionMatrix);
+
+	float zMin = -projection._43 / projection._33;
+	float r = fScreenDepth / (fScreenDepth - zMin);
+
+	projection._33 = r;
+	projection._43 = -r * zMin;
+
+	XMMATRIX proj = XMLoadFloat4x4(&projection);
+	XMMATRIX mFrustumMatrix = XMMatrixMultiply(m_mViewMatrix, proj);
+	XMFLOAT4X4 frustumMatrix;
+	XMStoreFloat4x4(&frustumMatrix, mFrustumMatrix);
+
+	XMVECTOR plane;
+	// Calculate near plane of frustum.
+	m_viewFrustumPlanes[0].x = frustumMatrix._13;
+	m_viewFrustumPlanes[0].y = frustumMatrix._23;
+	m_viewFrustumPlanes[0].z = frustumMatrix._33;
+	m_viewFrustumPlanes[0].w = frustumMatrix._43;
+
+	plane = XMLoadFloat4(&m_viewFrustumPlanes[0]);
+	plane = XMPlaneNormalize(plane);
+	XMStoreFloat4(&m_viewFrustumPlanes[0], plane);
+
+	// Calculate far plane of frustum.
+	m_viewFrustumPlanes[1].x = frustumMatrix._14 - frustumMatrix._13;
+	m_viewFrustumPlanes[1].y = frustumMatrix._24 - frustumMatrix._23;
+	m_viewFrustumPlanes[1].z = frustumMatrix._34 - frustumMatrix._33;
+	m_viewFrustumPlanes[1].w = frustumMatrix._44 - frustumMatrix._43;
+
+	plane = XMLoadFloat4(&m_viewFrustumPlanes[1]);
+	plane = XMPlaneNormalize(plane);
+	XMStoreFloat4(&m_viewFrustumPlanes[1], plane);
+
+	// Calculate left plane of frustum.
+	m_viewFrustumPlanes[2].x = frustumMatrix._14 + frustumMatrix._11;
+	m_viewFrustumPlanes[2].y = frustumMatrix._24 + frustumMatrix._21;
+	m_viewFrustumPlanes[2].z = frustumMatrix._34 + frustumMatrix._31;
+	m_viewFrustumPlanes[2].w = frustumMatrix._44 + frustumMatrix._41;
+	plane = XMLoadFloat4(&m_viewFrustumPlanes[2]);
+	plane = XMPlaneNormalize(plane);
+	XMStoreFloat4(&m_viewFrustumPlanes[2], plane);
+
+	// Calculate right plane of frustum.
+	m_viewFrustumPlanes[3].x = frustumMatrix._14 - frustumMatrix._11;
+	m_viewFrustumPlanes[3].y = frustumMatrix._24 - frustumMatrix._21;
+	m_viewFrustumPlanes[3].z = frustumMatrix._34 - frustumMatrix._31;
+	m_viewFrustumPlanes[3].w = frustumMatrix._44 - frustumMatrix._41;
+	plane = XMLoadFloat4(&m_viewFrustumPlanes[3]);
+	plane = XMPlaneNormalize(plane);
+	XMStoreFloat4(&m_viewFrustumPlanes[3], plane);
+
+	// Calculate top plane of frustum.
+	m_viewFrustumPlanes[4].x = frustumMatrix._14 - frustumMatrix._12;
+	m_viewFrustumPlanes[4].y = frustumMatrix._24 - frustumMatrix._22;
+	m_viewFrustumPlanes[4].z = frustumMatrix._34 - frustumMatrix._32;
+	m_viewFrustumPlanes[4].w = frustumMatrix._44 - frustumMatrix._42;
+	plane = XMLoadFloat4(&m_viewFrustumPlanes[4]);
+	plane = XMPlaneNormalize(plane);
+	XMStoreFloat4(&m_viewFrustumPlanes[4], plane);
+
+	// Calculate bottom plane of frustum.
+	m_viewFrustumPlanes[5].x = frustumMatrix._14 + frustumMatrix._12;
+	m_viewFrustumPlanes[5].y = frustumMatrix._24 + frustumMatrix._22;
+	m_viewFrustumPlanes[5].z = frustumMatrix._34 + frustumMatrix._32;
+	m_viewFrustumPlanes[5].w = frustumMatrix._44 + frustumMatrix._42;
+	plane = XMLoadFloat4(&m_viewFrustumPlanes[5]);
+	plane = XMPlaneNormalize(plane);
+	XMStoreFloat4(&m_viewFrustumPlanes[5], plane);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Camera::CheckPointInsidePlane(int index, float x, float y, float z)
+{
+	XMFLOAT4 vPoint(x, y, z, 1.f);
+	
+	XMVECTOR point, plane;
+	point = XMLoadFloat4(&vPoint);
+	plane = XMLoadFloat4(&m_viewFrustumPlanes[index]);
+	
+	return (XMPlaneDotCoord(plane, point).m128_f32[0] >= 0.f);
+}
+
+bool Camera::CheckBoundingBoxInsideViewFrustum(const AABB& boundingBox)
+{
+
+	for (int i = 0; i < 6; i++)
+	{
+		//Check all the corners of the box to see if any are inside the frustum..
+		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Min.y, boundingBox.Min.z))
+		{
+			continue;
+		}
+		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Max.y, boundingBox.Min.z))
+		{
+			continue;
+		}
+		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Min.y, boundingBox.Max.z))
+		{
+			continue;
+		}
+		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Max.y, boundingBox.Max.z))
+		{
+			continue;
+		}
+		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z))
+		{
+			continue;
+		}
+		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Max.y, boundingBox.Min.z))
+		{
+			continue;
+		}
+		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Min.y, boundingBox.Max.z))
+		{
+			continue;
+		}
+		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Max.y, boundingBox.Max.z))
+		{
+			continue;
+		}
+		return false;
+	}
+
+	return true;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

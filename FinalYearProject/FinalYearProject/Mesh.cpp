@@ -32,10 +32,11 @@ bool Mesh::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND
 	//Calculate the binormals and tangent vectors
 	CalculateModelVectors();
 	
-	//Initialise the buffers
+	//Initialise the buffers and calculate bounding boxes
 	bool result(true);
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
+		m_arrSubMeshes[i]->CalculateBoundingBox();
 		result = InitialiseBuffers(i, pDevice);
 		if (!result)
 		{
@@ -57,7 +58,7 @@ void Mesh::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix)
+void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera)
 {
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
@@ -71,7 +72,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 	int iNumPolysRenderedInGBufferPass = 0;
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
-		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
+		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps() && pCamera->CheckBoundingBoxInsideViewFrustum(m_arrSubMeshes[i]->m_BoundingBox))
 		{
 			iModelsRenderedInGBufferPass++;
 			iNumPolysRenderedInGBufferPass += m_arrSubMeshes[i]->GetNumPolys();
@@ -553,3 +554,40 @@ void Mesh::CalculateModelVectors()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::SubMesh::CalculateBoundingBox()
+{
+	XMFLOAT3 min = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
+	XMFLOAT3 max = XMFLOAT3(0.f, 0.f, 0.f);
+	for (int i = 0; i < m_arrModel.size(); i++)
+	{
+		XMFLOAT3 pos = m_arrModel[i].pos;
+		if (pos.x > max.x)
+		{
+			max.x = pos.x;
+		}
+		if (pos.x < min.x)
+		{
+			min.x = pos.x;
+		}
+		if (pos.y > max.y)
+		{
+			max.y = pos.y;
+		}
+		if (pos.y < min.y)
+		{
+			min.y = pos.y;
+		}
+		if (pos.z > max.z)
+		{
+			max.z = pos.z;
+		}
+		if (pos.z < min.z)
+		{
+			min.z = pos.z;
+		}
+	}
+
+	m_BoundingBox.Max = max;
+	m_BoundingBox.Min = min;
+}

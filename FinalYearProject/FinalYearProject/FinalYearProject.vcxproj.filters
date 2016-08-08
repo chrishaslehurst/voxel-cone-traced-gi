@@ -91,6 +91,9 @@
     <ClCompile Include="DebugLog.cpp">
       <Filter>Source\Application</Filter>
     </ClCompile>
+    <ClCompile Include="AABB.cpp">
+      <Filter>Source\Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -152,6 +155,9 @@
     </ClInclude>
     <ClInclude Include="DebugLog.h">
       <Filter>Source\Application</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB.h">
+      <Filter>Source\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

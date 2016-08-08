@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include <DirectXMath.h>
+#include "AABB.h"
 
 using namespace DirectX;
 
@@ -35,6 +36,10 @@ public:
 	void RenderBaseViewMatrix();
 	void GetBaseViewMatrix(XMMATRIX& mBaseView);
 	void GetViewMatrix(XMMATRIX& mViewMatrix);
+
+	void CalculateViewFrustum(float fScreenDepth, XMMATRIX mProjectionMatrix);
+	bool CheckPointInsidePlane(int index, float x, float y, float z);
+	bool CheckBoundingBoxInsideViewFrustum(const AABB& boundingBox);
 private:
 
 	int m_iPrevMouseX, m_iPrevMouseY;
@@ -51,6 +56,8 @@ private:
 	XMFLOAT3 m_vForward;
 	XMFLOAT3 m_vUpVector;
 	XMFLOAT3 m_vLeftVector;
+	
+	XMFLOAT4 m_viewFrustumPlanes[6];
 
 };
 

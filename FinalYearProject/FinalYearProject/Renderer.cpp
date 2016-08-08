@@ -187,6 +187,7 @@ bool Renderer::Render()
 	m_pCamera->GetViewMatrix(mView);
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
+	m_pCamera->CalculateViewFrustum(SCREEN_DEPTH, mProjection);
 
 	m_DeferredRender.SetRenderTargets(pContext);
 	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
@@ -194,7 +195,7 @@ bool Renderer::Render()
 	//Render the model to the deferred buffers
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
 	m_pD3D->TurnOffAlphaBlending();
-	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection);
+	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection, m_pCamera);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
 
 	//Render the model to the shadow maps
