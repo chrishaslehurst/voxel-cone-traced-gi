@@ -16,9 +16,7 @@ DeferredRender::DeferredRender()
 {
 	for (int i = 0; i < BufferType::btMax; i++)
 	{
-		m_arrRenderTargetViews[i] = nullptr;
-		m_arrRenderTargetTextures[i] = nullptr;
-		m_arrShaderResourceViews[i] = nullptr;
+		m_arrBufferTextures[i] = nullptr;
 	}
 
 	m_pDepthStencilBuffer = nullptr;
@@ -35,7 +33,14 @@ DeferredRender::~DeferredRender()
 
 void DeferredRender::SetRenderTargets(ID3D11DeviceContext* pContext)
 {
-	pContext->OMSetRenderTargets(BufferType::btMax, m_arrRenderTargetViews, m_pDepthStencilView);
+	ID3D11RenderTargetView* arrRenderTargets[BufferType::btMax];
+	for (int i = 0; i < BufferType::btMax; i++)
+	{
+		arrRenderTargets[i] = m_arrBufferTextures[i]->GetRenderTargetView();
+	}
+	
+
+	pContext->OMSetRenderTargets(BufferType::btMax, arrRenderTargets, m_pDepthStencilView);
 
 	pContext->RSSetViewports(1, &m_viewport);
 }
@@ -52,7 +57,7 @@ void DeferredRender::ClearRenderTargets(ID3D11DeviceContext* pContext, float r, 
 
 	for (int i = 0; i < BufferType::btMax; i++)
 	{
-		pContext->ClearRenderTargetView(m_arrRenderTargetViews[i], colour);
+		pContext->ClearRenderTargetView(m_arrBufferTextures[i]->GetRenderTargetView(), colour);
 	}
 
 	pContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.f, 0);
@@ -62,7 +67,7 @@ void DeferredRender::ClearRenderTargets(ID3D11DeviceContext* pContext, float r, 
 
 ID3D11ShaderResourceView* DeferredRender::GetShaderResourceView(BufferType index)
 {
-	return m_arrShaderResourceViews[index];
+	return m_arrBufferTextures[index]->GetShaderResourceView();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,63 +79,14 @@ HRESULT DeferredRender::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* p
 	m_iTextureHeight = iTextureHeight;
 	m_iTextureWidth = iTextureWidth;
 
-
-	D3D11_TEXTURE2D_DESC textureDesc;
-	ZeroMemory(&textureDesc, sizeof(textureDesc));
-
-	// Setup the render target texture description.
-	textureDesc.Width = m_iTextureWidth;
-	textureDesc.Height = m_iTextureHeight;
-	textureDesc.MipLevels = 1;
-	textureDesc.ArraySize = 1;
-	textureDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.Usage = D3D11_USAGE_DEFAULT;
-	textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	textureDesc.CPUAccessFlags = 0;
-	textureDesc.MiscFlags = 0;
-
 	//Create array of textures for deferred render shader to output to
 	for (int i = 0; i < BufferType::btMax; i++)
 	{
-		res = pDevice->CreateTexture2D(&textureDesc, nullptr, &m_arrRenderTargetTextures[i]);
+		m_arrBufferTextures[i] = new Texture2D;
+		res = m_arrBufferTextures[i]->Init(pDevice, m_iTextureWidth, m_iTextureHeight, 1, 1, DXGI_FORMAT_R16G16B16A16_FLOAT, D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
 		if (FAILED(res))
 		{
 			VS_LOG_VERBOSE("Failed to create render target textures");
-			return false;
-		}
-	}
-
-	//Setup the render target view so we can render to the textures..
-	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
-	renderTargetViewDesc.Format = textureDesc.Format;
-	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-	renderTargetViewDesc.Texture2D.MipSlice = 0;
-
-	//Create the array of render target views
-	for (int i = 0; i < BufferType::btMax; i++)
-	{
-		res = pDevice->CreateRenderTargetView(m_arrRenderTargetTextures[i], &renderTargetViewDesc, &m_arrRenderTargetViews[i]);
-		if (FAILED(res))
-		{
-			VS_LOG_VERBOSE("Failed to create render target view");
-			return false;
-		}
-	}
-
-	//Setup the shader resource views so the shaders can access the texture information
-	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-	shaderResourceViewDesc.Format = textureDesc.Format;
-	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-	shaderResourceViewDesc.Texture2D.MipLevels = 1;
-
-	for (int i = 0; i < BufferType::btMax; i++)
-	{
-		res = pDevice->CreateShaderResourceView(m_arrRenderTargetTextures[i], &shaderResourceViewDesc, &m_arrShaderResourceViews[i]);
-		if (FAILED(res))
-		{
-			VS_LOG_VERBOSE("Failed to create shader resource views");
 			return false;
 		}
 	}
@@ -211,23 +167,8 @@ void DeferredRender::Shutdown()
 
 	for (int i = 0; i < BufferType::btMax; i++)
 	{
-		if (m_arrShaderResourceViews[i])
-		{
-			m_arrShaderResourceViews[i]->Release();
-			m_arrShaderResourceViews[i] = nullptr;
-		}
 
-		if (m_arrRenderTargetViews[i])
-		{
-			m_arrRenderTargetViews[i]->Release();
-			m_arrRenderTargetViews[i] = nullptr;
-		}
-
-		if (m_arrRenderTargetTextures[i])
-		{
-			m_arrRenderTargetTextures[i]->Release();
-			m_arrRenderTargetTextures[i] = nullptr;
-		}
+		m_arrBufferTextures[i]->Shutdown();
 	}
 
 	ShutdownShader();
@@ -526,7 +467,6 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 	HRESULT res;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	
-	
 	mWorld = XMMatrixTranspose(mWorld);
 	mView = XMMatrixTranspose(mView);
 	mProjection = XMMatrixTranspose(mProjection);
@@ -603,7 +543,8 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 
 	for (int i = 0; i < BufferType::btMax; i++)
 	{
-		pContext->PSSetShaderResources(i, 1, &m_arrShaderResourceViews[i]);
+		ID3D11ShaderResourceView* pResource = m_arrBufferTextures[i]->GetShaderResourceView();
+		pContext->PSSetShaderResources(i, 1, &pResource);
 	}
 	ID3D11ShaderResourceView* pShadowCubeArray[NUM_LIGHTS];
 	ID3D11ShaderResourceView* nullSRV = nullptr;

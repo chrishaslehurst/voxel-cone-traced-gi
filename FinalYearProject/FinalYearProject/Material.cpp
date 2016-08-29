@@ -159,16 +159,16 @@ void Material::SetMetallicMap(ID3D11Device* pDevice, ID3D11DeviceContext* pConte
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Texture* Material::LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename)
+Texture2D* Material::LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename)
 {
-	Texture* pTexture = new Texture;
+	Texture2D* pTexture = new Texture2D;
 	if(!pTexture)
 	{
 		VS_LOG_VERBOSE("Failed to create new texture");
 		return false;
 	}
 
-	if (!pTexture->LoadTexture(pDevice, pContext, filename))
+	if (!pTexture->LoadTextureFromFile(pDevice, pContext, filename))
 	{
 		VS_LOG_VERBOSE("Failed to load texture from file");
 		return false;
@@ -458,26 +458,26 @@ bool Material::SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX
 	
 	if (m_pDiffuseTexture)
 	{
-		ID3D11ShaderResourceView* pDiffuseTexture = m_pDiffuseTexture->GetTexture();
+		ID3D11ShaderResourceView* pDiffuseTexture = m_pDiffuseTexture->GetShaderResourceView();
 		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pDiffuseTexture);
 		pixelShaderResourceCount++;
 	}
 	if (m_bHasNormalMap)
 	{
-		ID3D11ShaderResourceView* pNormalMapTexture = m_pNormalMap->GetTexture();
+		ID3D11ShaderResourceView* pNormalMapTexture = m_pNormalMap->GetShaderResourceView();
 		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pNormalMapTexture);
 		pixelShaderResourceCount++;
 	}
 	
 	if (m_bHasRoughnessMap)
 	{
-		ID3D11ShaderResourceView* pRoughnessMap = m_pRoughnessMap->GetTexture();
+		ID3D11ShaderResourceView* pRoughnessMap = m_pRoughnessMap->GetShaderResourceView();
 		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pRoughnessMap);
 		pixelShaderResourceCount++;
 	}
 	if (m_bHasMetallicMap)
 	{
-		ID3D11ShaderResourceView* pMetallicMap = m_pMetallicMap->GetTexture();
+		ID3D11ShaderResourceView* pMetallicMap = m_pMetallicMap->GetShaderResourceView();
 		pDeviceContext->PSSetShaderResources(pixelShaderResourceCount, 1, &pMetallicMap);
 		pixelShaderResourceCount++;
 	}

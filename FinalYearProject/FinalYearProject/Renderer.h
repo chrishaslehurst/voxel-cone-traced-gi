@@ -10,6 +10,7 @@
 #include "DeferredRender.h"
 #include "VoxelisePass.h"
 #include "OrthoWindow.h"
+#include "RenderTextureToScreen.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,8 +41,10 @@ private:
 	Mesh*		m_pModel;
 
 	DeferredRender m_DeferredRender;
+	RenderTextureToScreen m_DebugRenderTexture;
 	VoxelisePass   m_VoxelisePass;
 	OrthoWindow* m_pFullScreenWindow;
+
 
 	bool Render();
 

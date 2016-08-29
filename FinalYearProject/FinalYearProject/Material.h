@@ -7,7 +7,7 @@
 
 #include <fstream>
 
-#include "Texture.h"
+#include "Texture2D.h"
 
 #include "LightManager.h"
 
@@ -88,7 +88,7 @@ public:
 	void SetShadersAndSamplers(ID3D11DeviceContext* pDeviceContext);
 private:
 
-	Texture* LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename);
+	Texture2D* LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename);
 	void ReleaseTextures();
 
 	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename);
@@ -106,19 +106,19 @@ private:
 	float				m_fSpecularPower;
 	XMFLOAT4			m_vSpecularColour;
 	bool				m_bHasDiffuseTexture;
-	Texture*			m_pDiffuseTexture;
+	Texture2D*			m_pDiffuseTexture;
 
 	bool				m_bHasNormalMap;
-	Texture*			m_pNormalMap;
+	Texture2D*			m_pNormalMap;
 	bool				m_bHasSpecularMap;
-	Texture*			m_pSpecularMap;
+	Texture2D*			m_pSpecularMap;
 	bool				m_bHasRoughnessMap;
-	Texture*			m_pRoughnessMap;
+	Texture2D*			m_pRoughnessMap;
 	bool				m_bHasMetallicMap;
-	Texture*			m_pMetallicMap;
+	Texture2D*			m_pMetallicMap;
 
 	bool				m_bHasAlphaMask;
-	Texture*			m_pAlphaMask;
+	Texture2D*			m_pAlphaMask;
 
 	ID3D11SamplerState*		m_pSampleState;
 	ID3D11SamplerState*		m_pShadowMapSampler;

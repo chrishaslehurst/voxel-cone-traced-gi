@@ -5,7 +5,7 @@
 #include <d3d11_3.h>
 #include <DirectXMath.h>
 #include <D3DCompiler.h>
-
+#include "Texture2D.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -23,6 +23,7 @@ enum BufferType
 
 class DeferredRender
 {
+public:
 	__declspec(align(16)) struct MatrixBuffer
 	{
 		void* operator new(size_t i)
@@ -101,6 +102,7 @@ public:
 	void ClearRenderTargets(ID3D11DeviceContext* pContext, float r, float g, float b, float a);
 
 	ID3D11ShaderResourceView* GetShaderResourceView(BufferType index);
+	Texture2D* GetTexture(BufferType index) { return m_arrBufferTextures[index]; }
 
 	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear);
 	void Shutdown();
@@ -119,9 +121,8 @@ private:
 	int m_iTextureWidth;
 	int m_iTextureHeight;
 
-	ID3D11Texture2D* m_arrRenderTargetTextures[BufferType::btMax];
-	ID3D11RenderTargetView* m_arrRenderTargetViews[BufferType::btMax];
-	ID3D11ShaderResourceView* m_arrShaderResourceViews[BufferType::btMax];
+	Texture2D* m_arrBufferTextures[BufferType::btMax];
+
 	ID3D11Texture2D* m_pDepthStencilBuffer;
 	ID3D11DepthStencilView* m_pDepthStencilView;
 	D3D11_VIEWPORT m_viewport;

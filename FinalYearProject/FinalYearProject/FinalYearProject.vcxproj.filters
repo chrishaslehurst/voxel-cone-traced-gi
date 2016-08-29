@@ -35,6 +35,9 @@
     <Filter Include="Source\Voxel Cone Tracing">
       <UniqueIdentifier>{d213c8e6-4259-4adc-99da-a78fbe69679d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\Debug">
+      <UniqueIdentifier>{bca9ef4e-9e46-48f9-92e8-a6c66be9c08d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -59,9 +62,6 @@
       <Filter>Source\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Material.cpp">
-      <Filter>Source\Materials</Filter>
-    </ClCompile>
-    <ClCompile Include="Texture.cpp">
       <Filter>Source\Materials</Filter>
     </ClCompile>
     <ClCompile Include="DirectionalLight.cpp">
@@ -100,6 +100,12 @@
     <ClCompile Include="VoxelisePass.cpp">
       <Filter>Source\Voxel Cone Tracing</Filter>
     </ClCompile>
+    <ClCompile Include="Texture2D.cpp">
+      <Filter>Source\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderTextureToScreen.cpp">
+      <Filter>Source\Debug</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -124,9 +130,6 @@
       <Filter>Source\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Material.h">
-      <Filter>Source\Materials</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture.h">
       <Filter>Source\Materials</Filter>
     </ClInclude>
     <ClInclude Include="DirectionalLight.h">
@@ -168,6 +171,12 @@
     <ClInclude Include="VoxelisePass.h">
       <Filter>Source\Voxel Cone Tracing</Filter>
     </ClInclude>
+    <ClInclude Include="Texture2D.h">
+      <Filter>Source\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderTextureToScreen.h">
+      <Filter>Source\Debug</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Material.hlsl">
@@ -190,6 +199,9 @@
     </FxCompile>
     <FxCompile Include="VoxelGICommon.hlsl">
       <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="RenderTexToScreen.hlsl">
+      <Filter>Shaders\Debug</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

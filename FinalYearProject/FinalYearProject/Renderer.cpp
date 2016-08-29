@@ -99,7 +99,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		pLightManager->SetDirectionalLightColour(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f));
 		pLightManager->SetDirectionalLightDirection(XMFLOAT3(0.2f, -0.1f, 0.2f));
 	}
-
+	m_DebugRenderTexture.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, iScreenWidth, iScreenHeight, SCREEN_DEPTH, SCREEN_NEAR);
 	m_VoxelisePass.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB());
 
 	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
@@ -144,6 +144,8 @@ void Renderer::Shutdown()
 		delete m_pD3D;
 		m_pD3D = nullptr;
 	}
+
+	m_DebugRenderTexture.Shutdown();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -224,6 +226,8 @@ bool Renderer::Render()
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
 	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
 
+
+	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_DeferredRender.GetTexture(btNormals));
 	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
 	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
