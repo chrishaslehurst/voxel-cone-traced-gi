@@ -35,11 +35,41 @@ bool Mesh::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND
 	//Calculate the binormals and tangent vectors
 	CalculateModelVectors();
 	
+	m_WholeModelBounds.Min = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
+	m_WholeModelBounds.Max = XMFLOAT3(0.f, 0.f, 0.f);
+
 	//Initialise the buffers and calculate bounding boxes
 	bool result(true);
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
 		m_arrSubMeshes[i]->CalculateBoundingBox();
+
+		//Check the new bounding box to construct the aabb for the whole model..
+		if (m_arrSubMeshes[i]->m_BoundingBox.Min.x < m_WholeModelBounds.Min.x)
+		{
+			m_WholeModelBounds.Min.x = m_arrSubMeshes[i]->m_BoundingBox.Min.x;
+		}
+		if (m_arrSubMeshes[i]->m_BoundingBox.Min.y < m_WholeModelBounds.Min.y)
+		{
+			m_WholeModelBounds.Min.y = m_arrSubMeshes[i]->m_BoundingBox.Min.y;
+		}
+		if (m_arrSubMeshes[i]->m_BoundingBox.Min.z < m_WholeModelBounds.Min.z)
+		{
+			m_WholeModelBounds.Min.z = m_arrSubMeshes[i]->m_BoundingBox.Min.z;
+		}
+		if (m_arrSubMeshes[i]->m_BoundingBox.Max.x > m_WholeModelBounds.Max.x)
+		{
+			m_WholeModelBounds.Max.x = m_arrSubMeshes[i]->m_BoundingBox.Max.x;
+		}
+		if (m_arrSubMeshes[i]->m_BoundingBox.Max.y > m_WholeModelBounds.Max.y)
+		{
+			m_WholeModelBounds.Max.y = m_arrSubMeshes[i]->m_BoundingBox.Max.y;
+		}
+		if (m_arrSubMeshes[i]->m_BoundingBox.Max.z > m_WholeModelBounds.Max.z)
+		{
+			m_WholeModelBounds.Max.z = m_arrSubMeshes[i]->m_BoundingBox.Max.z;
+		}
+
 		result = InitialiseBuffers(i, pDevice);
 		if (!result)
 		{
@@ -121,6 +151,24 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 	//}
 }
 
+void Mesh::RenderToVoxelGrid(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, VoxelisePass* pVoxelise)
+{
+	pVoxelise->SetShaderParams(pDeviceContext, mWorldMatrix);
+	for (int i = 0; i < m_arrSubMeshes.size(); i++)
+	{
+		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
+		{
+			RenderBuffers(i, pDeviceContext);
+
+			if (!pVoxelise->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount))
+			{
+				VS_LOG_VERBOSE("Unable to render object with shader");
+			}
+		}
+	}
+	pVoxelise->PostRender(pDeviceContext);
+}
+
 void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	//Shadowing Pass
@@ -148,10 +196,12 @@ void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMat
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int Mesh::GetIndexCount(int subMeshIndex)
+const int Mesh::GetIndexCount(int subMeshIndex) const
 {
 	return m_arrSubMeshes[subMeshIndex]->m_iIndexCount;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Mesh::ReloadShaders(ID3D11Device* pDevice, HWND hwnd)
 {

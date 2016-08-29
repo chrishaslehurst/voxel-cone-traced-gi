@@ -12,6 +12,7 @@
 #include "D3DWrapper.h"
 #include "AABB.h"
 #include "Camera.h"
+#include "VoxelisePass.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -97,10 +98,6 @@ __declspec(align(16)) class Mesh
 	};
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	
-
-	
-
 	struct Face
 	{
 		int vIndex[3];
@@ -124,11 +121,14 @@ public:
 	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* modelFilename);
 	void Shutdown();	
 	void RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera);
+	void RenderToVoxelGrid(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, VoxelisePass* pVoxelise);
 	void RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
-	int GetIndexCount(int subMeshIndex);
+	const int GetIndexCount(int subMeshIndex) const;
 
 	void SetMaterial(int subMeshIndex, Material* pMaterial) { m_arrSubMeshes[subMeshIndex]->m_pMaterial = pMaterial; }
 	void ReloadShaders(ID3D11Device* pDevice, HWND hwnd);
+
+	const AABB& GetWholeModelAABB() const { return m_WholeModelBounds; }
 private:
 
 	bool LoadModelFromObjFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename);
@@ -138,6 +138,8 @@ private:
 	void RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext);
 
 	void CalculateModelVectors();
+
+	AABB m_WholeModelBounds;
 
 	std::vector<SubMesh*> m_arrSubMeshes;
 	std::vector<SubMesh*> m_arrMeshesToRender;

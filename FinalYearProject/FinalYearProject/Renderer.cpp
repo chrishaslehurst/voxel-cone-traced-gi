@@ -47,7 +47,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		VS_LOG_VERBOSE("Could not create Camera");
 		return false;
 	}
-	m_pCamera->SetPosition(0.f, 0.f, -10.f);
+	m_pCamera->SetPosition(0.f, 0.f, 0.f);
 
 	m_pFullScreenWindow = new OrthoWindow;
 	if (!m_pFullScreenWindow)
@@ -84,12 +84,12 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	LightManager* pLightManager = LightManager::Get();
 	if (pLightManager)
 	{
-		pLightManager->SetAmbientLightColour(XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f));
+		pLightManager->SetAmbientLightColour(XMFLOAT4(0.05f, 0.05f, 0.05f, 1.f));
 
-		pLightManager->AddPointLight(XMFLOAT3(0.f, 750.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
+		pLightManager->AddPointLight(XMFLOAT3(0.f, 1250.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
 		pLightManager->GetPointLight(0)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(0)->GetRange());
-		pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 3000.f);
-		pLightManager->GetPointLight(1)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(1)->GetRange());
+	//	pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 3000.f);
+	//	pLightManager->GetPointLight(1)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(1)->GetRange());
  	//	pLightManager->AddPointLight(XMFLOAT3(-1270.f, 625.f, 425.f), XMFLOAT4(0.f, 1.f, 1.f, 1.f), 400.f);
 	//	pLightManager->GetPointLight(2)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(2)->GetRange());
  	//	pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, 425.f), XMFLOAT4(1.f, 1.f, 0.f, 1.f), 400.f);
@@ -99,6 +99,8 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		pLightManager->SetDirectionalLightColour(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f));
 		pLightManager->SetDirectionalLightDirection(XMFLOAT3(0.2f, -0.1f, 0.2f));
 	}
+
+	m_VoxelisePass.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB());
 
 	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
 	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
@@ -170,13 +172,12 @@ bool Renderer::Update(HWND hwnd)
 bool Renderer::Render()
 {
 
-	
-	double dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
-	double dCPUFrameTime = (dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
-
-	m_dCPUFrameStartTime = dCPUFrameEndTime;
+	double dCPUFrameTime = (m_dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
+	m_dCPUFrameStartTime = Timer::Get()->GetCurrentTime();
 
 	ID3D11DeviceContext* pContext = m_pD3D->GetDeviceContext();
+
+	
 
 	//Generate view matrix based on camera position
 	GPUProfiler::Get()->BeginFrame(pContext);
@@ -189,14 +190,19 @@ bool Renderer::Render()
 	m_pD3D->GetProjectionMatrix(mProjection);
 	m_pCamera->CalculateViewFrustum(SCREEN_DEPTH, mProjection);
 
+	m_VoxelisePass.RenderClearVoxelsPass(pContext);
+	m_pModel->RenderToVoxelGrid(pContext, mWorld, &m_VoxelisePass);
+
 	m_DeferredRender.SetRenderTargets(pContext);
 	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
-	
+
 	//Render the model to the deferred buffers
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
 	m_pD3D->TurnOffAlphaBlending();
 	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection, m_pCamera);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
+
+	
 
 	//Render the model to the shadow maps
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psShadowRender);
@@ -219,10 +225,13 @@ bool Renderer::Render()
 	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
 
 	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
+	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
 	GPUProfiler::Get()->EndFrame(pContext);
 	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
 	DebugLog::Get()->PrintLogToScreen(pContext);
+
+	
 
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();

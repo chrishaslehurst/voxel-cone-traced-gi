@@ -8,13 +8,14 @@
 #include "Mesh.h"
 #include "DirectionalLight.h"
 #include "DeferredRender.h"
+#include "VoxelisePass.h"
 #include "OrthoWindow.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Global consts..
 
-const bool FULL_SCREEN = true;
+const bool FULL_SCREEN = false;
 const bool VSYNC_ENABLED = true;
 const float SCREEN_DEPTH = 3000.f;
 const float SCREEN_NEAR = 0.1f;
@@ -39,11 +40,13 @@ private:
 	Mesh*		m_pModel;
 
 	DeferredRender m_DeferredRender;
+	VoxelisePass   m_VoxelisePass;
 	OrthoWindow* m_pFullScreenWindow;
 
 	bool Render();
 
 	double m_dCPUFrameStartTime;
+	double m_dCPUFrameEndTime;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

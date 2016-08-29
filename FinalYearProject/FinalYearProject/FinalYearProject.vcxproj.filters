@@ -32,6 +32,9 @@
     <Filter Include="FW1FontWrapper">
       <UniqueIdentifier>{dd7b8484-5213-4462-8fd2-841838bbef3d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Voxel Cone Tracing">
+      <UniqueIdentifier>{d213c8e6-4259-4adc-99da-a78fbe69679d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -93,6 +96,9 @@
     </ClCompile>
     <ClCompile Include="AABB.cpp">
       <Filter>Source\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="VoxelisePass.cpp">
+      <Filter>Source\Voxel Cone Tracing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -159,6 +165,9 @@
     <ClInclude Include="AABB.h">
       <Filter>Source\Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="VoxelisePass.h">
+      <Filter>Source\Voxel Cone Tracing</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Material.hlsl">
@@ -171,6 +180,15 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="LightingPass.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Voxelise_Clear.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Voxelise_Populate.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="VoxelGICommon.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

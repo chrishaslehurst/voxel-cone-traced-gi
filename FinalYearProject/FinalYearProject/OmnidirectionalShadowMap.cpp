@@ -322,9 +322,8 @@ void OmnidirectionalShadowMap::SetRenderStart(ID3D11DeviceContext* pDeviceContex
 
 bool OmnidirectionalShadowMap::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
 {
-	//Render the triangle
+	//Render the triangles
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
-	
 
 	return true;
 }
