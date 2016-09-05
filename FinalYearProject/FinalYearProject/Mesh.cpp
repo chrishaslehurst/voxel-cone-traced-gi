@@ -151,9 +151,9 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 	//}
 }
 
-void Mesh::RenderToVoxelGrid(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, VoxelisePass* pVoxelise)
+void Mesh::RenderToVoxelGrid(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, VoxelisePass* pVoxelise)
 {
-	pVoxelise->SetShaderParams(pDeviceContext, mWorldMatrix);
+	pVoxelise->SetShaderParams(pDeviceContext, mWorld, mView, mProjection, eyePos);
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
 		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())

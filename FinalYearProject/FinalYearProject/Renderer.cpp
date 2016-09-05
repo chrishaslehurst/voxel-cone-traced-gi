@@ -100,7 +100,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		pLightManager->SetDirectionalLightDirection(XMFLOAT3(0.2f, -0.1f, 0.2f));
 	}
 	m_DebugRenderTexture.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, iScreenWidth, iScreenHeight, SCREEN_DEPTH, SCREEN_NEAR);
-	m_VoxelisePass.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB());
+	m_VoxelisePass.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB(), iScreenWidth, iScreenHeight);
 
 	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
 	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
@@ -193,7 +193,7 @@ bool Renderer::Render()
 	m_pCamera->CalculateViewFrustum(SCREEN_DEPTH, mProjection);
 
 	m_VoxelisePass.RenderClearVoxelsPass(pContext);
-	m_pModel->RenderToVoxelGrid(pContext, mWorld, &m_VoxelisePass);
+	//m_pModel->RenderToVoxelGrid(pContext, mWorld, mView, mProjection, m_pCamera->GetPosition(), &m_VoxelisePass);
 
 	m_DeferredRender.SetRenderTargets(pContext);
 	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
@@ -228,7 +228,10 @@ bool Renderer::Render()
 
 
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_DeferredRender.GetTexture(btNormals));
-	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
+	//m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
+	m_VoxelisePass.RenderDebugViewToTexture(pContext);
+	m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
+
 	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
 	GPUProfiler::Get()->EndFrame(pContext);

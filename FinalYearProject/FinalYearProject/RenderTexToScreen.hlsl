@@ -5,6 +5,7 @@ cbuffer MatrixBuffer
 	matrix mWorld;
 	matrix mView;
 	matrix mProjection;
+
 };
 
 //Structs

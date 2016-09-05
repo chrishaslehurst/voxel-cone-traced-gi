@@ -14,6 +14,8 @@ uint convVec4ToRGBA8(float4 val)
 cbuffer MatrixBuffer
 {
 	matrix mWorld;
+	matrix mView;
+	matrix mProjection;
 };
 
 cbuffer ProjectionMatrixBuffer
@@ -27,6 +29,8 @@ cbuffer VoxelGridBuffer
 {
 	matrix mWorldToVoxelGrid;
 	matrix mVoxelGridToWorld;
+	float3 voxelGridSize1; //The dimension in worldspace of the voxel volume...
+	uint VoxelTextureSize1; //the texture resolution of the voxel grid.
 };
 
 ////////////////////////////////////////////////////////////////////////////////

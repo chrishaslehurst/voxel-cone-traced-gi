@@ -8,6 +8,7 @@
 #include <D3DCompiler.h>
 #include <fstream>
 #include "AABB.h"
+#include "Texture2D.h"
 
 #define TEXTURE_DIMENSION 64
 
@@ -25,6 +26,10 @@ public:
 	__declspec(align(16)) struct MatrixBuffer
 	{
 		XMMATRIX world;
+		XMMATRIX view;
+		XMMATRIX projection;
+		XMFLOAT3 eyePos;
+		float padding;
 
 		void* operator new(size_t i)
 		{
@@ -58,6 +63,8 @@ public:
 	{
 		XMMATRIX mWorldToVoxelGrid;
 		XMMATRIX mWorldToVoxelGridInverse;
+		XMFLOAT3 voxelGridSize; //The dimension in worldspace of the voxel volume...
+		unsigned int VoxelTextureSize; //the texture resolution of the voxel grid.
 
 		void* operator new(size_t i)
 		{
@@ -70,12 +77,15 @@ public:
 		}
 	};
 
-	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB);
+	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
-	bool SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld);
+	void RenderDebugViewToTexture(ID3D11DeviceContext* pContext);
+	bool SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos);
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 	void PostRender(ID3D11DeviceContext* pContext);
 	void Shutdown();
+
+	Texture2D* GetDebugTexture() { return m_pDebugOutput; }
 
 private:
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
@@ -83,7 +93,8 @@ private:
 	ID3D11VertexShader*		m_pVertexShader;
 	ID3D11PixelShader*		m_pPixelShader;
 	ID3D11GeometryShader*	m_pGeometryShader;
-	ID3D11ComputeShader*	m_pComputeShader;
+	ID3D11ComputeShader*	m_pClearVoxelsComputeShader;
+	ID3D11ComputeShader*	m_pRenderDebugToTextureComputeShader;
 
 	ID3D11InputLayout*		m_pLayout;
 	ID3D11Buffer*			m_pMatrixBuffer;
@@ -95,12 +106,19 @@ private:
 
 	ID3D11Texture3D* m_pVoxelisedScene;
 	ID3D11UnorderedAccessView* m_pVoxelisedSceneUAV;
+	ID3D11ShaderResourceView* m_pVoxelisedSceneSRV;
+
+	Texture2D* m_pDebugOutput;
+	ID3D11SamplerState* m_pSamplerState;
 
 	XMMATRIX m_mViewProjMatrices[3];
 	XMFLOAT3 m_vVoxelGridSize;
 
 	XMMATRIX m_mWorldToVoxelGrid;
 	XMMATRIX m_mWorldToVoxelGridInverse;
+
+	int m_iScreenHeight;
+	int m_iScreenWidth;
 };
 
 #endif

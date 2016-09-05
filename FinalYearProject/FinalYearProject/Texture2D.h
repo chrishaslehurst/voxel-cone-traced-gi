@@ -19,11 +19,13 @@ public:
 
 	ID3D11ShaderResourceView* GetShaderResourceView();
 	ID3D11RenderTargetView* GetRenderTargetView();
+	ID3D11UnorderedAccessView* GetUAV();
 
 private:
 
 	ID3D11ShaderResourceView* m_pShaderResourceView;
 	ID3D11RenderTargetView*   m_pRenderTargetView;
+	ID3D11UnorderedAccessView* m_pUAV;
 	ID3D11Texture2D*		  m_pTexture;
 	ScratchImage*			  m_pImage;
 };

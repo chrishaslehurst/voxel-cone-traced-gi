@@ -121,7 +121,7 @@ public:
 	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* modelFilename);
 	void Shutdown();	
 	void RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera);
-	void RenderToVoxelGrid(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, VoxelisePass* pVoxelise);
+	void RenderToVoxelGrid(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, VoxelisePass* pVoxelise);
 	void RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
 	const int GetIndexCount(int subMeshIndex) const;
 

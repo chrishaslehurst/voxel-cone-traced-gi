@@ -9,8 +9,10 @@ float4 convRGBA8ToVec4(uint val)
 	return float4(float((val & 0x000000FF)), float((val & 0x0000FF00) >> 8U), float((val & 0x00FF0000) >> 16U), float((val & 0xFF000000) >> 24U));
 }
 
+
 uint convVec4ToRGBA8(float4 val)
 {
+	
 	return (uint (val.w) & 0x000000FF) << 24U | (uint(val.z) & 0x000000FF) << 16U | (uint(val.y) & 0x000000FF) << 8U | (uint(val.x) & 0x000000FF);
 }
 
@@ -30,7 +32,7 @@ void CSClearVoxels(uint3 id: SV_DispatchThreadID)
 		texCoord.x = i / (size * size);
 		texCoord.y = (i / size.x) % size.x;
 		texCoord.z =  i % size.x;
-
-		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(float4(0.f, 0.f, 0.f, 0.f));
+		//texCoord = float3(0.f, 0.f, 0.f);
+		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(float4(1.f, 1.f, 0.f, 1.f) * 255.f);
 	}
 }

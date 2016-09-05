@@ -78,6 +78,22 @@ HRESULT Texture2D::Init(ID3D11Device* pDevice, int iTextureWidth, int iTextureHe
 		}
 	}
 
+	if (bindFlags & D3D11_BIND_UNORDERED_ACCESS)
+	{
+		//Setup the unordered access view so we can render to the textures..
+		D3D11_UNORDERED_ACCESS_VIEW_DESC unorderedAccessViewDesc;
+		unorderedAccessViewDesc.Format = textureDesc.Format;
+		unorderedAccessViewDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		unorderedAccessViewDesc.Texture2D.MipSlice = 0;
+
+		res = pDevice->CreateUnorderedAccessView(m_pTexture, &unorderedAccessViewDesc, &m_pUAV);
+		if (FAILED(res))
+		{
+			VS_LOG_VERBOSE("Failed to create unordered access view");
+			return false;
+		}
+	}
+
 
 	return res;
 }
@@ -150,6 +166,11 @@ ID3D11ShaderResourceView* Texture2D::GetShaderResourceView()
 ID3D11RenderTargetView* Texture2D::GetRenderTargetView()
 {
 	return m_pRenderTargetView;
+}
+
+ID3D11UnorderedAccessView* Texture2D::GetUAV()
+{
+	return m_pUAV;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
