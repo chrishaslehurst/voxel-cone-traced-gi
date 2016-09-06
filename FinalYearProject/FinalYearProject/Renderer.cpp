@@ -75,7 +75,14 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	if (!m_pModel->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, "../Assets/Models/sponza_tri1.obj"))
+	m_pCube = new Mesh;
+	if (!m_pCube)
+	{
+		VS_LOG_VERBOSE("Could not create Mesh");
+		return false;
+	}
+
+	if (!m_pModel->InitialiseFromObj(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, "../Assets/Models/sponza_tri1.obj"))
 	{
 		VS_LOG_VERBOSE("Unable to initialise mesh");
 		return false;
@@ -119,6 +126,12 @@ void Renderer::Shutdown()
 	{
 		delete m_pModel;
 		m_pModel = nullptr;
+	}
+
+	if (m_pCube)
+	{
+		delete m_pCube;
+		m_pCube = nullptr;
 	}
 
 	//deallocate the camera
@@ -193,7 +206,7 @@ bool Renderer::Render()
 	m_pCamera->CalculateViewFrustum(SCREEN_DEPTH, mProjection);
 
 	m_VoxelisePass.RenderClearVoxelsPass(pContext);
-	//m_pModel->RenderToVoxelGrid(pContext, mWorld, mView, mProjection, m_pCamera->GetPosition(), &m_VoxelisePass);
+	m_VoxelisePass.RenderMesh(pContext, mWorld, mView, mProjection, m_pCamera->GetPosition(), m_pModel);
 
 	m_DeferredRender.SetRenderTargets(pContext);
 	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
@@ -229,20 +242,25 @@ bool Renderer::Render()
 
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_DeferredRender.GetTexture(btNormals));
 	//m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
-	m_VoxelisePass.RenderDebugViewToTexture(pContext);
-	m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
+	//m_VoxelisePass.RenderDebugViewToTexture(pContext);
+	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
+	
+	
 
 	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
+	//Go back to 3D rendering
+	m_pD3D->TurnZBufferOn();
+	m_pD3D->TurnOnAlphaBlending();
+	m_VoxelisePass.RenderDebugCubes(pContext, mWorld, mView, mProjection);
 	GPUProfiler::Get()->EndFrame(pContext);
 	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
 	DebugLog::Get()->PrintLogToScreen(pContext);
 
 	
 
-	//Go back to 3D rendering
-	m_pD3D->TurnZBufferOn();
-
+	
+	
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
 

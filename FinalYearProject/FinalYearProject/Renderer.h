@@ -39,6 +39,7 @@ private:
 
 	//TODO: Model should probably go elsewhere long term!
 	Mesh*		m_pModel;
+	Mesh*		m_pCube;
 
 	DeferredRender m_DeferredRender;
 	RenderTextureToScreen m_DebugRenderTexture;

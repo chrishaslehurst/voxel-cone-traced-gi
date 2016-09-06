@@ -8,6 +8,7 @@
 #include <D3DCompiler.h>
 #include <fstream>
 #include "AABB.h"
+#include "Mesh.h"
 #include "Texture2D.h"
 
 #define TEXTURE_DIMENSION 64
@@ -80,7 +81,12 @@ public:
 	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderDebugViewToTexture(ID3D11DeviceContext* pContext);
-	bool SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos);
+	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection);
+	
+	void RenderMesh(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pVoxelise);
+	bool SetVoxeliseShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos);
+	bool SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection);
+
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 	void PostRender(ID3D11DeviceContext* pContext);
 	void Shutdown();
@@ -95,6 +101,9 @@ private:
 	ID3D11GeometryShader*	m_pGeometryShader;
 	ID3D11ComputeShader*	m_pClearVoxelsComputeShader;
 	ID3D11ComputeShader*	m_pRenderDebugToTextureComputeShader;
+
+	ID3D11VertexShader*		m_pDebugVertexShader;
+	ID3D11PixelShader*		m_pDebugPixelShader;
 
 	ID3D11InputLayout*		m_pLayout;
 	ID3D11Buffer*			m_pMatrixBuffer;
@@ -116,6 +125,8 @@ private:
 
 	XMMATRIX m_mWorldToVoxelGrid;
 	XMMATRIX m_mWorldToVoxelGridInverse;
+
+	Mesh* m_arrDebugRenderCube;
 
 	int m_iScreenHeight;
 	int m_iScreenWidth;

@@ -72,6 +72,8 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	ID3D10Blob* pErrorMessage(nullptr);
 	ID3D10Blob* pVertexShaderBuffer(nullptr);
 	ID3D10Blob* pPixelShaderBuffer(nullptr);
+	ID3D10Blob* pDebugVertexShaderBuffer(nullptr);
+	ID3D10Blob* pDebugPixelShaderBuffer(nullptr);
 	ID3D10Blob* pGeometryShaderBuffer(nullptr);
 	ID3D10Blob* pComputeShaderBuffer(nullptr);
 	ID3D10Blob* pComputeShaderBuffer2(nullptr);
@@ -142,12 +144,39 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 		return false;
 	}
 
+	
 	result = pDevice->CreateVertexShader(pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
 	if (FAILED(result))
 	{
 		VS_LOG_VERBOSE("Failed to create the vertex shader.");
 		return false;
 	}
+
+	//Compile the debug render voxel vertex shader code
+	result = D3DCompileFromFile(L"VoxelRenderShader.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pDebugVertexShaderBuffer, &pErrorMessage);
+	if (FAILED(result))
+	{
+		if (pErrorMessage)
+		{
+			//If the shader failed to compile it should have written something to error message, so we output that here
+			OutputShaderErrorMessage(pErrorMessage, hwnd, L"VoxelRenderShader.hlsl");
+		}
+		else
+		{
+			//if it hasn't, then it couldn't find the shader file..
+			MessageBox(hwnd, L"VoxelRenderShader.hlsl", L"Missing Shader File", MB_OK);
+		}
+		return false;
+	}
+
+	result = pDevice->CreateVertexShader(pDebugVertexShaderBuffer->GetBufferPointer(), pDebugVertexShaderBuffer->GetBufferSize(), nullptr, &m_pDebugVertexShader);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create the vertex shader.");
+		return false;
+	}
+
+
 
 	//Compile the voxelisation pass geometry shader code
 	result = D3DCompileFromFile(L"Voxelise_Populate.hlsl", nullptr, nullptr, "GSMain", "gs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pGeometryShaderBuffer, &pErrorMessage);
@@ -197,9 +226,33 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 		return false;
 	}
 
+	//Compile the debug voxel render pixel shader code
+	result = D3DCompileFromFile(L"VoxelRenderShader.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pDebugPixelShaderBuffer, &pErrorMessage);
+	if (FAILED(result))
+	{
+		if (pErrorMessage)
+		{
+			//If the shader failed to compile it should have written something to error message, so we output that here
+			OutputShaderErrorMessage(pErrorMessage, hwnd, L"VoxelRenderShader.hlsl");
+		}
+		else
+		{
+			//if it hasn't, then it couldn't find the shader file..
+			MessageBox(hwnd, L"VoxelRenderShader.hlsl", L"Missing Shader File", MB_OK);
+		}
+		return false;
+	}
+
+	result = pDevice->CreatePixelShader(pDebugPixelShaderBuffer->GetBufferPointer(), pDebugPixelShaderBuffer->GetBufferSize(), nullptr, &m_pDebugPixelShader);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create the pixel shader.");
+		return false;
+	}
+
 	//Initialise the input layout
 
-	D3D11_INPUT_ELEMENT_DESC polyLayout[6];
+	D3D11_INPUT_ELEMENT_DESC polyLayout[5];
 	//Setup data layout for the shader, needs to match the VertexType struct in the Mesh class and in the shader code.
 	polyLayout[0].SemanticName = "POSITION";
 	polyLayout[0].SemanticIndex = 0;
@@ -225,30 +278,21 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	polyLayout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[2].InstanceDataStepRate = 0;
 
-
-	polyLayout[3].SemanticName = "COLOR";
+	polyLayout[3].SemanticName = "TANGENT";
 	polyLayout[3].SemanticIndex = 0;
-	polyLayout[3].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	polyLayout[3].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polyLayout[3].InputSlot = 0;
 	polyLayout[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[3].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[3].InstanceDataStepRate = 0;
 
-	polyLayout[4].SemanticName = "TANGENT";
+	polyLayout[4].SemanticName = "BINORMAL";
 	polyLayout[4].SemanticIndex = 0;
 	polyLayout[4].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polyLayout[4].InputSlot = 0;
 	polyLayout[4].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[4].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[4].InstanceDataStepRate = 0;
-
-	polyLayout[5].SemanticName = "BINORMAL";
-	polyLayout[5].SemanticIndex = 0;
-	polyLayout[5].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	polyLayout[5].InputSlot = 0;
-	polyLayout[5].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-	polyLayout[5].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	polyLayout[5].InstanceDataStepRate = 0;
 
 	//Get the number of elements in the layout
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
@@ -408,6 +452,9 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	pDevice->CreateSamplerState(&sampDesc, &m_pSamplerState);
 
+	m_arrDebugRenderCube = new Mesh;
+	m_arrDebugRenderCube->InitialiseCubeFromTxt(pDevice, pContext, hwnd);
+	
 }
 
 void VoxelisePass::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
@@ -446,7 +493,53 @@ void VoxelisePass::RenderDebugViewToTexture(ID3D11DeviceContext* pContext)
 	pContext->CSSetShaderResources(0, 1, ppSRVNull);
 }
 
-bool VoxelisePass::SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos)
+void VoxelisePass::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection)
+{
+	pContext->IASetInputLayout(m_pLayout);
+	pContext->VSSetShader(m_pDebugVertexShader, nullptr, 0);
+	pContext->PSSetShader(m_pDebugPixelShader, nullptr, 0);
+
+	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
+	pContext->PSSetShaderResources(0, 1, &m_pVoxelisedSceneSRV);
+
+	XMMATRIX mViewM = XMMatrixTranspose(mView);
+	XMMATRIX mProjectionM = XMMatrixTranspose(mProjection);
+
+	for (int x = 0; x < TEXTURE_DIMENSION; x++)
+	{
+		for (int y = 0; y < TEXTURE_DIMENSION; y++)
+		{
+			for (int z = 0; z < TEXTURE_DIMENSION; z++)
+ 			{
+				XMMATRIX mWorldMat = XMMatrixTranslation(x, y, z);
+				SetDebugShaderParams(pContext, mWorldMat, mViewM, mProjectionM); //Needs to change world matrix for every cube
+				m_arrDebugRenderCube->RenderBuffers(0, pContext);
+				pContext->DrawIndexed(m_arrDebugRenderCube->GetMeshArray()[0]->m_iIndexCount, 0, 0);
+			}
+		}
+ 	}
+
+	pContext->PSSetShaderResources(0, 1, ppSRVNull);
+	pContext->VSSetShader(nullptr, nullptr, 0);
+	pContext->PSSetShader(nullptr, nullptr, 0);
+}
+
+void VoxelisePass::RenderMesh(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pMesh)
+{
+	SetVoxeliseShaderParams(pDeviceContext, mWorld, mView, mProjection, eyePos);
+	
+	for (int i = 0; i < pMesh->GetMeshArray().size(); i++)
+	{
+		if (!pMesh->GetMeshArray()[i]->m_pMaterial->UsesAlphaMaps())
+		{
+			pMesh->RenderBuffers(i, pDeviceContext);
+			pDeviceContext->DrawIndexed(pMesh->GetMeshArray()[i]->m_iIndexCount, 0, 0);
+		}
+	}
+	PostRender(pDeviceContext);
+}
+
+bool VoxelisePass::SetVoxeliseShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos)
 {
 
 	pDeviceContext->IASetInputLayout(m_pLayout);
@@ -509,6 +602,31 @@ bool VoxelisePass::SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XM
 	return true;
 }
 
+bool VoxelisePass::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection)
+{
+	
+
+	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);
+	
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (SUCCEEDED(result))
+	{
+		MatrixBuffer* pBuffer = static_cast<MatrixBuffer*>(mappedResource.pData);
+		pBuffer->world = mWorldM;
+		pBuffer->view = mView;
+		pBuffer->projection = mProjection;
+		pBuffer->eyePos = XMFLOAT3(0,0,0); //TODO: REMOVE FROM BUFFER
+		pBuffer->padding = 0.f;
+
+		pDeviceContext->Unmap(m_pMatrixBuffer, 0);
+	}
+	pDeviceContext->VSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
+
+	return true;
+}
+
 bool VoxelisePass::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
 {
 	//Render the triangle
@@ -529,7 +647,8 @@ void VoxelisePass::PostRender(ID3D11DeviceContext* pContext)
 
 void VoxelisePass::Shutdown()
 {
-
+	delete m_arrDebugRenderCube;
+	m_arrDebugRenderCube = nullptr;
 }
 
 void VoxelisePass::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename)

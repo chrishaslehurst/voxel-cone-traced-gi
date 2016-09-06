@@ -56,13 +56,6 @@ void RaymarchCS(uint3 dispatchThreadID : SV_DispatchThreadID)
 	float2 uv = clipCoords;
 	uv *= outputDimensions.x / outputDimensions.y;
 
-	float aspectRatio = outputDimensions.x / outputDimensions.y;
-	float2 pixelScreen;
-	pixelScreen.x = (2 * ((globalCoords.x) / outputDimensions.x) - 1);
-	pixelScreen.y =  (2 * ((globalCoords.y) / outputDimensions.y) - 1) * -1.f;
-	pixelScreen.x = pixelScreen.x / mProjection[0][0];
-	pixelScreen.y = pixelScreen.y / mProjection[1][1];
-
 	float3 up = float3(0.0f, 1.0f, 0.0f);
 	float3 forward = normalize(float3(mView[2][0], mView[2][1], mView[2][2]));
 
@@ -75,7 +68,7 @@ void RaymarchCS(uint3 dispatchThreadID : SV_DispatchThreadID)
 
 	//Find amount to advance each sample
 	const int sampleCount = 1024;
-	const float maxDistance = 20.0f;
+	const float maxDistance = 2500.0f;
 	forward *= maxDistance / sampleCount;
 
 	//Setup ray
@@ -92,24 +85,24 @@ void RaymarchCS(uint3 dispatchThreadID : SV_DispatchThreadID)
 		int3 volumeCoord = WorldToVolume(samplePosition);// *volumeDimensions / pow(2, mipLevel);
 		//volumeCoord.x /= 6;
 		//volumeCoord.x += volumeDimensions.y * 5;
-		volumeCoord = int3(0, 0, 0);
-		finalColor = gVoxelVolume.Load(int4(volumeCoord, mipLevel));
-		occlusion = finalColor.a;
-//		if (sampleColor.a > 0.0f)
-//			sampleColor.a = 1.0f;
+		//volumeCoord = int3(0, 0, 0);
+		sampleColor = gVoxelVolume.Load(int4(volumeCoord, mipLevel));
+		
+		if (sampleColor.a > 0.0f)
+			sampleColor.a = 1.0f;
 
 		//Average colors if this ray is partially occluded
-//		if (occlusion < 1.0f)
-//		{
-//			finalColor.rgb += sampleColor.rgb;
-//		}
-//		else
-////		{
-//			break;
-//		}
+		if (occlusion < 1.0f)
+		{
+			finalColor.rgb += sampleColor.rgb;
+		}
+		else
+		{
+		break;
+		}
 
-//		occlusion += sampleColor.a;
-//		samplePosition += forward;
+		occlusion += sampleColor.a;
+		samplePosition += forward;
 	}
 
 	if (occlusion < 1)

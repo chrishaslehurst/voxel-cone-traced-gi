@@ -144,7 +144,7 @@ void imageAtomicRGBA8Avg(RWTexture3D<uint> imgUI, uint3 coords, float4 val)
 
 	// Loop as long as destination value gets changed by other threads
 
-	[allow_uav_condition] do //While loop does not work and crashes the graphics driver, but do while loop that does the same works; compiler error?
+	[allow_uav_condition] while(true)
 	{
 		InterlockedCompareExchange(imgUI[coords], prevStoredVal, newVal, curStoredVal);
 
@@ -157,16 +157,14 @@ void imageAtomicRGBA8Avg(RWTexture3D<uint> imgUI, uint3 coords, float4 val)
 		float4 curValF = rval + val; // Add new value
 		curValF.xyz /= (curValF.w); // Renormalize
 		newVal = convVec4ToRGBA8(curValF);
-
-
-	} while (true);
+	}
 }
 
 void PSMain(PSInput input)
 {
 	float4 texCoord = mul(mWorldToVoxelGrid, input.Position);
 	//float4 Colour = SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
-	float4 Colour = float4(1.f, 1.f, 1.f, 1.f);
+	float4 Colour = float4(1.f, 0.f, 0.f, 1.f);
 
 	if (all(texCoord < 64) && all(texCoord >= 0)) // this is needed or things outside the range seem to get in?
 	{

@@ -12,7 +12,6 @@
 #include "D3DWrapper.h"
 #include "AABB.h"
 #include "Camera.h"
-#include "VoxelisePass.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -118,24 +117,29 @@ public:
 	Mesh();
 	~Mesh();
 
-	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* modelFilename);
+	bool InitialiseFromObj(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* modelFilename);
+	bool InitialiseCubeFromTxt(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void Shutdown();	
 	void RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera);
-	void RenderToVoxelGrid(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, VoxelisePass* pVoxelise);
+	
 	void RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos);
+	void RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext);
 	const int GetIndexCount(int subMeshIndex) const;
 
 	void SetMaterial(int subMeshIndex, Material* pMaterial) { m_arrSubMeshes[subMeshIndex]->m_pMaterial = pMaterial; }
 	void ReloadShaders(ID3D11Device* pDevice, HWND hwnd);
 
 	const AABB& GetWholeModelAABB() const { return m_WholeModelBounds; }
+
+	const std::vector<SubMesh*>& GetMeshArray() { return m_arrSubMeshes; }
 private:
 
+	bool LoadCubeFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	bool LoadModelFromObjFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename);
 	void ReleaseModel();
 	bool InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice);
 	void ShutdownBuffers();
-	void RenderBuffers(int subMeshIndex, ID3D11DeviceContext* pDeviceContext);
+	
 
 	void CalculateModelVectors();
 

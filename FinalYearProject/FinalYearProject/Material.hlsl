@@ -76,7 +76,6 @@ struct VertexInput
 	float4 position : POSITION;
 	float3 normal	: NORMAL;
 	float2 tex		: TEXCOORD0;
-	float4 colour	: COLOR;
 	float3 tangent : TANGENT;
 	float3 binormal : BINORMAL;
 };
@@ -240,8 +239,6 @@ PixelInput VSMain(VertexInput input)
 	output.position = mul(output.position, mViewMatrix);
 	output.position = mul(output.position, mProjectionMatrix);
 
-	//Store the input col for the pixel shader to make use of
-	output.colour = input.colour;
 	output.tex = input.tex;
 
 	//Normal needs to be transformed to world space and then normalised before being sent to pixel shader
