@@ -10,7 +10,11 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	//Initialise Matrices..
 	float voxelGridSize = 0;
 	XMFLOAT3 vVoxelGridSize;
-	XMStoreFloat3(&vVoxelGridSize, (XMLoadFloat3(&voxelGridAABB.Max) - XMLoadFloat3(&voxelGridAABB.Min)));
+	XMVECTOR Min, Max;
+	Max = XMLoadFloat3(&voxelGridAABB.Max);
+	Min = XMLoadFloat3(&voxelGridAABB.Min);
+
+	XMStoreFloat3(&vVoxelGridSize, (Max - Min));
 	//make the voxel grid into a square which will fit the whole scene
 	if (vVoxelGridSize.x > vVoxelGridSize.y)
 	{
@@ -36,10 +40,10 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	}
 	m_vVoxelGridSize = XMFLOAT3(voxelGridSize, voxelGridSize, voxelGridSize);
 	//Create ortho projections for the axes..
-	XMMATRIX camProjectionMatrix(2.0f / voxelGridSize, 0.0f,				 0.0f,				   0.0f,
-								 0.0f,				   2.0f / voxelGridSize, 0.0f,				   0.0f,
-								 0.0f,				   0.0f,				-2.0f / voxelGridSize, 0.0f,
-								 0.0f,				   0.0f,				 0.0f,				   1.0f);
+	XMMATRIX camProjectionMatrix(2.0f / 64, 0.0f,				 0.0f,							0.f,
+								 0.0f,				   2.0f / 64, 0.0f,							0.f,
+								 0.0f,				   0.0f,				-2.0f / 64,			0.f,
+								 0.0f,				   0.0f,				 0.0f,			    1.0f);
 
 	XMMATRIX viewMatrixRightCam(0.0f, 0.0f, 1.0f, 0.0f,
 								0.0f, 1.0f, 0.0f, 0.0f,
@@ -61,10 +65,35 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	m_mViewProjMatrices[2] = camProjectionMatrix * viewMatrixFarCam;
 
 	//TODO: WorldToVoxelGridMatrix...
-	XMMATRIX mWorldToVoxelGridTranslate = XMMatrixTranslation(-voxelGridAABB.Min.x, -voxelGridAABB.Min.y, -voxelGridAABB.Min.z);
-	XMMATRIX mWorldToVoxelGridScaling = XMMatrixScaling(TEXTURE_DIMENSION / voxelGridSize, TEXTURE_DIMENSION / voxelGridSize, TEXTURE_DIMENSION / voxelGridSize);
+	float scale = TEXTURE_DIMENSION / voxelGridSize;
 
-	m_mWorldToVoxelGrid = mWorldToVoxelGridScaling * mWorldToVoxelGridTranslate;
+	XMMATRIX mWorldToVoxelGridTranslate = XMMatrixTranslation(-Min.m128_f32[0], -Min.m128_f32[1], -Min.m128_f32[2]);
+	XMMATRIX mWorldToVoxelGridScaling = XMMatrixScaling(scale, scale, scale);
+
+	m_mWorldToVoxelGrid = mWorldToVoxelGridScaling;
+
+	XMVECTOR v = XMVector3Transform(Min, m_mWorldToVoxelGrid);
+	XMVECTOR v2 = XMVector3Transform(Max, m_mWorldToVoxelGrid);
+
+//	m_mWorldToVoxelGrid.r[0].m128_f32[0] = 2.f / (float)TEXTURE_DIMENSION;
+//	m_mWorldToVoxelGrid.r[0].m128_f32[1] = 0.0f;
+//	m_mWorldToVoxelGrid.r[0].m128_f32[2] = 0.0f;
+//	m_mWorldToVoxelGrid.r[0].m128_f32[3] = 0.0f;
+//
+//	m_mWorldToVoxelGrid.r[1].m128_f32[0] = 0.0f;
+//	m_mWorldToVoxelGrid.r[1].m128_f32[1] = 2.f / (float)TEXTURE_DIMENSION;
+//	m_mWorldToVoxelGrid.r[1].m128_f32[2] = 0.0f;
+//	m_mWorldToVoxelGrid.r[1].m128_f32[3] = 0.0f;
+//
+//	m_mWorldToVoxelGrid.r[2].m128_f32[0] = 0.0f;
+//	m_mWorldToVoxelGrid.r[2].m128_f32[1] = 0.0f;
+//	m_mWorldToVoxelGrid.r[2].m128_f32[2] = 2.f / (float)TEXTURE_DIMENSION;
+//	m_mWorldToVoxelGrid.r[2].m128_f32[3] = 0.0f;
+//
+//	m_mWorldToVoxelGrid.r[3] = XMVectorZero();
+//	m_mWorldToVoxelGrid.r[3].m128_f32[3] = 1.0f;
+
+//	m_mWorldToVoxelGrid = mWorldToVoxelGridScaling * m_mWorldToVoxelGrid;
 
 	m_pDebugOutput = new Texture2D;
 	m_pDebugOutput->Init(pDevice, iScreenWidth, iScreenHeight, 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
@@ -320,6 +349,24 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	pGeometryShaderBuffer = nullptr;
 
 	//Initialise Buffers
+	D3D11_BUFFER_DESC voxelVertBufferDesc;
+	//Setup the description of the dynamic matrix constant buffer that is in the shader..
+	voxelVertBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	voxelVertBufferDesc.ByteWidth = sizeof(VoxeliseVertexShaderBuffer);
+	voxelVertBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	voxelVertBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	voxelVertBufferDesc.MiscFlags = 0;
+	voxelVertBufferDesc.StructureByteStride = 0;
+
+	//Create the buffer so we can access it from within this class
+	result = pDevice->CreateBuffer(&voxelVertBufferDesc, NULL, &m_pVoxeliseVertexShaderBuffer);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create Voxelise Vertex Shader buffer");
+		return false;
+	}
+
+
 
 	D3D11_BUFFER_DESC matrixBufferDesc;
 	//Setup the description of the dynamic matrix constant buffer that is in the shader..
@@ -338,37 +385,20 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 		return false;
 	}
 
-	D3D11_BUFFER_DESC projMatrixBufferDesc;
+	D3D11_BUFFER_DESC perCubeDebugBufferDesc;
 	//Setup the description of the dynamic matrix constant buffer that is in the shader..
-	projMatrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	projMatrixBufferDesc.ByteWidth = sizeof(ProjectionMatrixBuffer);
-	projMatrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	projMatrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	projMatrixBufferDesc.MiscFlags = 0;
-	projMatrixBufferDesc.StructureByteStride = 0;
+	perCubeDebugBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	perCubeDebugBufferDesc.ByteWidth = sizeof(PerCubeDebugBuffer);
+	perCubeDebugBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	perCubeDebugBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	perCubeDebugBufferDesc.MiscFlags = 0;
+	perCubeDebugBufferDesc.StructureByteStride = 0;
 
 	//Create the buffer so we can access it from within this class
-	result = pDevice->CreateBuffer(&projMatrixBufferDesc, NULL, &m_pProjectionMatrixBuffer);
+	result = pDevice->CreateBuffer(&perCubeDebugBufferDesc, NULL, &m_pPerCubeDebugBuffer);
 	if (FAILED(result))
 	{
-		VS_LOG_VERBOSE("Failed to create projection matrix buffer");
-		return false;
-	}
-
-	D3D11_BUFFER_DESC voxelGridBufferDesc;
-	//Setup the description of the dynamic matrix constant buffer that is in the shader..
-	voxelGridBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	voxelGridBufferDesc.ByteWidth = sizeof(VoxelGridBuffer);
-	voxelGridBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	voxelGridBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	voxelGridBufferDesc.MiscFlags = 0;
-	voxelGridBufferDesc.StructureByteStride = 0;
-
-	//Create the buffer so we can access it from within this class
-	result = pDevice->CreateBuffer(&voxelGridBufferDesc, NULL, &m_pVoxelGridBuffer);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create matrix buffer");
+		VS_LOG_VERBOSE("Failed to create cube debug buffer");
 		return false;
 	}
 
@@ -401,7 +431,7 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	unorderedAccessViewDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
 	unorderedAccessViewDesc.Texture3D.MipSlice = 0;
 	unorderedAccessViewDesc.Texture3D.FirstWSlice = 0;
-	unorderedAccessViewDesc.Texture3D.WSize = -1;
+	unorderedAccessViewDesc.Texture3D.WSize = TEXTURE_DIMENSION;
 	
 	result = pDevice->CreateUnorderedAccessView(m_pVoxelisedScene, &unorderedAccessViewDesc, &m_pVoxelisedSceneUAV);
 	if (FAILED(result))
@@ -511,8 +541,9 @@ void VoxelisePass::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRI
 		{
 			for (int z = 0; z < TEXTURE_DIMENSION; z++)
  			{
-				XMMATRIX mWorldMat = XMMatrixTranslation(x, y, z);
-				SetDebugShaderParams(pContext, mWorldMat, mViewM, mProjectionM); //Needs to change world matrix for every cube
+				XMMATRIX mWorldMat = XMMatrixTranslation(x *2.2f, y *2.2f, z *2.2f);
+				int coords[3] = { x, y, z };
+				SetDebugShaderParams(pContext, mWorldMat, mViewM, mProjectionM, coords); //Needs to change world matrix for every cube
 				m_arrDebugRenderCube->RenderBuffers(0, pContext);
 				pContext->DrawIndexed(m_arrDebugRenderCube->GetMeshArray()[0]->m_iIndexCount, 0, 0);
 			}
@@ -526,14 +557,18 @@ void VoxelisePass::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRI
 
 void VoxelisePass::RenderMesh(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pMesh)
 {
+	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 	SetVoxeliseShaderParams(pDeviceContext, mWorld, mView, mProjection, eyePos);
-	
 	for (int i = 0; i < pMesh->GetMeshArray().size(); i++)
 	{
 		if (!pMesh->GetMeshArray()[i]->m_pMaterial->UsesAlphaMaps())
 		{
+			ID3D11ShaderResourceView* SRVDiffuseTex = pMesh->GetMeshArray()[i]->m_pMaterial->GetDiffuseTexture()->GetShaderResourceView();
+			pDeviceContext->PSSetShaderResources(0, 1, &SRVDiffuseTex);
 			pMesh->RenderBuffers(i, pDeviceContext);
-			pDeviceContext->DrawIndexed(pMesh->GetMeshArray()[i]->m_iIndexCount, 0, 0);
+			int indexCount = pMesh->GetMeshArray()[i]->m_iIndexCount;
+			pDeviceContext->DrawIndexed(indexCount, 0, 0);
+			pDeviceContext->PSSetShaderResources(0, 1, ppSRVNull);
 		}
 	}
 	PostRender(pDeviceContext);
@@ -548,66 +583,41 @@ bool VoxelisePass::SetVoxeliseShaderParams(ID3D11DeviceContext* pDeviceContext, 
 	pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
 
 	pDeviceContext->RSSetState(m_pRasteriserState);
+	pDeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
 
 	pDeviceContext->RSSetViewports(1, &m_pVoxeliseViewport);
 
-	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);
-	XMMATRIX mViewM = XMMatrixTranspose(mView);
-	XMMATRIX mProjectionM = XMMatrixTranspose(mProjection);
-
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (SUCCEEDED(result))
-	{
-		MatrixBuffer* pBuffer = static_cast<MatrixBuffer*>(mappedResource.pData);
-		pBuffer->world = mWorldM;
-		pBuffer->view = mViewM;
-		pBuffer->projection = mProjectionM;
-		pBuffer->eyePos = eyePos;
-		pBuffer->padding = 0.f;
 
-		pDeviceContext->Unmap(m_pMatrixBuffer, 0);
-	}
-	pDeviceContext->VSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
-	
-	result = pDeviceContext->Map(m_pProjectionMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	HRESULT result = pDeviceContext->Map(m_pVoxeliseVertexShaderBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (SUCCEEDED(result))
 	{
-		ProjectionMatrixBuffer* pBuffer = static_cast<ProjectionMatrixBuffer*>(mappedResource.pData);
-		for (int i = 0; i < 3; i++)
-		{
-			pBuffer->viewProjMatrices[i] = m_mViewProjMatrices[i];
-		}
-		pBuffer->voxelGridSize = m_vVoxelGridSize;
-		pBuffer->VoxelTextureSize = TEXTURE_DIMENSION;
-		pDeviceContext->Unmap(m_pProjectionMatrixBuffer, 0);
-	}
-	pDeviceContext->GSSetConstantBuffers(0, 1, &m_pProjectionMatrixBuffer);
-	
-	result = pDeviceContext->Map(m_pVoxelGridBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (SUCCEEDED(result))
-	{
-		VoxelGridBuffer* pBuffer = static_cast<VoxelGridBuffer*>(mappedResource.pData);
-		pBuffer->mWorldToVoxelGrid = m_mWorldToVoxelGrid;
-		pBuffer->mWorldToVoxelGridInverse = m_mWorldToVoxelGrid; //TODO: ACTUALLY PASS THE INVERSE
-		pBuffer->voxelGridSize = m_vVoxelGridSize;
-		pBuffer->VoxelTextureSize = TEXTURE_DIMENSION;
+		VoxeliseVertexShaderBuffer* pBuffer = static_cast<VoxeliseVertexShaderBuffer*>(mappedResource.pData);
+		
+		pBuffer->mWorld = mWorld;
+		pBuffer->mWorldView = m_mWorldToVoxelGrid;
 
-		pDeviceContext->Unmap(m_pVoxelGridBuffer, 0);
+		pBuffer->mWorldViewProj = m_mWorldToVoxelGrid * XMMatrixOrthographicLH(2.f, 2.f, 1.f, -1.f);
+		pBuffer->mWorldInverseTranspose = XMMatrixTranspose(XMMatrixInverse(&XMMatrixDeterminant(mWorld), mWorld));
+		pBuffer->mAxisProjections[0] = m_mViewProjMatrices[0];
+		pBuffer->mAxisProjections[1] = m_mViewProjMatrices[1];
+		pBuffer->mAxisProjections[2] = m_mViewProjMatrices[2];
+
+		pDeviceContext->Unmap(m_pVoxeliseVertexShaderBuffer, 0);
 	}
-	pDeviceContext->PSSetConstantBuffers(0, 1, &m_pVoxelGridBuffer);
+	pDeviceContext->VSSetConstantBuffers(0, 1, &m_pVoxeliseVertexShaderBuffer);
+	pDeviceContext->GSSetConstantBuffers(0, 1, &m_pVoxeliseVertexShaderBuffer);
+
+	pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerState);
 
 	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 1, &m_pVoxelisedSceneUAV, 0);
 
 	return true;
 }
 
-bool VoxelisePass::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection)
+bool VoxelisePass::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, int coord[3])
 {
-	
-
-	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);
-	
+	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);	
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -623,6 +633,20 @@ bool VoxelisePass::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, con
 		pDeviceContext->Unmap(m_pMatrixBuffer, 0);
 	}
 	pDeviceContext->VSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
+
+	result = pDeviceContext->Map(m_pPerCubeDebugBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (SUCCEEDED(result))
+	{
+		PerCubeDebugBuffer* pBuffer = static_cast<PerCubeDebugBuffer*>(mappedResource.pData);
+		pBuffer->volumeCoord[0] = coord[0];
+		pBuffer->volumeCoord[1] = coord[1];
+		pBuffer->volumeCoord[2] = coord[2];
+		pBuffer->padding = 0.f;
+
+		pDeviceContext->Unmap(m_pPerCubeDebugBuffer, 0);
+	}
+
+	pDeviceContext->PSSetConstantBuffers(0, 1, &m_pPerCubeDebugBuffer);
 
 	return true;
 }

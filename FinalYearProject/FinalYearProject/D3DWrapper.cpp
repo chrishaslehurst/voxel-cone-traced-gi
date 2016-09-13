@@ -578,8 +578,8 @@ bool D3DWrapper::SetUpDepthBufferAndDepthStencilState(int iScreenWidth, int iScr
 	// Now create a second depth stencil state which turns off the Z buffer for 2D rendering. 
 	depthDisabledStencilDesc.DepthEnable = false;
 	depthDisabledStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	depthDisabledStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
-	depthDisabledStencilDesc.StencilEnable = true;
+	depthDisabledStencilDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+	depthDisabledStencilDesc.StencilEnable = false;
 	depthDisabledStencilDesc.StencilReadMask = 0xFF;
 	depthDisabledStencilDesc.StencilWriteMask = 0xFF;
 	depthDisabledStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;

@@ -192,8 +192,6 @@ bool Renderer::Render()
 
 	ID3D11DeviceContext* pContext = m_pD3D->GetDeviceContext();
 
-	
-
 	//Generate view matrix based on camera position
 	GPUProfiler::Get()->BeginFrame(pContext);
 	m_pCamera->Render();
@@ -205,15 +203,26 @@ bool Renderer::Render()
 	m_pD3D->GetProjectionMatrix(mProjection);
 	m_pCamera->CalculateViewFrustum(SCREEN_DEPTH, mProjection);
 
+	
+	//Prep for 2D rendering..	
+	m_pD3D->GetOrthoMatrix(mOrtho);
+	m_pCamera->RenderBaseViewMatrix();
+	m_pCamera->GetBaseViewMatrix(mBaseView);
+	
+
+	m_pD3D->TurnZBufferOff();
+	m_pD3D->TurnOffAlphaBlending();
 	m_VoxelisePass.RenderClearVoxelsPass(pContext);
-	m_VoxelisePass.RenderMesh(pContext, mWorld, mView, mProjection, m_pCamera->GetPosition(), m_pModel);
+	m_VoxelisePass.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+
+	m_pD3D->TurnZBufferOn();
 
 	m_DeferredRender.SetRenderTargets(pContext);
 	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
 
 	//Render the model to the deferred buffers
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
-	m_pD3D->TurnOffAlphaBlending();
+	
 	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection, m_pCamera);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
 
@@ -229,10 +238,7 @@ bool Renderer::Render()
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
 
-	//Prep for 2D rendering..	
-	m_pD3D->GetOrthoMatrix(mOrtho);
-	m_pCamera->RenderBaseViewMatrix();
-	m_pCamera->GetBaseViewMatrix(mBaseView);
+
 
 	m_pD3D->SetRenderOutputToScreen();
 	m_pD3D->TurnZBufferOff();
@@ -252,7 +258,9 @@ bool Renderer::Render()
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
 	m_pD3D->TurnOnAlphaBlending();
+
 	m_VoxelisePass.RenderDebugCubes(pContext, mWorld, mView, mProjection);
+
 	GPUProfiler::Get()->EndFrame(pContext);
 	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
 	DebugLog::Get()->PrintLogToScreen(pContext);

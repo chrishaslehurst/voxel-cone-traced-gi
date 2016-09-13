@@ -24,6 +24,25 @@ class VoxelisePass
 {
 public:
 
+	__declspec(align(16)) struct VoxeliseVertexShaderBuffer
+	{
+		XMMATRIX mWorldInverseTranspose;
+		XMMATRIX mWorld;
+		XMMATRIX mWorldView;
+		XMMATRIX mWorldViewProj;
+		XMMATRIX mAxisProjections[3];
+		
+		void* operator new(size_t i)
+		{
+			return _mm_malloc(i, 16);
+		}
+
+			void operator delete(void* p)
+		{
+			_mm_free(p);
+		}
+	};
+
 	__declspec(align(16)) struct MatrixBuffer
 	{
 		XMMATRIX world;
@@ -43,36 +62,17 @@ public:
 		}
 	};
 
-	__declspec(align(16)) struct ProjectionMatrixBuffer
+	__declspec(align(16)) struct PerCubeDebugBuffer
 	{
-		XMMATRIX viewProjMatrices[3];
-		XMFLOAT3 voxelGridSize; //The dimension in worldspace of the voxel volume...
-		unsigned int VoxelTextureSize; //the texture resolution of the voxel grid.
+		int volumeCoord[3];
+		float padding;
 
 		void* operator new(size_t i)
 		{
 			return _mm_malloc(i, 16);
 		}
 
-		void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
-	__declspec(align(16)) struct VoxelGridBuffer
-	{
-		XMMATRIX mWorldToVoxelGrid;
-		XMMATRIX mWorldToVoxelGridInverse;
-		XMFLOAT3 voxelGridSize; //The dimension in worldspace of the voxel volume...
-		unsigned int VoxelTextureSize; //the texture resolution of the voxel grid.
-
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-		void operator delete(void* p)
+			void operator delete(void* p)
 		{
 			_mm_free(p);
 		}
@@ -85,7 +85,7 @@ public:
 	
 	void RenderMesh(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pVoxelise);
 	bool SetVoxeliseShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos);
-	bool SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection);
+	bool SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, int coord[3]);
 
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 	void PostRender(ID3D11DeviceContext* pContext);
@@ -106,7 +106,9 @@ private:
 	ID3D11PixelShader*		m_pDebugPixelShader;
 
 	ID3D11InputLayout*		m_pLayout;
+	ID3D11Buffer*			m_pVoxeliseVertexShaderBuffer;
 	ID3D11Buffer*			m_pMatrixBuffer;
+	ID3D11Buffer*			m_pPerCubeDebugBuffer;
 	ID3D11Buffer*			m_pProjectionMatrixBuffer;
 	ID3D11Buffer*			m_pVoxelGridBuffer;
 

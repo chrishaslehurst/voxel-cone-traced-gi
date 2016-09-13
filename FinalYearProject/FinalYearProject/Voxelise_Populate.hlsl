@@ -11,26 +11,13 @@ uint convVec4ToRGBA8(float4 val)
 	return (uint (val.w) & 0x000000FF) << 24U | (uint(val.z) & 0x000000FF) << 16U | (uint(val.y) & 0x000000FF) << 8U | (uint(val.x) & 0x000000FF);
 }
 
-cbuffer MatrixBuffer
+cbuffer VoxeliseVertexShaderBuffer
 {
-	matrix mWorld;
-	matrix mView;
-	matrix mProjection;
-};
-
-cbuffer ProjectionMatrixBuffer
-{
-	matrix viewProjs[3];
-	float3 voxelGridSize; //The dimension in worldspace of the voxel volume...
-	uint VoxelTextureSize; //the texture resolution of the voxel grid.
-};
-
-cbuffer VoxelGridBuffer
-{
+	matrix World;
 	matrix mWorldToVoxelGrid;
-	matrix mVoxelGridToWorld;
-	float3 voxelGridSize1; //The dimension in worldspace of the voxel volume...
-	uint VoxelTextureSize1; //the texture resolution of the voxel grid.
+	matrix WorldViewProj;
+	matrix WorldInverseTranspose;
+	matrix mAxisProjections[3];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,25 +25,27 @@ cbuffer VoxelGridBuffer
 
 struct VertexInput
 {
-	float4 position : POSITION;
-	float2 tex : TEXCOORD0;
-	float3 normal : NORMAL;
+	float4 PosL : POSITION;
+	float2 Tex : TEXCOORD0;
+	float3 Normal : NORMAL;
 	float3 tangent : TANGENT;
 	float3 binormal : BINORMAL;
 };
 
 struct GSInput
 {
-	float4 position : SV_Position;
-	float3 normal : TEXCOORD0;
-	float2 tex : TEXCOORD1;
+	float4 PosL : POSITION;
+	float3 Normal : NORMAL;
+	float2 Tex : TEXCOORD0;
 };
 
 struct PSInput
 {
-	float4 Position : SV_Position;
-	float3 normal : TEXCOORD0;
-	float2 tex : TEXCOORD1;
+	int proj : ATTRIB0;
+	float4 PosH : SV_POSITION;
+	float3 PosW : POSITION;
+	float3 Normal : NORMAL;
+	float2 Tex : TEXCOORD1;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,12 +53,12 @@ struct PSInput
 
 RWTexture3D<uint> VoxelTex_Colour : register(u0); //This is where we will write the voxel colours to..
 
-//TODO: Get this working
-//Texture2D diffuseTexture; //TODO: Set up texture and sampler..
+
+Texture2D diffuseTexture; 
 
 ////////////////////////////////////////////////////////////////////////////////
 //Sample State
-//SamplerState SampleType;
+SamplerState SampleState;
 
 ////////////////////////////////////////////////////////////////////////////////
 //Shaders..
@@ -78,12 +67,12 @@ GSInput VSMain(VertexInput input)
 {
 	GSInput output;
 
-	output.position = mul(mWorld, float4(input.position.xyz, 1.0f));
+	output.PosL = mul(input.PosL, mWorldToVoxelGrid);
 
-	output.normal = mul(input.normal, (float3x3)mWorld);
-	output.normal = normalize(output.normal);
+	output.Normal = mul(input.Normal, (float3x3)WorldInverseTranspose);
+	output.Normal = normalize(output.Normal);
 
-	output.tex = input.tex;
+	output.Tex = input.Tex;
 
 	return output;
 }
@@ -94,41 +83,63 @@ GSInput VSMain(VertexInput input)
 void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStream)
 {
 	PSInput output;
+	
+	float3 normal = cross(normalize(input[1].PosL - input[0].PosL), normalize(input[2].PosL - input[0].PosL)); //Get face normal
+
+	const float halfVoxelSize = (1.f / 64.f) * 0.5f;
+	float3 triCentre = ((input[0].PosL + input[1].PosL + input[2].PosL) / 3.f);
+
 	//First we find the dominant axis of the triangles normal, in order to maximise the number of fragments that will be generated (Conservative rasterisation)
-	const float3 worldAxes[3] = { float3(1.0, 0.0, 0.0),
-		float3(0.0, 1.0, 0.0),
-		float3(0.0, 0.0, 1.0) };
+	float axis[] = {
+		abs(dot(normal, float3(1.0f, 0.0f, 0.0f))),
+		abs(dot(normal, float3(0.0f, 1.0f, 0.0f))),
+		abs(dot(normal, float3(0.0f, 0.0f, 1.0f))),
+	};
 
-	float3 voxelSize = voxelGridSize / float3(VoxelTextureSize, VoxelTextureSize, VoxelTextureSize);
+	//Find dominant axis
+	int index = 0;
+	int i = 0;
 
-	uint projectionAxis = 0;
-	float maxArea = 0.f;
-
-	for (uint i = 0; i < 3; ++i)
+	[unroll]
+	for (i = 1; i < 3; i++)
 	{
-		//assuming per triangle normals for simplicity..
-		float area = abs(dot(input[0].normal, worldAxes[i]));
-		{
-			if (area > maxArea)
-			{
-				maxArea = area;
-				projectionAxis = i;
-			}
-		}
+		[flatten]
+		if (axis[i] > axis[i - 1])
+			index = i;
 	}
 
-	float3 middle = mul(viewProjs[projectionAxis], float4(((input[0].position + input[1].position + input[2].position) / 3.f).xyz, 1.f));
+	[unroll]
+	for (i = 0; i < 3; i++)
+	{	
+		float4 inputPosL;
 
-	for (uint j = 0; j < 3; j++)
-	{
-		output.Position = mul(viewProjs[projectionAxis], input[j].position);
-		output.Position += float4(normalize(output.Position.xyz - middle) * (voxelSize.x / 2.f), 1.f);
+		[flatten]
+		switch (index)
+		{
+		case 0:
+			inputPosL = float4(input[i].PosL.yzx, 1.0f);
+			break;
+		case 1:
+			inputPosL = float4(input[i].PosL.zxy, 1.0f);
+			break;
+		case 2:
+			inputPosL = float4(input[i].PosL.xyz, 1.0f);
+			break;
+		}
+		//This will enlarge the tri slightly, conservative rasterisation
+		float3 toCentre = normalize(input[i].PosL.xyz - triCentre);
+		toCentre = toCentre * halfVoxelSize;
+		toCentre = float3(0, 0, 0);
 
-		output.normal = input[j].normal;
-		output.tex = input[j].tex;
+		output.Tex = input[i].Tex;
+		output.PosW = float4((input[i].PosL.xyz + toCentre.xyz), 1.f).xyz;
+		output.PosH = inputPosL;
+		output.Normal = input[i].Normal;
+		output.proj = index;
+		//output.Tangent = input[i].Tangent;
+		//output.Bitangent = cross(output.Normal, output.Tangent);
 
 		outputStream.Append(output);
-		
 	}
 }
 
@@ -162,15 +173,47 @@ void imageAtomicRGBA8Avg(RWTexture3D<uint> imgUI, uint3 coords, float4 val)
 
 void PSMain(PSInput input)
 {
-	float4 texCoord = mul(mWorldToVoxelGrid, input.Position);
-	//float4 Colour = SampleGrad(SampleType, input.tex, ddx(input.tex.x), ddy(input.tex.y));
-	float4 Colour = float4(1.f, 0.f, 0.f, 1.f);
+	int3 texDimensions;
+	VoxelTex_Colour.GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
 
-	if (all(texCoord < 64) && all(texCoord >= 0)) // this is needed or things outside the range seem to get in?
+//	uint3 texCoord = uint3(((input.PosW.x * 0.5) + 0.5f) * texDimensions.x,
+//						   ((input.PosW.y * 0.5) + 0.5f) * texDimensions.y,
+//						   ((input.PosW.z * 0.5) + 0.5f) * texDimensions.z);
+
+	uint3 texCoord = uint3(input.PosW.x, input.PosW.y, input.PosW.z);
+	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
+	
+//	if (input.proj == 2)
+//	{
+//		texCoord = uint3(texCoord.x, texCoord.y, texCoord.z);
+//	}
+//	else if (input.proj == 1)
+//	{
+//		texCoord = uint3(texCoord.x, texCoord.z, texCoord.y);
+//	}
+//	else if (input.proj == 0)
+//	{
+//		texCoord = uint3(texCoord.z, texCoord.y, texCoord.x);
+//	}
+
+	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) // this is needed or things outside the range seem to get in?
 	{
-		VoxelTex_Colour[texCoord.xyz] = convVec4ToRGBA8(Colour);
-		imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
+		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
+	//	imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
 	}
+	if(texCoord.z > 65)
+	{
+		VoxelTex_Colour[uint3(0, 5, 5)] = convVec4ToRGBA8(float4(1.f, 1.f, 0.f, 1.f) * 255.f);
+	}
+	if (texCoord.z == 0)
+	{
+		VoxelTex_Colour[uint3(0, 4, 5)] = convVec4ToRGBA8(float4(1.f, 0.f, 1.f, 1.f) * 255.f);
+	}
+	if (texCoord.z < 0)
+	{
+		VoxelTex_Colour[uint3(0, 3, 5)] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);
+	}
+	
 }
 
 ////////////////////////////////////////////////////////////////////////////////

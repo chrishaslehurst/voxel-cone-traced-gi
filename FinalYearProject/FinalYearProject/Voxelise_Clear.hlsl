@@ -33,6 +33,6 @@ void CSClearVoxels(uint3 id: SV_DispatchThreadID)
 		texCoord.y = (i / size.x) % size.x;
 		texCoord.z =  i % size.x;
 		//texCoord = float3(0.f, 0.f, 0.f);
-		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(float4(0.f,0.f,0.f, 1.f) * 255.f);
+		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(float4(0.f,0.f,0.1f,0.0f) * 255.f);
 	}
 }

@@ -66,9 +66,11 @@ public:
 	void SetRoughnessMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* roughnessMapFilename);
 	void SetMetallicMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* metallicMapFilename);
 
+	Texture2D* GetDiffuseTexture() { return m_pDiffuseTexture; }
 	void SetHasDiffuseTexture(bool bHasTexture) { m_bHasDiffuseTexture = bHasTexture; }
 	bool UsesDiffuseTexture() { return m_bHasDiffuseTexture; }
 
+	Texture2D* GetNormalMap() { return m_pNormalMap; }
 	void SetHasNormal(bool bHasNormal) { m_bHasNormalMap = bHasNormal; }
 	bool UsesNormalMaps() { return m_bHasNormalMap; }
 

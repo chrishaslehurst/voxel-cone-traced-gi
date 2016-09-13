@@ -1,8 +1,16 @@
+
 cbuffer MatrixBuffer
 {
 	matrix mWorldMatrix;
 	matrix mViewMatrix;
 	matrix mProjectionMatrix;
+	float3 eyePos;
+	float padding;
+};
+
+cbuffer PerCubeBuffer
+{
+	int3 VolumeCoord;
 };
 
 struct VertexInput
@@ -45,5 +53,13 @@ PixelInput VSMain(VertexInput input)
 
 float4 PSMain(PixelInput input) : SV_TARGET
 {
-	return VoxelVolume.Load(int4(input.worldPosition.xyz, 0));
+	float4 colour = VoxelVolume.Load(int4(VolumeCoord,0));
+	if (colour.a > 0.f)
+	{
+		if (input.tex.x < 0.01f || input.tex.x > 0.99f || input.tex.y < 0.01f || input.tex.y > 0.99f)
+		{
+			return float4(1.f, 0.f, 0.f, 1.f);
+		}
+	}
+	return colour;	
 }
