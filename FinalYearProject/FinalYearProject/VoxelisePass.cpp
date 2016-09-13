@@ -70,30 +70,37 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	XMMATRIX mWorldToVoxelGridTranslate = XMMatrixTranslation(-Min.m128_f32[0], -Min.m128_f32[1], -Min.m128_f32[2]);
 	XMMATRIX mWorldToVoxelGridScaling = XMMatrixScaling(scale, scale, scale);
 
-	m_mWorldToVoxelGrid = mWorldToVoxelGridScaling;
+	m_mWorldToVoxelGrid = mWorldToVoxelGridTranslate * mWorldToVoxelGridScaling;
 
-	XMVECTOR v = XMVector3Transform(Min, m_mWorldToVoxelGrid);
-	XMVECTOR v2 = XMVector3Transform(Max, m_mWorldToVoxelGrid);
+//	m_mWorldToVoxelGrid = XMMatrixTranspose(m_mWorldToVoxelGrid);
 
-//	m_mWorldToVoxelGrid.r[0].m128_f32[0] = 2.f / (float)TEXTURE_DIMENSION;
-//	m_mWorldToVoxelGrid.r[0].m128_f32[1] = 0.0f;
-//	m_mWorldToVoxelGrid.r[0].m128_f32[2] = 0.0f;
-//	m_mWorldToVoxelGrid.r[0].m128_f32[3] = 0.0f;
-//
-//	m_mWorldToVoxelGrid.r[1].m128_f32[0] = 0.0f;
-//	m_mWorldToVoxelGrid.r[1].m128_f32[1] = 2.f / (float)TEXTURE_DIMENSION;
-//	m_mWorldToVoxelGrid.r[1].m128_f32[2] = 0.0f;
-//	m_mWorldToVoxelGrid.r[1].m128_f32[3] = 0.0f;
-//
-//	m_mWorldToVoxelGrid.r[2].m128_f32[0] = 0.0f;
-//	m_mWorldToVoxelGrid.r[2].m128_f32[1] = 0.0f;
-//	m_mWorldToVoxelGrid.r[2].m128_f32[2] = 2.f / (float)TEXTURE_DIMENSION;
-//	m_mWorldToVoxelGrid.r[2].m128_f32[3] = 0.0f;
-//
-//	m_mWorldToVoxelGrid.r[3] = XMVectorZero();
-//	m_mWorldToVoxelGrid.r[3].m128_f32[3] = 1.0f;
-
+	m_mWorldToVoxelGrid.r[0].m128_f32[0] = 2.f / (float)TEXTURE_DIMENSION;
+	m_mWorldToVoxelGrid.r[0].m128_f32[1] = 0.0f;
+	m_mWorldToVoxelGrid.r[0].m128_f32[2] = 0.0f;
+	m_mWorldToVoxelGrid.r[0].m128_f32[3] = 0.0f;
+	
+	m_mWorldToVoxelGrid.r[1].m128_f32[0] = 0.0f;
+	m_mWorldToVoxelGrid.r[1].m128_f32[1] = 2.f / (float)TEXTURE_DIMENSION;
+	m_mWorldToVoxelGrid.r[1].m128_f32[2] = 0.0f;
+	m_mWorldToVoxelGrid.r[1].m128_f32[3] = 0.0f;
+	
+	m_mWorldToVoxelGrid.r[2].m128_f32[0] = 0.0f;
+	m_mWorldToVoxelGrid.r[2].m128_f32[1] = 0.0f;
+	m_mWorldToVoxelGrid.r[2].m128_f32[2] = 2.f / (float)TEXTURE_DIMENSION;
+	m_mWorldToVoxelGrid.r[2].m128_f32[3] = 0.0f;
+	
+	m_mWorldToVoxelGrid.r[3] = XMVectorZero();
+	m_mWorldToVoxelGrid.r[3].m128_f32[3] = 1.0f;
+	
 //	m_mWorldToVoxelGrid = mWorldToVoxelGridScaling * m_mWorldToVoxelGrid;
+//
+
+	XMFLOAT4 testVert = XMFLOAT4(150.f, 10.f, 10.f, 1.f);
+	XMVECTOR vtest = XMVector4Transform(XMLoadFloat4(&testVert), m_mWorldToVoxelGrid);
+	XMVECTOR vmin = XMVector3Transform(Min, m_mWorldToVoxelGrid);
+	XMVECTOR vmax = XMVector3Transform(Max, m_mWorldToVoxelGrid);
+
+
 
 	m_pDebugOutput = new Texture2D;
 	m_pDebugOutput->Init(pDevice, iScreenWidth, iScreenHeight, 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
@@ -558,11 +565,12 @@ void VoxelisePass::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRI
 void VoxelisePass::RenderMesh(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pMesh)
 {
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
-	SetVoxeliseShaderParams(pDeviceContext, mWorld, mView, mProjection, eyePos);
+	
 	for (int i = 0; i < pMesh->GetMeshArray().size(); i++)
 	{
 		if (!pMesh->GetMeshArray()[i]->m_pMaterial->UsesAlphaMaps())
 		{
+			SetVoxeliseShaderParams(pDeviceContext, mWorld, mView, mProjection, eyePos);
 			ID3D11ShaderResourceView* SRVDiffuseTex = pMesh->GetMeshArray()[i]->m_pMaterial->GetDiffuseTexture()->GetShaderResourceView();
 			pDeviceContext->PSSetShaderResources(0, 1, &SRVDiffuseTex);
 			pMesh->RenderBuffers(i, pDeviceContext);

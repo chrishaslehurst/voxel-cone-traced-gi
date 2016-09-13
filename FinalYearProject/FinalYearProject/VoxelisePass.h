@@ -26,10 +26,11 @@ public:
 
 	__declspec(align(16)) struct VoxeliseVertexShaderBuffer
 	{
-		XMMATRIX mWorldInverseTranspose;
+		
 		XMMATRIX mWorld;
 		XMMATRIX mWorldView;
 		XMMATRIX mWorldViewProj;
+		XMMATRIX mWorldInverseTranspose;
 		XMMATRIX mAxisProjections[3];
 		
 		void* operator new(size_t i)
@@ -124,11 +125,15 @@ private:
 
 	XMMATRIX m_mViewProjMatrices[3];
 	XMFLOAT3 m_vVoxelGridSize;
+	XMFLOAT3 m_vVoxelGridMin;
+	XMFLOAT3 m_vVoxelGridMax;
 
 	XMMATRIX m_mWorldToVoxelGrid;
 	XMMATRIX m_mWorldToVoxelGridInverse;
 
 	Mesh* m_arrDebugRenderCube;
+
+	
 
 	int m_iScreenHeight;
 	int m_iScreenWidth;
