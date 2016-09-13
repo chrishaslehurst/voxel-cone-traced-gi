@@ -177,11 +177,11 @@ void PSMain(PSInput input)
 	int3 texDimensions;
 	VoxelTex_Colour.GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
 
-//	uint3 texCoord = uint3(((input.PosW.x * 0.5) + 0.5f) * texDimensions.x,
-//						   ((input.PosW.y * 0.5) + 0.5f) * texDimensions.y,
-//						   ((input.PosW.z * 0.5) + 0.5f) * texDimensions.z);
+	uint3 texCoord = uint3(((input.PosW.x * 0.5) + 32),
+						   ((input.PosW.y * 0.5) + 32),
+						   ((input.PosW.z * 0.5) + 32));
 
-	uint3 texCoord = uint3(input.PosW.x, input.PosW.y, input.PosW.z);
+//	uint3 texCoord = uint3(input.PosW.x, input.PosW.y, input.PosW.z);
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
 	
 //	if (input.proj == 2)
