@@ -2,7 +2,7 @@
 #include "Debugging.h"
 
 
-HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight)
+HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight)
 {
 	m_iScreenHeight = iScreenHeight;
 	m_iScreenWidth = iScreenWidth;
@@ -10,11 +10,12 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	//Initialise Matrices..
 	float voxelGridSize = 0;
 	XMFLOAT3 vVoxelGridSize;
-	XMVECTOR Min, Max;
+	XMVECTOR Min, Max, VoxelGridSize;
 	Max = XMLoadFloat3(&voxelGridAABB.Max);
 	Min = XMLoadFloat3(&voxelGridAABB.Min);
 
-	XMStoreFloat3(&vVoxelGridSize, (Max - Min));
+	VoxelGridSize = Max - Min;
+	XMStoreFloat3(&vVoxelGridSize, VoxelGridSize);
 	//make the voxel grid into a square which will fit the whole scene
 	if (vVoxelGridSize.x > vVoxelGridSize.y)
 	{
@@ -69,29 +70,29 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 
 	XMMATRIX mWorldToVoxelGridTranslate = XMMatrixTranslation(-Min.m128_f32[0], -Min.m128_f32[1], -Min.m128_f32[2]);
 	XMMATRIX mWorldToVoxelGridScaling = XMMatrixScaling(scale, scale, scale);
-
-	m_mWorldToVoxelGrid = mWorldToVoxelGridTranslate * mWorldToVoxelGridScaling;
+//
+//	m_mWorldToVoxelGrid = mWorldToVoxelGridTranslate * mWorldToVoxelGridScaling;
 
 //	m_mWorldToVoxelGrid = XMMatrixTranspose(m_mWorldToVoxelGrid);
 
-	m_mWorldToVoxelGrid.r[0].m128_f32[0] = 2.f / (float)TEXTURE_DIMENSION;
+	m_mWorldToVoxelGrid.r[0].m128_f32[0] = 2.f / TEXTURE_DIMENSION;
 	m_mWorldToVoxelGrid.r[0].m128_f32[1] = 0.0f;
 	m_mWorldToVoxelGrid.r[0].m128_f32[2] = 0.0f;
 	m_mWorldToVoxelGrid.r[0].m128_f32[3] = 0.0f;
 	
 	m_mWorldToVoxelGrid.r[1].m128_f32[0] = 0.0f;
-	m_mWorldToVoxelGrid.r[1].m128_f32[1] = 2.f / (float)TEXTURE_DIMENSION;
+	m_mWorldToVoxelGrid.r[1].m128_f32[1] = 2.f / TEXTURE_DIMENSION;
 	m_mWorldToVoxelGrid.r[1].m128_f32[2] = 0.0f;
 	m_mWorldToVoxelGrid.r[1].m128_f32[3] = 0.0f;
 	
 	m_mWorldToVoxelGrid.r[2].m128_f32[0] = 0.0f;
 	m_mWorldToVoxelGrid.r[2].m128_f32[1] = 0.0f;
-	m_mWorldToVoxelGrid.r[2].m128_f32[2] = 2.f / (float)TEXTURE_DIMENSION;
+	m_mWorldToVoxelGrid.r[2].m128_f32[2] = 2.f / TEXTURE_DIMENSION;
 	m_mWorldToVoxelGrid.r[2].m128_f32[3] = 0.0f;
 	
 	m_mWorldToVoxelGrid.r[3] = XMVectorZero();
 	m_mWorldToVoxelGrid.r[3].m128_f32[3] = 1.0f;
-	
+
 //	m_mWorldToVoxelGrid = mWorldToVoxelGridScaling * m_mWorldToVoxelGrid;
 //
 
@@ -460,13 +461,14 @@ HRESULT VoxelisePass::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pCo
 	}
 
 	//Initialise Rasteriser state
-	D3D11_RASTERIZER_DESC rasterDesc;
-	ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+	D3D11_RASTERIZER_DESC2 rasterDesc;
+	ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC2));
 
 	rasterDesc.FillMode = D3D11_FILL_SOLID;
 	rasterDesc.CullMode = D3D11_CULL_NONE;
 	rasterDesc.FrontCounterClockwise = true;
-	pDevice->CreateRasterizerState(&rasterDesc, &m_pRasteriserState);
+	rasterDesc.ConservativeRaster = D3D11_CONSERVATIVE_RASTERIZATION_MODE_ON;
+	pDevice->CreateRasterizerState2(&rasterDesc, &m_pRasteriserState);
 
 	//Initialise Viewport
 	m_pVoxeliseViewport.TopLeftX = 0.f;
@@ -562,7 +564,7 @@ void VoxelisePass::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRI
 	pContext->PSSetShader(nullptr, nullptr, 0);
 }
 
-void VoxelisePass::RenderMesh(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pMesh)
+void VoxelisePass::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pMesh)
 {
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 	
@@ -582,7 +584,7 @@ void VoxelisePass::RenderMesh(ID3D11DeviceContext* pDeviceContext, const XMMATRI
 	PostRender(pDeviceContext);
 }
 
-bool VoxelisePass::SetVoxeliseShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos)
+bool VoxelisePass::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos)
 {
 
 	pDeviceContext->IASetInputLayout(m_pLayout);

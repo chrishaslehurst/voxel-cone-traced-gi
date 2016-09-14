@@ -190,7 +190,7 @@ bool Renderer::Render()
 	double dCPUFrameTime = (m_dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
 	m_dCPUFrameStartTime = Timer::Get()->GetCurrentTime();
 
-	ID3D11DeviceContext* pContext = m_pD3D->GetDeviceContext();
+	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
 
 	//Generate view matrix based on camera position
 	GPUProfiler::Get()->BeginFrame(pContext);

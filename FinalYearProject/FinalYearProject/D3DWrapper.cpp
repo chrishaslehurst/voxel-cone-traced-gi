@@ -467,7 +467,7 @@ bool D3DWrapper::SetUpSwapChainAndDevice(HWND hwnd, bool bFullScreenEnabled, int
 	swapChainDesc.Flags = 0;
 
 	//Set the feature level to DX12_1
-	D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_11_0);
+	D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_12_1);
 
 	//now the description is filled out, the swap chain can be created..
 	UINT createDeviceFlags = 0;
@@ -487,8 +487,8 @@ bool D3DWrapper::SetUpSwapChainAndDevice(HWND hwnd, bool bFullScreenEnabled, int
 	pCont->QueryInterface<ID3D11DeviceContext3>(&m_pDeviceContext);
 
 	//check for tiled resources support - need tier 3 for Volume Tiled Resources..
-//	D3D11_FEATURE_DATA_D3D11_OPTIONS1 featureData;
-//	m_pDevice->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &featureData, sizeof(featureData));
+	D3D11_FEATURE_DATA_D3D11_OPTIONS2 featureData;
+	m_pDevice->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &featureData, sizeof(featureData));
 
 	//Get ptr to the back buffer
 	ID3D11Texture2D* pBackBuffer;
