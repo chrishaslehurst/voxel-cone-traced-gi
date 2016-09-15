@@ -160,7 +160,7 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 
 		output.Tex = input[i].Tex;
 		output.PosW = mul(input[i].PosL, mWorldToVoxelGrid);
-		output.PosH = mul(float4((inputPosL.xyz + toCentre).xyz, 1.f), WorldViewProj);
+		output.PosH = mul(inputPosL, WorldViewProj);
 		output.Normal = input[i].Normal;
 		output.proj = index;
 		//output.Tangent = input[i].Tangent;
@@ -177,9 +177,9 @@ void PSMain(PSInput input)
 	int3 texDimensions;
 	VoxelTex_Colour.GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
 
-	uint3 texCoord = uint3(((input.PosW.x * 0.5) + 32),
-						   ((input.PosW.y * 0.5) + 32),
-						   ((input.PosW.z * 0.5) + 32));
+	uint3 texCoord = uint3((((input.PosW.x * 0.5) + 0.5f) * texDimensions.x),
+						   (((input.PosW.y * 0.5) + 0.5f) * texDimensions.x),
+						   (((input.PosW.z * 0.5) + 0.5f) * texDimensions.x));
 
 //	uint3 texCoord = uint3(input.PosW.x, input.PosW.y, input.PosW.z);
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
@@ -196,7 +196,7 @@ void PSMain(PSInput input)
 //	{
 //		texCoord = uint3(texCoord.z, texCoord.y, texCoord.x);
 //	}
-	VoxelTex_Colour[uint3(10, 11, 10)] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);
+	
 	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) // this is needed or things outside the range seem to get in?
 	{
 		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
