@@ -11,7 +11,7 @@
 #include "Mesh.h"
 #include "Texture2D.h"
 
-#define TEXTURE_DIMENSION 64
+#define TEXTURE_DIMENSION 128
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -19,6 +19,13 @@ using namespace std;
 using namespace DirectX;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum ComputeShaderDefines
+{
+	csdNumTexelsPerThread,
+	csdNumThreads,
+	csdNulls
+};
 
 class VoxelisePass
 {
@@ -79,6 +86,8 @@ public:
 		}
 	};
 
+	VoxelisePass();
+
 	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderDebugViewToTexture(ID3D11DeviceContext* pContext);
@@ -133,7 +142,10 @@ private:
 
 	Mesh* m_arrDebugRenderCube;
 
-	
+	D3D_SHADER_MACRO m_ComputeShaderDefines[3];
+
+	std::string m_sNumThreads;
+	std::string m_sNumTexelsPerThread;
 
 	int m_iScreenHeight;
 	int m_iScreenWidth;

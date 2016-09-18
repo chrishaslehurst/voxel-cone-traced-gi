@@ -51,6 +51,8 @@ bool GPUProfiler::Initialise(ID3D11Device* pDevice)
 	m_arrProfiledSectionNames[ProfiledSections::psRenderToBuffer] = "Render to Buffers:  ";
 	m_arrProfiledSectionNames[ProfiledSections::psShadowRender] =	"Shadow Maps Render: ";
 	m_arrProfiledSectionNames[ProfiledSections::psLightingPass] =	"Lighting Pass:      ";
+	m_arrProfiledSectionNames[ProfiledSections::psVoxeliseClear] =	"Voxelise Clear:     ";
+	m_arrProfiledSectionNames[ProfiledSections::psVoxelisePass] =	"Voxelise Pass:      ";
 	m_arrProfiledSectionNames[ProfiledSections::psWholeFrame] =		"GPU Frame Time:     ";
 
 	for (int i = 0; i < 2; i++)

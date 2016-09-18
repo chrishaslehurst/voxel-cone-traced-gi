@@ -212,8 +212,16 @@ bool Renderer::Render()
 
 	m_pD3D->TurnZBufferOff();
 	m_pD3D->TurnOffAlphaBlending();
+
+	//Clear the voxel volume..
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
 	m_VoxelisePass.RenderClearVoxelsPass(pContext);
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
+
+	//Render the scene to the volume..
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxelisePass);
 	m_VoxelisePass.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
 
 	m_pD3D->TurnZBufferOn();
 
@@ -238,8 +246,6 @@ bool Renderer::Render()
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
 
-
-
 	m_pD3D->SetRenderOutputToScreen();
 	m_pD3D->TurnZBufferOff();
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
@@ -251,8 +257,6 @@ bool Renderer::Render()
 	//m_VoxelisePass.RenderDebugViewToTexture(pContext);
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
 	
-	
-
 	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
 	//Go back to 3D rendering
@@ -264,10 +268,6 @@ bool Renderer::Render()
 	GPUProfiler::Get()->EndFrame(pContext);
 	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
 	DebugLog::Get()->PrintLogToScreen(pContext);
-
-	
-
-	
 	
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();

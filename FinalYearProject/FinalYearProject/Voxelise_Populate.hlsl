@@ -163,8 +163,6 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 		output.PosH = mul(inputPosL, WorldViewProj);
 		output.Normal = input[i].Normal;
 		output.proj = index;
-		//output.Tangent = input[i].Tangent;
-		//output.Bitangent = cross(output.Normal, output.Tangent);
 
 		outputStream.Append(output);
 	}
@@ -181,40 +179,13 @@ void PSMain(PSInput input)
 						   (((input.PosW.y * 0.5) + 0.5f) * texDimensions.x),
 						   (((input.PosW.z * 0.5) + 0.5f) * texDimensions.x));
 
-//	uint3 texCoord = uint3(input.PosW.x, input.PosW.y, input.PosW.z);
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
-	
-//	if (input.proj == 2)
-//	{
-//		texCoord = uint3(texCoord.x, texCoord.y, texCoord.z);
-//	}
-//	else if (input.proj == 1)
-//	{
-//		texCoord = uint3(texCoord.x, texCoord.z, texCoord.y);
-//	}
-//	else if (input.proj == 0)
-//	{
-//		texCoord = uint3(texCoord.z, texCoord.y, texCoord.x);
-//	}
 	
 	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) // this is needed or things outside the range seem to get in?
 	{
 		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
 	//	imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
-	}
-	if(texCoord.y > 65)
-	{
-		VoxelTex_Colour[uint3(0, 5, 5)] = convVec4ToRGBA8(float4(1.f, 1.f, 0.f, 1.f) * 255.f);
-	}
-//	if (texCoord.z == 0)
-//	{
-//		VoxelTex_Colour[uint3(0, 4, 5)] = convVec4ToRGBA8(float4(1.f, 0.f, 1.f, 1.f) * 255.f);
-//	}
-	if (texCoord.z < 0)
-	{
-		VoxelTex_Colour[uint3(0, 3, 5)] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);
-	}
-	
+	}	
 }
 
 ////////////////////////////////////////////////////////////////////////////////

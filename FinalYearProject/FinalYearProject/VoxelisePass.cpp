@@ -1,6 +1,20 @@
 #include "VoxelisePass.h"
 #include "Debugging.h"
 
+#define NUM_THREADS 16
+
+VoxelisePass::VoxelisePass()
+{
+
+	m_sNumThreads = std::to_string(NUM_THREADS);
+	m_sNumTexelsPerThread = std::to_string((TEXTURE_DIMENSION * TEXTURE_DIMENSION * TEXTURE_DIMENSION) / (NUM_THREADS * NUM_THREADS));
+	m_ComputeShaderDefines[csdNumThreads].Name = "NUM_THREADS";
+	m_ComputeShaderDefines[csdNumThreads].Definition = m_sNumThreads.c_str();
+	m_ComputeShaderDefines[csdNumTexelsPerThread].Name = "NUM_TEXELS_PER_THREAD";
+	m_ComputeShaderDefines[csdNumTexelsPerThread].Definition = m_sNumTexelsPerThread.c_str();
+	m_ComputeShaderDefines[csdNulls].Name = nullptr;
+	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
+}
 
 HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight)
 {
@@ -72,13 +86,6 @@ HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pC
 	XMMATRIX scaling = XMMatrixScaling(2.f / voxelGridSize, 2.f / voxelGridSize, 2.f / voxelGridSize);
 	translateToOrigin = XMVector3Transform(translateToOrigin, scaling);
 
-//	XMMATRIX mWorldToVoxelGridTranslate = XMMatrixTranslation(-Min.m128_f32[0], -Min.m128_f32[1], -Min.m128_f32[2]);
-//	XMMATRIX mWorldToVoxelGridScaling = XMMatrixScaling(scale, scale, scale);
-//
-//	m_mWorldToVoxelGrid = mWorldToVoxelGridTranslate * mWorldToVoxelGridScaling;
-
-//	m_mWorldToVoxelGrid = XMMatrixTranspose(m_mWorldToVoxelGrid);
-
 	m_mWorldToVoxelGrid.r[0].m128_f32[0] = 2.f / voxelGridSize;
 	m_mWorldToVoxelGrid.r[0].m128_f32[1] = 0.0f;
 	m_mWorldToVoxelGrid.r[0].m128_f32[2] = 0.0f;
@@ -123,7 +130,7 @@ HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pC
 	ID3D10Blob* pComputeShaderBuffer2(nullptr);
 
 	//Compile the clear voxels compute shader code
-	HRESULT result = D3DCompileFromFile(L"Voxelise_Clear.hlsl", nullptr, nullptr, "CSClearVoxels", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer, &pErrorMessage);
+	HRESULT result = D3DCompileFromFile(L"Voxelise_Clear.hlsl", m_ComputeShaderDefines, nullptr, "CSClearVoxels", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer, &pErrorMessage);
 	if (FAILED(result))
 	{
 		if (pErrorMessage)
