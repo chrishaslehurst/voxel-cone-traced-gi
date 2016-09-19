@@ -98,7 +98,7 @@ void RaymarchCS(uint3 dispatchThreadID : SV_DispatchThreadID)
 		}
 		else
 		{
-		break;
+			break;
 		}
 
 		occlusion += sampleColor.a;

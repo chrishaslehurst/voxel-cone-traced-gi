@@ -1,5 +1,5 @@
-#ifndef TEXTURE_H
-#define TEXTURE_H
+#ifndef TEXTURE2D_H
+#define TEXTURE2D_H
 
 #include <d3d11_3.h>
 #include "../DirectXTex/DirectXTex.h"
@@ -30,4 +30,4 @@ private:
 	ScratchImage*			  m_pImage;
 };
 
-#endif // !TEXTURE_H
+#endif // !TEXTURE2D_H

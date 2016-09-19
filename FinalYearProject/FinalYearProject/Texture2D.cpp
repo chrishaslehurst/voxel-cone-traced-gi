@@ -154,6 +154,11 @@ void Texture2D::Shutdown()
 		m_pShaderResourceView->Release();
 		m_pShaderResourceView = nullptr;
 	}
+	if (m_pUAV)
+	{
+		m_pUAV->Release();
+		m_pUAV = nullptr;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

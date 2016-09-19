@@ -10,8 +10,9 @@
 #include "AABB.h"
 #include "Mesh.h"
 #include "Texture2D.h"
+#include "Texture3D.h"
 
-#define TEXTURE_DIMENSION 128
+#define TEXTURE_DIMENSION 64
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -91,7 +92,7 @@ public:
 	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderDebugViewToTexture(ID3D11DeviceContext* pContext);
-	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection);
+	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera);
 	
 	void RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pVoxelise);
 	bool SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos);
@@ -125,9 +126,7 @@ private:
 	ID3D11RasterizerState2* m_pRasteriserState;
 	D3D11_VIEWPORT m_pVoxeliseViewport;
 
-	ID3D11Texture3D* m_pVoxelisedScene;
-	ID3D11UnorderedAccessView* m_pVoxelisedSceneUAV;
-	ID3D11ShaderResourceView* m_pVoxelisedSceneSRV;
+	Texture3D* m_pVoxelisedScene;
 
 	Texture2D* m_pDebugOutput;
 	ID3D11SamplerState* m_pSamplerState;

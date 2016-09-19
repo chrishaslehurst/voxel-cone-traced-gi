@@ -177,6 +177,7 @@
     <ClCompile Include="DebugLog.cpp" />
     <ClCompile Include="RenderTextureToScreen.cpp" />
     <ClCompile Include="Texture2D.cpp" />
+    <ClCompile Include="Texture3D.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="VoxelisePass.cpp" />
   </ItemGroup>
@@ -189,6 +190,7 @@
     <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="GPUProfiler.h" />
     <ClInclude Include="RenderTextureToScreen.h" />
+    <ClInclude Include="Texture3D.h" />
     <ClInclude Include="VoxelisePass.h" />
     <ClInclude Include="LightManager.h" />
     <ClInclude Include="Material.h" />
