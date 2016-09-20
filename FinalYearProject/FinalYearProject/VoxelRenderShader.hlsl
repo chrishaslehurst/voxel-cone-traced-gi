@@ -4,8 +4,6 @@ cbuffer MatrixBuffer
 	matrix mWorldMatrix;
 	matrix mViewMatrix;
 	matrix mProjectionMatrix;
-	float3 eyePos;
-	float padding;
 };
 
 cbuffer PerCubeBuffer

@@ -57,8 +57,6 @@ public:
 		XMMATRIX world;
 		XMMATRIX view;
 		XMMATRIX projection;
-		XMFLOAT3 eyePos;
-		float padding;
 
 		void* operator new(size_t i)
 		{

@@ -615,8 +615,6 @@ bool VoxelisePass::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, con
 		pBuffer->world = mWorldM;
 		pBuffer->view = mView;
 		pBuffer->projection = mProjection;
-		pBuffer->eyePos = XMFLOAT3(0,0,0); //TODO: REMOVE FROM BUFFER
-		pBuffer->padding = 0.f;
 
 		pDeviceContext->Unmap(m_pMatrixBuffer, 0);
 	}
