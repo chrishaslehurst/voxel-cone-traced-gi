@@ -179,7 +179,7 @@
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="Texture3D.cpp" />
     <ClCompile Include="Timer.cpp" />
-    <ClCompile Include="VoxelisePass.cpp" />
+    <ClCompile Include="VoxelisedScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\FW1FontWrapper\FW1FontWrapper.h" />
@@ -191,7 +191,7 @@
     <ClInclude Include="GPUProfiler.h" />
     <ClInclude Include="RenderTextureToScreen.h" />
     <ClInclude Include="Texture3D.h" />
-    <ClInclude Include="VoxelisePass.h" />
+    <ClInclude Include="VoxelisedScene.h" />
     <ClInclude Include="LightManager.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="D3DWrapper.h" />

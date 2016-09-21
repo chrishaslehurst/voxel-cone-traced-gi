@@ -8,7 +8,7 @@
 #include "Mesh.h"
 #include "DirectionalLight.h"
 #include "DeferredRender.h"
-#include "VoxelisePass.h"
+#include "VoxelisedScene.h"
 #include "OrthoWindow.h"
 #include "RenderTextureToScreen.h"
 
@@ -43,7 +43,7 @@ private:
 
 	DeferredRender m_DeferredRender;
 	RenderTextureToScreen m_DebugRenderTexture;
-	VoxelisePass   m_VoxelisePass;
+	VoxelisedScene   m_VoxelisePass;
 	OrthoWindow* m_pFullScreenWindow;
 
 

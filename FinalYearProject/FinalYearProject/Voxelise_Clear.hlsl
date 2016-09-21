@@ -1,4 +1,5 @@
 RWTexture3D<uint> VoxelTex_Colour;
+RWTexture3D<uint> VoxelTex_Normals;
 
 float4 convRGBA8ToVec4(uint val)
 {
@@ -28,7 +29,8 @@ void CSClearVoxels(uint3 id: SV_DispatchThreadID)
 		texCoord.x = i / (size * size);
 		texCoord.y = (i / size.x) % size.x;
 		texCoord.z =  i % size.x;
-		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(float4(0.f,0.f,0.1f,0.0f) * 255.f);
+		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(float4(0.f,0.f,0.0f,0.0f) * 255.f);
+		VoxelTex_Normals[texCoord] = convVec4ToRGBA8(float4(0.f, 0.f, 0.0f, 0.0f) * 255.f);
 		index++;
 	}
 }

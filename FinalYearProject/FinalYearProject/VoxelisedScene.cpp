@@ -1,9 +1,9 @@
-#include "VoxelisePass.h"
+#include "VoxelisedScene.h"
 #include "Debugging.h"
 
 #define NUM_THREADS 16
 
-VoxelisePass::VoxelisePass()
+VoxelisedScene::VoxelisedScene()
 {
 
 	m_sNumThreads = std::to_string(NUM_THREADS);
@@ -16,7 +16,7 @@ VoxelisePass::VoxelisePass()
 	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
 }
 
-HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight)
+HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight)
 {
 	m_iScreenHeight = iScreenHeight;
 	m_iScreenWidth = iScreenWidth;
@@ -117,9 +117,6 @@ HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pC
 	XMVECTOR vMaxScaled = ((vmax * 0.5f) + XMLoadFloat3(&XMFLOAT3(0.5f, 0.5f, 0.5f))) * 64;
 	XMVECTOR vMinScaled = ((vmin * 0.5f) + XMLoadFloat3(&XMFLOAT3(0.5f, 0.5f, 0.5f))) * 64;
 
-	m_pDebugOutput = new Texture2D;
-	m_pDebugOutput->Init(pDevice, iScreenWidth, iScreenHeight, 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
-
 	ID3D10Blob* pErrorMessage(nullptr);
 	ID3D10Blob* pVertexShaderBuffer(nullptr);
 	ID3D10Blob* pPixelShaderBuffer(nullptr);
@@ -127,7 +124,6 @@ HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pC
 	ID3D10Blob* pDebugPixelShaderBuffer(nullptr);
 	ID3D10Blob* pGeometryShaderBuffer(nullptr);
 	ID3D10Blob* pComputeShaderBuffer(nullptr);
-	ID3D10Blob* pComputeShaderBuffer2(nullptr);
 
 	//Compile the clear voxels compute shader code
 	HRESULT result = D3DCompileFromFile(L"Voxelise_Clear.hlsl", m_ComputeShaderDefines, nullptr, "CSClearVoxels", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer, &pErrorMessage);
@@ -152,31 +148,6 @@ HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pC
 		VS_LOG_VERBOSE("Failed to create the compute shader.");
 		return false;
 	}
-
-	//Compile the debug voxel view compute shader code
-	result = D3DCompileFromFile(L"VoxelDebugRaymarch.hlsl", nullptr, nullptr, "RaymarchCS", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer2, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"VoxelDebugRaymarch.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"VoxelDebugRaymarch.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreateComputeShader(pComputeShaderBuffer2->GetBufferPointer(), pComputeShaderBuffer2->GetBufferSize(), nullptr, &m_pRenderDebugToTextureComputeShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the compute shader.");
-		return false;
-	}
-
 
 	//Compile the voxelisation pass vertex shader code
 	result = D3DCompileFromFile(L"Voxelise_Populate.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
@@ -424,8 +395,12 @@ HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pC
 		return false;
 	}
 
-	m_pVoxelisedScene = new Texture3D;
-	m_pVoxelisedScene->Init(pDevice, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
+	m_pVoxelisedSceneColours = new Texture3D;
+	m_pVoxelisedSceneColours->Init(pDevice, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
+
+	m_pVoxelisedSceneNormals = new Texture3D;
+	m_pVoxelisedSceneNormals->Init(pDevice, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
+
 
 	//Initialise Rasteriser state
 	D3D11_RASTERIZER_DESC2 rasterDesc;
@@ -463,54 +438,28 @@ HRESULT VoxelisePass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pC
 	
 }
 
-void VoxelisePass::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
+void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 {
 	ID3D11UnorderedAccessView* ppUAViewNULL[1] = { nullptr };
 
 	pContext->CSSetShader(m_pClearVoxelsComputeShader, nullptr, 0);
 
-	ID3D11UnorderedAccessView* uav = m_pVoxelisedScene->GetUAV();
-	pContext->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
+	ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
+	pContext->CSSetUnorderedAccessViews(0, 2, uavs, nullptr);
 	pContext->Dispatch(1, 1, 1);
 	pContext->CSSetShader(nullptr, nullptr, 0);
 	pContext->CSSetUnorderedAccessViews(0, 1, ppUAViewNULL, nullptr);
 }
 
-void VoxelisePass::RenderDebugViewToTexture(ID3D11DeviceContext* pContext)
-{
-	ID3D11UnorderedAccessView* ppUAViewNULL[1] = { nullptr };
-	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
-	pContext->CSSetShader(m_pRenderDebugToTextureComputeShader, nullptr, 0);
-
-	ID3D11UnorderedAccessView* views[1] = { m_pDebugOutput->GetUAV() };
-	pContext->CSSetUnorderedAccessViews(0, 1, views, nullptr);
-
-	ID3D11ShaderResourceView* srv = m_pVoxelisedScene->GetShaderResourceView();
-	pContext->CSSetShaderResources(0, 1, &srv);
-
-	pContext->CSSetSamplers(0, 1, &m_pSamplerState);
-	pContext->CSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
-	pContext->CSSetConstantBuffers(1, 1, &m_pVoxelGridBuffer);
-
-	//Compute shader dimensions are 16x16
-	unsigned int dispatchWidth = (m_iScreenWidth + 16 - 1) / 16;
-	unsigned int dispatchHeight = (m_iScreenHeight + 16 - 1) / 16;
-	pContext->Dispatch(dispatchWidth, dispatchHeight, 1);
-
-	pContext->CSSetShader(nullptr, nullptr, 0);
-	pContext->CSSetUnorderedAccessViews(0, 1, ppUAViewNULL, nullptr);
-	pContext->CSSetShaderResources(0, 1, ppSRVNull);
-}
-
-void VoxelisePass::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera)
+void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera)
 {
 	pContext->IASetInputLayout(m_pLayout);
 	pContext->VSSetShader(m_pDebugVertexShader, nullptr, 0);
 	pContext->PSSetShader(m_pDebugPixelShader, nullptr, 0);
 
-	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
-	ID3D11ShaderResourceView* srv = m_pVoxelisedScene->GetShaderResourceView();
-	pContext->PSSetShaderResources(0, 1, &srv);
+	ID3D11ShaderResourceView* ppSRVNull[2] = { nullptr, nullptr };
+	ID3D11ShaderResourceView* srvs[2] = { m_pVoxelisedSceneColours->GetShaderResourceView(), m_pVoxelisedSceneNormals->GetShaderResourceView() };
+	pContext->PSSetShaderResources(0, 2, srvs);
 
 	XMMATRIX mViewM = XMMatrixTranspose(mView);
 	XMMATRIX mProjectionM = XMMatrixTranspose(mProjection);
@@ -536,12 +485,12 @@ void VoxelisePass::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRI
 		}
  	}
 
-	pContext->PSSetShaderResources(0, 1, ppSRVNull);
+	pContext->PSSetShaderResources(0, 2, ppSRVNull);
 	pContext->VSSetShader(nullptr, nullptr, 0);
 	pContext->PSSetShader(nullptr, nullptr, 0);
 }
 
-void VoxelisePass::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pMesh)
+void VoxelisedScene::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pMesh)
 {
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 	
@@ -561,7 +510,7 @@ void VoxelisePass::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATR
 	PostRender(pDeviceContext);
 }
 
-bool VoxelisePass::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos)
+bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos)
 {
 
 	pDeviceContext->IASetInputLayout(m_pLayout);
@@ -582,9 +531,9 @@ bool VoxelisePass::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext,
 		VoxeliseVertexShaderBuffer* pBuffer = static_cast<VoxeliseVertexShaderBuffer*>(mappedResource.pData);
 		
 		pBuffer->mWorld = mWorld;
-		pBuffer->mWorldView = m_mWorldToVoxelGrid;
+		pBuffer->mWorldToVoxelGrid = m_mWorldToVoxelGrid;
 
-		pBuffer->mWorldViewProj = m_mWorldToVoxelGrid * XMMatrixTranspose(XMMatrixOrthographicLH(2.f, 2.f, 1.f, -1.f));
+		pBuffer->mWorldToVoxelGridProj = m_mWorldToVoxelGrid * XMMatrixTranspose(XMMatrixOrthographicLH(2.f, 2.f, 1.f, -1.f));
 		pBuffer->mWorldInverseTranspose = XMMatrixTranspose(XMMatrixInverse(&XMMatrixDeterminant(mWorld), mWorld));
 		pBuffer->mAxisProjections[0] = m_mViewProjMatrices[0];
 		pBuffer->mAxisProjections[1] = m_mViewProjMatrices[1];
@@ -597,13 +546,13 @@ bool VoxelisePass::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext,
 
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerState);
 
-	ID3D11UnorderedAccessView* uav = m_pVoxelisedScene->GetUAV();
-	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 1, &uav, 0);
+	ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
+	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
 
 	return true;
 }
 
-bool VoxelisePass::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, int coord[3])
+bool VoxelisedScene::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, int coord[3])
 {
 	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);	
 
@@ -637,7 +586,7 @@ bool VoxelisePass::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, con
 	return true;
 }
 
-bool VoxelisePass::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
+bool VoxelisedScene::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
 {
 	//Render the triangle
 	pDeviceContext->DrawIndexed(iIndexCount, 0, 0);
@@ -645,7 +594,7 @@ bool VoxelisePass::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
 	return true;
 }
 
-void VoxelisePass::PostRender(ID3D11DeviceContext* pContext)
+void VoxelisedScene::PostRender(ID3D11DeviceContext* pContext)
 {
 	pContext->VSSetShader(nullptr, nullptr, 0);
 	pContext->GSSetShader(nullptr, nullptr, 0);
@@ -655,13 +604,13 @@ void VoxelisePass::PostRender(ID3D11DeviceContext* pContext)
 	pContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 1, ppUAViewNULL, 0);
 }
 
-void VoxelisePass::Shutdown()
+void VoxelisedScene::Shutdown()
 {
 	delete m_arrDebugRenderCube;
 	m_arrDebugRenderCube = nullptr;
 }
 
-void VoxelisePass::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename)
+void VoxelisedScene::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename)
 {
 	//Get ptr to error message text buffer
 	char* compileErrors = (char*)(errorMessage->GetBufferPointer());

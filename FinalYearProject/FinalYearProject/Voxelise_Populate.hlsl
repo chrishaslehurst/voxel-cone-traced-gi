@@ -52,6 +52,7 @@ struct PSInput
 //Resources
 
 RWTexture3D<uint> VoxelTex_Colour : register(u0); //This is where we will write the voxel colours to..
+RWTexture3D<uint> VoxelTex_Normals : register(u1);
 
 
 Texture2D diffuseTexture; 
@@ -184,6 +185,10 @@ void PSMain(PSInput input)
 	{
 		//VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
 		imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
+
+		//Convert the normals so -ve can be stored in the 8bits.. this will have to be reversed in the radiance injection
+		float3 normal = (input.Normal * 0.5f) + 0.5f; //Normal now mapped to 0 - 1 instead of -1 to +1
+		VoxelTex_Normals[texCoord] = convVec4ToRGBA8((float4(normal.xyz, 1.f)) * 255.f);
 	}	
 }
 

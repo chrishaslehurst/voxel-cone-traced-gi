@@ -12,7 +12,7 @@
 #include "Texture2D.h"
 #include "Texture3D.h"
 
-#define TEXTURE_DIMENSION 64
+#define TEXTURE_DIMENSION 128
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -28,7 +28,7 @@ enum ComputeShaderDefines
 	csdNulls
 };
 
-class VoxelisePass
+class VoxelisedScene
 {
 public:
 
@@ -36,8 +36,8 @@ public:
 	{
 		
 		XMMATRIX mWorld;
-		XMMATRIX mWorldView;
-		XMMATRIX mWorldViewProj;
+		XMMATRIX mWorldToVoxelGrid;
+		XMMATRIX mWorldToVoxelGridProj;
 		XMMATRIX mWorldInverseTranspose;
 		XMMATRIX mAxisProjections[3];
 		
@@ -85,11 +85,10 @@ public:
 		}
 	};
 
-	VoxelisePass();
+	VoxelisedScene();
 
 	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
-	void RenderDebugViewToTexture(ID3D11DeviceContext* pContext);
 	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera);
 	
 	void RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pVoxelise);
@@ -100,8 +99,6 @@ public:
 	void PostRender(ID3D11DeviceContext* pContext);
 	void Shutdown();
 
-	Texture2D* GetDebugTexture() { return m_pDebugOutput; }
-
 private:
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
@@ -109,7 +106,6 @@ private:
 	ID3D11PixelShader*		m_pPixelShader;
 	ID3D11GeometryShader*	m_pGeometryShader;
 	ID3D11ComputeShader*	m_pClearVoxelsComputeShader;
-	ID3D11ComputeShader*	m_pRenderDebugToTextureComputeShader;
 
 	ID3D11VertexShader*		m_pDebugVertexShader;
 	ID3D11PixelShader*		m_pDebugPixelShader;
@@ -118,16 +114,14 @@ private:
 	ID3D11Buffer*			m_pVoxeliseVertexShaderBuffer;
 	ID3D11Buffer*			m_pMatrixBuffer;
 	ID3D11Buffer*			m_pPerCubeDebugBuffer;
-	ID3D11Buffer*			m_pProjectionMatrixBuffer;
-	ID3D11Buffer*			m_pVoxelGridBuffer;
 
 	ID3D11RasterizerState2* m_pRasteriserState;
 	D3D11_VIEWPORT m_pVoxeliseViewport;
-
-	Texture3D* m_pVoxelisedScene;
-
-	Texture2D* m_pDebugOutput;
 	ID3D11SamplerState* m_pSamplerState;
+
+	Texture3D* m_pVoxelisedSceneColours;
+	Texture3D* m_pVoxelisedSceneNormals;
+
 
 	XMMATRIX m_mViewProjMatrices[3];
 	XMFLOAT3 m_vVoxelGridSize;
@@ -135,7 +129,6 @@ private:
 	XMFLOAT3 m_vVoxelGridMax;
 
 	XMMATRIX m_mWorldToVoxelGrid;
-	XMMATRIX m_mWorldToVoxelGridInverse;
 
 	Mesh* m_arrDebugRenderCube;
 
