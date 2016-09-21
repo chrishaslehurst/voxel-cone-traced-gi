@@ -61,30 +61,29 @@ Texture2D diffuseTexture;
 SamplerState SampleState;
 
 //Functions
-//Averages the color stored in a specific texel
-void imageAtomicRGBA8Avg(RWTexture3D<uint> imgUI, uint3 coords, float4 val)
+
+//Averages the color stored in a texel atomically
+void imageAtomicRGBA8Avg(RWTexture3D<uint> img, uint3 coords, float4 val)
 {
-	val.rgb *= 255.0f; // Optimize following calculations
+	val *= 255.0f;
 	uint newVal = convVec4ToRGBA8(val);
 	uint prevStoredVal = 0;
 	uint curStoredVal = 0;
-
+	InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
 	// Loop as long as destination value gets changed by other threads
-
-	[allow_uav_condition] while (true)
+	[allow_uav_condition] do 
 	{
-		InterlockedCompareExchange(imgUI[coords], prevStoredVal, newVal, curStoredVal);
-
-		if (curStoredVal == prevStoredVal)
-			break;
-
 		prevStoredVal = curStoredVal;
-		float4 rval = convRGBA8ToVec4(curStoredVal);
-		rval.xyz = (rval.xyz* rval.w); // Denormalize
-		float4 curValF = rval + val; // Add new value
-		curValF.xyz /= (curValF.w); // Renormalize
-		newVal = convVec4ToRGBA8(curValF);
-	}
+		float4 rval = convRGBA8ToVec4(curStoredVal); //Convert to float4s to compute average, will overflow rgba8's
+		
+		float4 curValF = rval + val;	 // Add new value
+		curValF.xyz *= 0.5f;			 //average the values
+		curValF.w = 255.f;
+		newVal = convVec4ToRGBA8(curValF); //convert back to rgba8 for comparison/storage
+		
+		InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
+
+	} while (prevStoredVal != curStoredVal);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,10 +180,10 @@ void PSMain(PSInput input)
 
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
 	
-	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) // this is needed or things outside the range seem to get in?
+	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) 
 	{
-		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
-	//	imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
+		//VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
+		imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
 	}	
 }
 
