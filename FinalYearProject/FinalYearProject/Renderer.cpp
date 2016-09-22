@@ -220,8 +220,10 @@ bool Renderer::Render()
 
 	//Render the scene to the volume..
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxelisePass);
-	//m_VoxelisePass.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+	m_VoxelisePass.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
+
+	m_VoxelisePass.RenderInjectRadiancePass(pContext);
 
 	m_pD3D->TurnZBufferOn();
 

@@ -10,7 +10,6 @@
 
 VoxelisedScene::VoxelisedScene()
 {
-
 	m_sNumThreads = std::to_string(NUM_THREADS);
 	m_sNumTexelsPerThread = std::to_string((TEXTURE_DIMENSION * TEXTURE_DIMENSION * TEXTURE_DIMENSION) / (NUM_THREADS * NUM_THREADS * NUM_GROUPS));
 	m_ComputeShaderDefines[csdNumThreads].Name = "NUM_THREADS";
@@ -20,6 +19,8 @@ VoxelisedScene::VoxelisedScene()
 	m_ComputeShaderDefines[csdNulls].Name = nullptr;
 	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 VoxelisedScene::~VoxelisedScene()
 {
@@ -97,6 +98,8 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 	m_pVoxelisedSceneNormals = new Texture3D;
 	m_pVoxelisedSceneNormals->Init(pDevice, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
 
+	m_pRadianceVolume = new Texture3D;
+	m_pRadianceVolume->Init(pDevice, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
 
 	//Initialise Rasteriser state
 	D3D11_RASTERIZER_DESC2 rasterDesc;
@@ -138,7 +141,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 
 void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 {
-	ID3D11UnorderedAccessView* ppUAViewNULL[1] = { nullptr };
+	ID3D11UnorderedAccessView* ppUAViewNULL[2] = { nullptr, nullptr };
 
 	pContext->CSSetShader(m_pClearVoxelsComputeShader, nullptr, 0);
 
@@ -146,7 +149,28 @@ void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 	pContext->CSSetUnorderedAccessViews(0, 2, uavs, nullptr);
 	pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
 	pContext->CSSetShader(nullptr, nullptr, 0);
+	pContext->CSSetUnorderedAccessViews(0, 2, ppUAViewNULL, nullptr);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
+{
+	ID3D11UnorderedAccessView* ppUAViewNULL[1] = { nullptr };
+	ID3D11ShaderResourceView* ppSRVNull[2] = { nullptr, nullptr };
+
+	pContext->CSSetShader(m_pInjectRadianceComputeShader, nullptr, 0);
+	ID3D11UnorderedAccessView* uav = m_pRadianceVolume->GetUAV();
+	ID3D11ShaderResourceView* srvs[2] = { m_pVoxelisedSceneColours->GetShaderResourceView(), m_pVoxelisedSceneNormals->GetShaderResourceView() };
+	pContext->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
+	pContext->CSSetShaderResources(0, 2, srvs);
+	pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
+
+
+	//Reset
+	pContext->CSSetShader(nullptr, nullptr, 0);
 	pContext->CSSetUnorderedAccessViews(0, 1, ppUAViewNULL, nullptr);
+	pContext->CSSetShaderResources(0, 2, ppSRVNull);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -157,9 +181,9 @@ void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMAT
 	pContext->VSSetShader(m_pDebugVertexShader, nullptr, 0);
 	pContext->PSSetShader(m_pDebugPixelShader, nullptr, 0);
 
-	ID3D11ShaderResourceView* ppSRVNull[2] = { nullptr, nullptr };
-	ID3D11ShaderResourceView* srvs[2] = { m_pVoxelisedSceneColours->GetShaderResourceView(), m_pVoxelisedSceneNormals->GetShaderResourceView() };
-	pContext->PSSetShaderResources(0, 2, srvs);
+	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
+	ID3D11ShaderResourceView* srv = m_pRadianceVolume->GetShaderResourceView();
+	pContext->PSSetShaderResources(0, 1, &srv);
 
 	XMMATRIX mViewM = XMMatrixTranspose(mView);
 	XMMATRIX mProjectionM = XMMatrixTranspose(mProjection);
@@ -185,7 +209,7 @@ void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMAT
 		}
  	}
 
-	pContext->PSSetShaderResources(0, 2, ppSRVNull);
+	pContext->PSSetShaderResources(0, 1, ppSRVNull);
 	pContext->VSSetShader(nullptr, nullptr, 0);
 	pContext->PSSetShader(nullptr, nullptr, 0);
 }
@@ -480,6 +504,7 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	ID3D10Blob* pDebugPixelShaderBuffer(nullptr);
 	ID3D10Blob* pGeometryShaderBuffer(nullptr);
 	ID3D10Blob* pComputeShaderBuffer(nullptr);
+	ID3D10Blob* pRadianceComputeShaderBuffer(nullptr);
 
 	//Compile the clear voxels compute shader code
 	HRESULT result = D3DCompileFromFile(L"Voxelise_Clear.hlsl", m_ComputeShaderDefines, nullptr, "CSClearVoxels", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer, &pErrorMessage);
@@ -504,6 +529,31 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 		VS_LOG_VERBOSE("Failed to create the compute shader.");
 		return false;
 	}
+
+
+	//Compile the clear voxels compute shader code
+	result = D3DCompileFromFile(L"InjectRadiance.hlsl", m_ComputeShaderDefines, nullptr, "CSInjectRadiance", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pRadianceComputeShaderBuffer, &pErrorMessage);
+	if (FAILED(result))
+	{
+		if (pErrorMessage)
+		{
+			//If the shader failed to compile it should have written something to error message, so we output that here
+			OutputShaderErrorMessage(pErrorMessage, hwnd, L"InjectRadiance.hlsl");
+		}
+		else
+		{
+			//if it hasn't, then it couldn't find the shader file..
+			MessageBox(hwnd, L"InjectRadiance.hlsl", L"Missing Shader File", MB_OK);
+		}
+		return false;
+	}
+	result = pDevice->CreateComputeShader(pRadianceComputeShaderBuffer->GetBufferPointer(), pRadianceComputeShaderBuffer->GetBufferSize(), nullptr, &m_pInjectRadianceComputeShader);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create the compute shader.");
+		return false;
+	}
+
 
 	//Compile the voxelisation pass vertex shader code
 	result = D3DCompileFromFile(L"Voxelise_Populate.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);

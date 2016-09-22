@@ -215,5 +215,8 @@
     <FxCompile Include="VoxelRenderShader.hlsl">
       <Filter>Shaders\Debug</Filter>
     </FxCompile>
+    <FxCompile Include="InjectRadiance.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

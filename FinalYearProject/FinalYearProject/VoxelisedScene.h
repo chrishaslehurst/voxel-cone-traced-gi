@@ -90,6 +90,7 @@ public:
 
 	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, const AABB& voxelGridAABB);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
+	void RenderInjectRadiancePass(ID3D11DeviceContext* pContext);
 	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera);
 	
 	void RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pVoxelise);
@@ -113,6 +114,8 @@ private:
 
 	ID3D11VertexShader*		m_pDebugVertexShader;
 	ID3D11PixelShader*		m_pDebugPixelShader;
+
+	ID3D11ComputeShader*	m_pInjectRadianceComputeShader;
 
 	ID3D11InputLayout*		m_pLayout;
 	ID3D11Buffer*			m_pVoxeliseVertexShaderBuffer;
