@@ -164,6 +164,10 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 	ID3D11ShaderResourceView* srvs[2] = { m_pVoxelisedSceneColours->GetShaderResourceView(), m_pVoxelisedSceneNormals->GetShaderResourceView() };
 	pContext->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
 	pContext->CSSetShaderResources(0, 2, srvs);
+	
+	ID3D11Buffer* pLightBuffer = LightManager::Get()->GetLightBuffer();
+	pContext->CSSetConstantBuffers(0, 1, &pLightBuffer);
+	pContext->CSSetConstantBuffers(1, 1, &m_pVoxeliseVertexShaderBuffer);
 	pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
 
 

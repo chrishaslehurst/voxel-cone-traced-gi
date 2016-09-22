@@ -1,7 +1,7 @@
 #include "DeferredRender.h"
 #include "Debugging.h"
 #include "OmnidirectionalShadowMap.h"
-#include "LightManager.h"
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -11,7 +11,6 @@ DeferredRender::DeferredRender()
 	, m_pLayout (nullptr)
 	, m_pSampleState (nullptr)
 	, m_pMatrixBuffer(nullptr)
-	, m_pLightingBuffer(nullptr)
 	, m_pCameraBuffer(nullptr)
 {
 	for (int i = 0; i < BufferType::btMax; i++)
@@ -343,21 +342,7 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 		return false;
 	}
 
-	D3D11_BUFFER_DESC lightingBufferDesc;
-	lightingBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	lightingBufferDesc.ByteWidth = sizeof(LightBuffer);
-	lightingBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	lightingBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	lightingBufferDesc.MiscFlags = 0;
-	lightingBufferDesc.StructureByteStride = 0;
-
-	//Create the light buffer so we can access it
-	res = pDevice->CreateBuffer(&lightingBufferDesc, nullptr, &m_pLightingBuffer);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to create lighting buffer");
-		return false;
-	}
+	
 
 	D3D11_BUFFER_DESC cameraBufferDesc;
 	cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -382,11 +367,7 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 
 void DeferredRender::ShutdownShader()
 {
-	if (m_pLightingBuffer)
-	{
-		m_pLightingBuffer->Release();
-		m_pLightingBuffer = nullptr;
-	}
+	
 
 	if (m_pCameraBuffer)
 	{
@@ -488,35 +469,7 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 	//Unlock the buffer
 	pContext->Unmap(m_pMatrixBuffer, 0);
 
-	res = pContext->Map(m_pLightingBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to lock the lighting buffer");
-		return false;
-	}
-	LightBuffer* pLightData;
-	pLightData = (LightBuffer*)mappedResource.pData;
-
-	LightManager* pLightManager = LightManager::Get();
-	if (pLightManager)
-	{
-
-		pLightData->AmbientColour = pLightManager->GetAmbientColour();
-		pLightData->DirectionalLightDirection = pLightManager->GetDirectionalLightDirection();
-		pLightData->DirectionalLightColour = pLightManager->GetDirectionalLightColour();
-		for (int i = 0; i < NUM_LIGHTS; i++)
-		{
-			PointLight* pLight = pLightManager->GetPointLight(i);
-			if (pLight) 
-			{
-				pLightData->pointLights[i].vDiffuseColour = pLight->GetDiffuseColour();
-				pLightData->pointLights[i].fRange = pLight->GetReciprocalRange();
-				pLightData->pointLights[i].vPosition = XMFLOAT3(pLight->GetPosition().x, pLight->GetPosition().y, pLight->GetPosition().z);
-			}
-		}
-	}
-
-	pContext->Unmap(m_pLightingBuffer, 0);
+	
 
 	res = pContext->Map(m_pCameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(res))
@@ -534,8 +487,10 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 
 
 	unsigned int u_iBufferNumber = 0;
+
+	ID3D11Buffer* pLightBuffer = LightManager::Get()->GetLightBuffer();
 	pContext->VSSetConstantBuffers(u_iBufferNumber, 1, &m_pMatrixBuffer);
-	pContext->PSSetConstantBuffers(u_iBufferNumber, 1, &m_pLightingBuffer);
+	pContext->PSSetConstantBuffers(u_iBufferNumber, 1, &pLightBuffer);
 
 	u_iBufferNumber++;
 

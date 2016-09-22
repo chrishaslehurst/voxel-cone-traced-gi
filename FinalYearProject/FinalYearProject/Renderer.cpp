@@ -91,6 +91,8 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	LightManager* pLightManager = LightManager::Get();
 	if (pLightManager)
 	{
+		pLightManager->Initialise(m_pD3D->GetDevice());
+
 		pLightManager->SetAmbientLightColour(XMFLOAT4(0.05f, 0.05f, 0.05f, 1.f));
 
 		pLightManager->AddPointLight(XMFLOAT3(0.f, 1250.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
@@ -172,6 +174,7 @@ bool Renderer::Update(HWND hwnd)
 	{
 		m_pModel->ReloadShaders(m_pD3D->GetDevice(), hwnd);
 	}
+	LightManager::Get()->Update(m_pD3D->GetDeviceContext());
 
 	//Render the scene
 	if (!Render())

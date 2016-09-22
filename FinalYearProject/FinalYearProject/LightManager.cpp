@@ -5,6 +5,55 @@
 
 LightManager* LightManager::s_pTheInstance = nullptr;
 
+bool LightManager::Initialise(ID3D11Device3* pDevice)
+{
+	D3D11_BUFFER_DESC lightingBufferDesc;
+	lightingBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	lightingBufferDesc.ByteWidth = sizeof(LightBuffer);
+	lightingBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	lightingBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	lightingBufferDesc.MiscFlags = 0;
+	lightingBufferDesc.StructureByteStride = 0;
+
+	//Create the light buffer so we can access it
+	HRESULT res = pDevice->CreateBuffer(&lightingBufferDesc, nullptr, &m_pLightingBuffer);
+	if (FAILED(res))
+	{
+		VS_LOG_VERBOSE("Failed to create lighting buffer");
+		return false;
+	}
+}
+
+bool LightManager::Update(ID3D11DeviceContext3* pContext)
+{
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT res = pContext->Map(m_pLightingBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(res))
+	{
+		VS_LOG_VERBOSE("Failed to lock the lighting buffer");
+		return false;
+	}
+	LightBuffer* pLightData;
+	pLightData = (LightBuffer*)mappedResource.pData;
+
+	pLightData->AmbientColour = GetAmbientColour();
+	pLightData->DirectionalLightDirection = GetDirectionalLightDirection();
+	pLightData->DirectionalLightColour = GetDirectionalLightColour();
+	for (int i = 0; i < m_arrPointLights.size(); i++)
+	{
+		PointLight* pLight = &m_arrPointLights[i];
+		if (pLight)
+		{
+			pLightData->pointLights[i].vDiffuseColour = pLight->GetDiffuseColour();
+			pLightData->pointLights[i].fRange = pLight->GetReciprocalRange();
+			pLightData->pointLights[i].vPosition = XMFLOAT3(pLight->GetPosition().x, pLight->GetPosition().y, pLight->GetPosition().z);
+		}
+	}
+	
+	pContext->Unmap(m_pLightingBuffer, 0);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void LightManager::SetDirectionalLightDirection(const XMFLOAT3& vDir)
@@ -130,6 +179,7 @@ void LightManager::Shutdown()
 LightManager::LightManager()
 	: m_iNumPointLightsAllocated(0)
 	, m_pDirectionalLight(nullptr)
+	, m_pLightingBuffer(nullptr)
 {
 	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
@@ -138,6 +188,9 @@ LightManager::LightManager()
 		m_arrPointLights[i].SetRange(0.f);
 		m_arrPointLights[i].SetDiffuseColour(0.f, 0.f, 0.f, 0.f);
 	}
+	
+	
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,6 +201,11 @@ LightManager::~LightManager()
 	{
 		delete m_pDirectionalLight;
 		m_pDirectionalLight = nullptr;
+	}
+	if (m_pLightingBuffer)
+	{
+		m_pLightingBuffer->Release();
+		m_pLightingBuffer = nullptr;
 	}
 }
 

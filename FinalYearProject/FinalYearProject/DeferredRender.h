@@ -6,10 +6,8 @@
 #include <DirectXMath.h>
 #include <D3DCompiler.h>
 #include "Texture2D.h"
-
+#include "LightManager.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define NUM_LIGHTS 4
 
 using namespace DirectX;
 
@@ -41,40 +39,7 @@ public:
 		XMMATRIX mProjection;
 	};
 
-	__declspec(align(16)) struct PointLightPixelStruct
-	{
-		XMFLOAT4 vDiffuseColour;
-		float	 fRange;
-		XMFLOAT3 vPosition;
-
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-	};
-
-	__declspec(align(16)) struct LightBuffer
-	{
-		void* operator new(size_t i)
-		{
-			return _mm_malloc(i, 16);
-		}
-
-			void operator delete(void* p)
-		{
-			_mm_free(p);
-		}
-
-		XMFLOAT4 AmbientColour;
-		XMFLOAT4 DirectionalLightColour;
-		XMFLOAT3 DirectionalLightDirection;
-		PointLightPixelStruct pointLights[NUM_LIGHTS];
-	};
+	
 
 	__declspec(align(16)) struct CameraBuffer
 	{
@@ -133,7 +98,7 @@ private:
 	ID3D11SamplerState* m_pSampleState;
 	ID3D11SamplerState* m_pShadowMapSampleState;
 	ID3D11Buffer* m_pMatrixBuffer;
-	ID3D11Buffer* m_pLightingBuffer;
+
 	ID3D11Buffer* m_pCameraBuffer;
 
 };
