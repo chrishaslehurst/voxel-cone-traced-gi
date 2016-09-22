@@ -86,8 +86,9 @@ public:
 	};
 
 	VoxelisedScene();
+	~VoxelisedScene();
 
-	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, AABB voxelGridAABB, int iScreenWidth, int iScreenHeight);
+	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, const AABB& voxelGridAABB);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera);
 	
@@ -100,6 +101,9 @@ public:
 	void Shutdown();
 
 private:
+
+	void CreateWorldToVoxelGrid(const AABB& voxelGridAABB);
+	HRESULT InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
 	ID3D11VertexShader*		m_pVertexShader;
@@ -121,7 +125,7 @@ private:
 
 	Texture3D* m_pVoxelisedSceneColours;
 	Texture3D* m_pVoxelisedSceneNormals;
-
+	Texture3D* m_pRadianceVolume;
 
 	XMMATRIX m_mViewProjMatrices[3];
 	XMFLOAT3 m_vVoxelGridSize;
@@ -130,15 +134,13 @@ private:
 
 	XMMATRIX m_mWorldToVoxelGrid;
 
-	Mesh* m_arrDebugRenderCube;
+	Mesh* m_pDebugRenderCube;
 
 	D3D_SHADER_MACRO m_ComputeShaderDefines[3];
 
 	std::string m_sNumThreads;
 	std::string m_sNumTexelsPerThread;
 
-	int m_iScreenHeight;
-	int m_iScreenWidth;
 };
 
 #endif

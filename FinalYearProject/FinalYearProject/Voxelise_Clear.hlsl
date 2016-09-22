@@ -26,11 +26,12 @@ void CSClearVoxels(uint3 id: SV_DispatchThreadID)
 
 	for (int i = 0; i < NUM_TEXELS_PER_THREAD; i++)
 	{
-		texCoord.x = i / (size * size);
-		texCoord.y = (i / size.x) % size.x;
-		texCoord.z =  i % size.x;
+		texCoord.x = index / (size * size);
+		texCoord.y = (index / size.x) % size.x;
+		texCoord.z = index % size.x;
 		VoxelTex_Colour[texCoord] = convVec4ToRGBA8(float4(0.f,0.f,0.0f,0.0f) * 255.f);
 		VoxelTex_Normals[texCoord] = convVec4ToRGBA8(float4(0.f, 0.f, 0.0f, 0.0f) * 255.f);
+
 		index++;
 	}
 }

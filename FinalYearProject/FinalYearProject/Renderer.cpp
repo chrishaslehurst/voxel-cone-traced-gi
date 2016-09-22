@@ -107,7 +107,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		pLightManager->SetDirectionalLightDirection(XMFLOAT3(0.2f, -0.1f, 0.2f));
 	}
 	m_DebugRenderTexture.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, iScreenWidth, iScreenHeight, SCREEN_DEPTH, SCREEN_NEAR);
-	m_VoxelisePass.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB(), iScreenWidth, iScreenHeight);
+	m_VoxelisePass.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB());
 
 	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
 	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
@@ -220,7 +220,7 @@ bool Renderer::Render()
 
 	//Render the scene to the volume..
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxelisePass);
-	m_VoxelisePass.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+	//m_VoxelisePass.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
 
 	m_pD3D->TurnZBufferOn();
