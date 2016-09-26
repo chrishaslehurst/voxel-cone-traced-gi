@@ -47,7 +47,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		VS_LOG_VERBOSE("Could not create Camera");
 		return false;
 	}
-	m_pCamera->SetPosition(0.f, 0.f, 0.f);
+	m_pCamera->SetPosition(210.f, 200.f, 250.f);
 
 	m_pFullScreenWindow = new OrthoWindow;
 	if (!m_pFullScreenWindow)

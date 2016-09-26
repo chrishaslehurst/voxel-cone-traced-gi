@@ -32,6 +32,8 @@ VoxelisedScene::~VoxelisedScene()
 HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, const AABB& voxelGridAABB)
 {
 	CreateWorldToVoxelGrid(voxelGridAABB);
+	
+	InitialiseDebugBuffers(pDevice);
 
 	HRESULT result = InitialiseShadersAndInputLayout(pDevice, pContext, hwnd);
 	if (FAILED(result))
@@ -72,23 +74,6 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 	if (FAILED(result))
 	{
 		VS_LOG_VERBOSE("Failed to create matrix buffer");
-		return false;
-	}
-
-	D3D11_BUFFER_DESC perCubeDebugBufferDesc;
-	//Setup the description of the dynamic matrix constant buffer that is in the shader..
-	perCubeDebugBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	perCubeDebugBufferDesc.ByteWidth = sizeof(PerCubeDebugBuffer);
-	perCubeDebugBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	perCubeDebugBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	perCubeDebugBufferDesc.MiscFlags = 0;
-	perCubeDebugBufferDesc.StructureByteStride = 0;
-
-	//Create the buffer so we can access it from within this class
-	result = pDevice->CreateBuffer(&perCubeDebugBufferDesc, NULL, &m_pPerCubeDebugBuffer);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create cube debug buffer");
 		return false;
 	}
 
@@ -181,41 +166,44 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 
 void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera)
 {
-	pContext->IASetInputLayout(m_pLayout);
+	pContext->IASetInputLayout(m_pDebugCubesLayout);
 	pContext->VSSetShader(m_pDebugVertexShader, nullptr, 0);
 	pContext->PSSetShader(m_pDebugPixelShader, nullptr, 0);
+	pContext->GSSetShader(m_pDebugGeometryShader, nullptr, 0);
 
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 	ID3D11ShaderResourceView* srv = m_pRadianceVolume->GetShaderResourceView();
-	pContext->PSSetShaderResources(0, 1, &srv);
+	pContext->GSSetShaderResources(0, 1, &srv);
 
+	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);
 	XMMATRIX mViewM = XMMatrixTranspose(mView);
 	XMMATRIX mProjectionM = XMMatrixTranspose(mProjection);
 
-	for (int x = 0; x < TEXTURE_DIMENSION; x++)
-	{
-		for (int y = 0; y < TEXTURE_DIMENSION; y++)
-		{
-			for (int z = 0; z < TEXTURE_DIMENSION; z++)
- 			{
-				AABB cube;
-				cube.Min = XMFLOAT3((x * 2) - 1, (y * 2) - 1, (z * 2) - 1);
-				cube.Max = XMFLOAT3((x * 2) + 1, (y * 2) + 1, (z * 2) + 1);
-				if (pCamera->CheckBoundingBoxInsideViewFrustum(cube))
-				{
-					XMMATRIX mWorldMat = XMMatrixTranslation(x *2.f, y *2.f, z *2.f);
-					int coords[3] = { x, y, z };
-					SetDebugShaderParams(pContext, mWorldMat, mViewM, mProjectionM, coords); //Needs to change world matrix for every cube
-					m_pDebugRenderCube->RenderBuffers(0, pContext);
-					pContext->DrawIndexed(m_pDebugRenderCube->GetMeshArray()[0]->m_iIndexCount, 0, 0);
-				}
-			}
-		}
- 	}
+	SetDebugShaderParams(pContext, mWorldM, mViewM, mProjectionM); //Needs to change world matrix for every cube			
+				
+	unsigned int stride;
+	unsigned int offset;
+
+	//Set vertex buffer stride and offset.
+	stride = sizeof(DebugCubesVertexType);
+	offset = 0;
+
+	// Set the vertex buffer to active in the input assembler so it can be rendered.
+	pContext->IASetVertexBuffers(0, 1, &m_pDebugCubesVertexBuffer, &stride, &offset);
+
+	// Set the index buffer to active in the input assembler so it can be rendered.
+	pContext->IASetIndexBuffer(m_pDebugCubesIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
+	pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+				
+	pContext->DrawIndexed(TEXTURE_DIMENSION*TEXTURE_DIMENSION*TEXTURE_DIMENSION, 0, 0);
+	
 
 	pContext->PSSetShaderResources(0, 1, ppSRVNull);
 	pContext->VSSetShader(nullptr, nullptr, 0);
 	pContext->PSSetShader(nullptr, nullptr, 0);
+	pContext->GSSetShader(nullptr, nullptr, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -286,36 +274,20 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool VoxelisedScene::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, int coord[3])
+bool VoxelisedScene::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection)
 {
-	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);	
-
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (SUCCEEDED(result))
 	{
 		MatrixBuffer* pBuffer = static_cast<MatrixBuffer*>(mappedResource.pData);
-		pBuffer->world = mWorldM;
+		pBuffer->world = mWorld;
 		pBuffer->view = mView;
 		pBuffer->projection = mProjection;
 
 		pDeviceContext->Unmap(m_pMatrixBuffer, 0);
 	}
-	pDeviceContext->VSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
-
-	result = pDeviceContext->Map(m_pPerCubeDebugBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (SUCCEEDED(result))
-	{
-		PerCubeDebugBuffer* pBuffer = static_cast<PerCubeDebugBuffer*>(mappedResource.pData);
-		pBuffer->volumeCoord[0] = coord[0];
-		pBuffer->volumeCoord[1] = coord[1];
-		pBuffer->volumeCoord[2] = coord[2];
-		pBuffer->padding = 0.f;
-
-		pDeviceContext->Unmap(m_pPerCubeDebugBuffer, 0);
-	}
-
-	pDeviceContext->PSSetConstantBuffers(0, 1, &m_pPerCubeDebugBuffer);
+	pDeviceContext->GSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
 
 	return true;
 }
@@ -391,11 +363,6 @@ void VoxelisedScene::Shutdown()
 	{
 		m_pMatrixBuffer->Release();
 		m_pMatrixBuffer = nullptr;
-	}
-	if (m_pPerCubeDebugBuffer)
-	{
-		m_pPerCubeDebugBuffer->Release();
-		m_pPerCubeDebugBuffer = nullptr;
 	}
 	if (m_pRasteriserState)
 	{
@@ -505,6 +472,7 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	ID3D10Blob* pVertexShaderBuffer(nullptr);
 	ID3D10Blob* pPixelShaderBuffer(nullptr);
 	ID3D10Blob* pDebugVertexShaderBuffer(nullptr);
+	ID3D10Blob* pDebugGeometryShaderBuffer(nullptr);
 	ID3D10Blob* pDebugPixelShaderBuffer(nullptr);
 	ID3D10Blob* pGeometryShaderBuffer(nullptr);
 	ID3D10Blob* pComputeShaderBuffer(nullptr);
@@ -634,6 +602,30 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 		return false;
 	}
 
+	//Compile the voxel debug render geometry shader code
+	result = D3DCompileFromFile(L"VoxelRenderShader.hlsl", nullptr, nullptr, "GSMain", "gs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pDebugGeometryShaderBuffer, &pErrorMessage);
+	if (FAILED(result))
+	{
+		if (pErrorMessage)
+		{
+			//If the shader failed to compile it should have written something to error message, so we output that here
+			OutputShaderErrorMessage(pErrorMessage, hwnd, L"VoxelRenderShader.hlsl");
+		}
+		else
+		{
+			//if it hasn't, then it couldn't find the shader file..
+			MessageBox(hwnd, L"VoxelRenderShader.hlsl", L"Missing Shader File", MB_OK);
+		}
+		return false;
+	}
+
+	result = pDevice->CreateGeometryShader(pDebugGeometryShaderBuffer->GetBufferPointer(), pDebugGeometryShaderBuffer->GetBufferSize(), nullptr, &m_pDebugGeometryShader);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create the geometry shader.");
+		return false;
+	}
+
 	//Compile the voxelisation pass pixel shader code
 	result = D3DCompileFromFile(L"Voxelise_Populate.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
 	if (FAILED(result))
@@ -738,6 +730,13 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 		return false;
 	}
 
+	result = pDevice->CreateInputLayout(polyLayout, 1, pDebugVertexShaderBuffer->GetBufferPointer(), pDebugVertexShaderBuffer->GetBufferSize(), &m_pDebugCubesLayout);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create input layout");
+		return false;
+	}
+
 	//Finished with shader buffers now so they can be released
 	pComputeShaderBuffer->Release();
 	pComputeShaderBuffer = nullptr;
@@ -785,6 +784,95 @@ void VoxelisedScene::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwn
 	// Pop a message up on the screen to notify the user to check the text file for compile errors.
 	MessageBox(hwnd, L"Error compiling shader. Check shader-error.txt for message.", shaderFilename, MB_OK);
 
+}
+
+bool VoxelisedScene::InitialiseDebugBuffers(ID3D11Device* pDevice)
+{
+	DebugCubesVertexType* verts;
+	unsigned long* indices;
+
+	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
+	D3D11_SUBRESOURCE_DATA vertexData, indexData;
+	HRESULT result;
+
+	verts = new DebugCubesVertexType[TEXTURE_DIMENSION*TEXTURE_DIMENSION*TEXTURE_DIMENSION];
+	if (!verts)
+	{
+		VS_LOG_VERBOSE("Unable to allocate debug cubes vertices buffer");
+		return false;
+	}
+
+	indices = new unsigned long[TEXTURE_DIMENSION*TEXTURE_DIMENSION*TEXTURE_DIMENSION];
+	if (!indices)
+	{
+		VS_LOG_VERBOSE("Unable to allocate debug cubes indices buffer");
+		return false;
+	}
+
+	int idx = 0;
+	for (int x = 0; x < TEXTURE_DIMENSION; x++)
+	{
+		for (int y = 0; y < TEXTURE_DIMENSION; y++)
+		{
+			for (int z = 0; z < TEXTURE_DIMENSION; z++)
+			{
+				verts[idx].position = XMFLOAT3(x, y, z);
+				indices[idx] = idx;
+				idx++;
+			}
+		}
+	}
+
+	//Setup the description of the static vertex buffer.
+	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.ByteWidth = sizeof(DebugCubesVertexType) * idx;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.CPUAccessFlags = 0;
+	vertexBufferDesc.MiscFlags = 0;
+	vertexBufferDesc.StructureByteStride = 0;
+
+	//Give the subresource struct a pointer to the vert data
+	vertexData.pSysMem = verts;
+	vertexData.SysMemPitch = 0;
+	vertexData.SysMemSlicePitch = 0;
+
+	//Create the Vertex buffer..
+	result = pDevice->CreateBuffer(&vertexBufferDesc, &vertexData, &m_pDebugCubesVertexBuffer);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create vertex buffer");
+		return false;
+	}
+
+	//Setup the description of the static index buffer
+	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	indexBufferDesc.ByteWidth = sizeof(unsigned long) * idx;
+	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.CPUAccessFlags = 0;
+	indexBufferDesc.MiscFlags = 0;
+	indexBufferDesc.StructureByteStride = 0;
+
+	//Give the subresource a pointer to the index data.
+	indexData.pSysMem = indices;
+	indexData.SysMemPitch = 0;
+	indexData.SysMemSlicePitch = 0;
+
+	//Create the index buffer
+	result = pDevice->CreateBuffer(&indexBufferDesc, &indexData, &m_pDebugCubesIndexBuffer);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create index buffer");
+		return false;
+	}
+
+	//Release the arrays now that the vertex and index buffers have been created and loaded..
+	delete[] verts;
+	verts = nullptr;
+
+	delete[] indices;
+	indices = nullptr;
+
+	return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

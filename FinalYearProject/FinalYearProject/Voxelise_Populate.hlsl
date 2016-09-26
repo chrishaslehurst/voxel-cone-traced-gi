@@ -64,27 +64,41 @@ SamplerState SampleState;
 //Functions
 
 //Averages the color stored in a texel atomically
-void imageAtomicRGBA8Avg(RWTexture3D<uint> img, uint3 coords, float4 val)
+void imageAtomicRGBA8Avg(RWTexture3D<uint> img, RWTexture3D<uint> normals, uint3 coords, float4 val, float4 normalVal)
 {
 	val *= 255.0f;
+	normalVal *= 255.0f;
 	uint newVal = convVec4ToRGBA8(val);
+	uint newNormalVal = convVec4ToRGBA8(normalVal);
 	uint prevStoredVal = 0;
 	uint curStoredVal = 0;
+	uint prevStoredNormalVal = 0;
+	uint curStoredNormalVal = 0;
+
 	InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
+	InterlockedCompareExchange(normals[coords], prevStoredNormalVal, newNormalVal, curStoredNormalVal);
 	// Loop as long as destination value gets changed by other threads
 	[allow_uav_condition] do 
 	{
 		prevStoredVal = curStoredVal;
+		prevStoredNormalVal = curStoredNormalVal;
+
 		float4 rval = convRGBA8ToVec4(curStoredVal); //Convert to float4s to compute average, will overflow rgba8's
-		
 		float4 curValF = rval + val;	 // Add new value
 		curValF.xyz *= 0.5f;			 //average the values
 		curValF.w = 255.f;
 		newVal = convVec4ToRGBA8(curValF); //convert back to rgba8 for comparison/storage
+
+		float4 nval = convRGBA8ToVec4(curStoredNormalVal);
+		float4 curNormValF = nval + normalVal;
+		curNormValF.xyz *= 0.5f;
+		curNormValF.w = 255.f;
+		newNormalVal = convVec4ToRGBA8(curNormValF);
 		
+		InterlockedCompareExchange(normals[coords], prevStoredNormalVal, newNormalVal, curStoredNormalVal);
 		InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
 
-	} while (prevStoredVal != curStoredVal);
+	} while (prevStoredVal != curStoredVal && prevStoredNormalVal != curStoredNormalVal);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,8 +110,8 @@ GSInput VSMain(VertexInput input)
 
 	output.PosL = input.PosL;
 
-	output.Normal = mul(input.Normal, (float3x3)WorldInverseTranspose);
-	output.Normal = normalize(output.Normal);
+	//output.Normal = mul(input.Normal, (float3x3)WorldInverseTranspose);
+	output.Normal = normalize(input.Normal);
 
 	output.Tex = input.Tex;
 
@@ -184,11 +198,13 @@ void PSMain(PSInput input)
 	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) 
 	{
 		//VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
-		imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
 
 		//Convert the normals so -ve can be stored in the 8bits.. this will have to be reversed in the radiance injection
-		float3 normal = (input.Normal * 0.5f) + 0.5f; //Normal now mapped to 0 - 1 instead of -1 to +1
-		VoxelTex_Normals[texCoord] = convVec4ToRGBA8((float4(normal.xyz, 1.f)) * 255.f);
+		float3 normal = input.Normal * 0.5f + 0.5f; //Normal now mapped to 0 - 1 instead of -1 to +1
+
+		imageAtomicRGBA8Avg(VoxelTex_Colour, VoxelTex_Normals, texCoord.xyz, Colour, float4(normal.xyz, 1.f));
+
+		//VoxelTex_Normals[texCoord] = convVec4ToRGBA8((float4(normal.xyz, 1.f)) * 255.f);
 	}	
 }
 

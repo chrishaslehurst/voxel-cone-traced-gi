@@ -67,6 +67,8 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 			(((lightPosVoxelGrid[k].z * 0.5) + 0.5f) * size.x));
 	}
 
+	RadianceVolume[lightPosVoxelGrid[0]] = convVec4ToRGBA8(float4(1.f, 0.f, 1.f, 1.f) * 255.f);
+
 	for (int i = 0; i < NUM_TEXELS_PER_THREAD; i++)
 	{
 		texCoord.x = index / (size * size);
@@ -90,6 +92,7 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 			}
 			colour = saturate(colour);
 			RadianceVolume[texCoord] = convVec4ToRGBA8(colour * 255.f);
+			
 		}
 		index++;
 	}
