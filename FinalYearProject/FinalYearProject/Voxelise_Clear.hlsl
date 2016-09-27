@@ -12,13 +12,13 @@ uint convVec4ToRGBA8(float4 val)
 	return (uint (val.w) & 0x000000FF) << 24U | (uint(val.z) & 0x000000FF) << 16U | (uint(val.y) & 0x000000FF) << 8U | (uint(val.x) & 0x000000FF);
 }
 
-[numthreads(NUM_THREADS, NUM_THREADS,1)]
+[numthreads(NUM_THREADS, NUM_THREADS, 1)]
 void CSClearVoxels(uint3 id: SV_DispatchThreadID)
 {
 	uint3 size = 0;
 	VoxelTex_Colour.GetDimensions(size.x, size.y, size.z);
 	
-	uint threadNumber = id.x + (id.y * NUM_THREADS) + (id.z * NUM_THREADS * NUM_THREADS);
+	uint threadNumber = id.x + (id.y * NUM_THREADS * NUM_GROUPS) + (id.z * NUM_THREADS * NUM_THREADS * NUM_GROUPS);
 
 	uint index = threadNumber * NUM_TEXELS_PER_THREAD;
 

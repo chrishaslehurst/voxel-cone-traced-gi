@@ -50,7 +50,7 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 	uint3 size = 0;
 	VoxelTex_Colour.GetDimensions(size.x, size.y, size.z);
 
-	uint threadNumber = id.x + (id.y * NUM_THREADS) + (id.z * NUM_THREADS * NUM_THREADS);
+	uint threadNumber = id.x + (id.y * NUM_THREADS * NUM_GROUPS) + (id.z * NUM_THREADS * NUM_THREADS * NUM_GROUPS);
 
 	uint index = threadNumber * NUM_TEXELS_PER_THREAD;
 

@@ -3,21 +3,27 @@
 
 
 //Defines for compute shaders..
-#define NUM_THREADS 8
-#define NUM_GROUPS 2
+#define NUM_THREADS 16
+#define NUM_GROUPS 16
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 VoxelisedScene::VoxelisedScene()
 {
 	m_sNumThreads = std::to_string(NUM_THREADS);
-	m_sNumTexelsPerThread = std::to_string((TEXTURE_DIMENSION * TEXTURE_DIMENSION * TEXTURE_DIMENSION) / (NUM_THREADS * NUM_THREADS * NUM_GROUPS));
+
+	m_sNumTexelsPerThread = std::to_string((TEXTURE_DIMENSION * TEXTURE_DIMENSION * TEXTURE_DIMENSION) / (NUM_THREADS * NUM_THREADS * NUM_GROUPS * NUM_GROUPS));
 	m_ComputeShaderDefines[csdNumThreads].Name = "NUM_THREADS";
 	m_ComputeShaderDefines[csdNumThreads].Definition = m_sNumThreads.c_str();
 	m_ComputeShaderDefines[csdNumTexelsPerThread].Name = "NUM_TEXELS_PER_THREAD";
 	m_ComputeShaderDefines[csdNumTexelsPerThread].Definition = m_sNumTexelsPerThread.c_str();
+
+	m_sNumGroups = std::to_string(NUM_GROUPS);
+	m_ComputeShaderDefines[csdNumGroups].Name = "NUM_GROUPS";
+	m_ComputeShaderDefines[csdNumGroups].Definition = m_sNumGroups.c_str();
 	m_ComputeShaderDefines[csdNulls].Name = nullptr;
 	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
+	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -468,6 +474,8 @@ void VoxelisedScene::CreateWorldToVoxelGrid(const AABB& voxelGridAABB)
 
 HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
 {
+	
+
 	ID3D10Blob* pErrorMessage(nullptr);
 	ID3D10Blob* pVertexShaderBuffer(nullptr);
 	ID3D10Blob* pPixelShaderBuffer(nullptr);

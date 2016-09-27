@@ -25,6 +25,7 @@ enum ComputeShaderDefines
 {
 	csdNumTexelsPerThread,
 	csdNumThreads,
+	csdNumGroups,
 	csdNulls
 };
 
@@ -139,10 +140,11 @@ private:
 
 	Mesh* m_pDebugRenderCube;
 
-	D3D_SHADER_MACRO m_ComputeShaderDefines[3];
+	D3D_SHADER_MACRO m_ComputeShaderDefines[4];
 
 	std::string m_sNumThreads;
 	std::string m_sNumTexelsPerThread;
+	std::string m_sNumGroups;
 
 	ID3D11InputLayout*		m_pDebugCubesLayout;
 	ID3D11Buffer* m_pDebugCubesVertexBuffer;
