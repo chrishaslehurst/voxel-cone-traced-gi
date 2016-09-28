@@ -1,5 +1,7 @@
 #define NUM_LIGHTS 4
 
+static const float DepthBias = 0.001f;
+
 //input textures
 Texture3D<float4> VoxelTex_Colour;
 Texture3D<float4> VoxelTex_Normals;
@@ -7,6 +9,8 @@ TextureCube ShadowMap[NUM_LIGHTS];
 
 //Output volume
 RWTexture3D<uint> RadianceVolume;
+
+SamplerState ShadowMapSampler;
 
 struct PointLight
 {
@@ -31,6 +35,15 @@ cbuffer VoxeliseVertexShaderBuffer
 	matrix WorldInverseTranspose;
 	matrix mAxisProjections[3];
 };
+
+float CalculateShadowFactor(int lightIdx, float3 ToLight, float ReciprocalRange)
+{
+	float LightDistanceSq = dot(ToLight, ToLight);
+	float shadowFactor;
+	shadowFactor = ShadowMap[lightIdx].Sample(ShadowMapSampler, -ToLight);
+		
+	return shadowFactor;
+}
 
 //Functions..
 float4 convRGBA8ToVec4(uint val)
@@ -67,7 +80,7 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 			(((lightPosVoxelGrid[k].z * 0.5) + 0.5f) * size.x));
 	}
 
-	RadianceVolume[lightPosVoxelGrid[0]] = convVec4ToRGBA8(float4(1.f, 0.f, 1.f, 1.f) * 255.f);
+	
 
 	for (int i = 0; i < NUM_TEXELS_PER_THREAD; i++)
 	{
@@ -79,7 +92,7 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 		{
 			//Convert the normal back from 0-1 range to -1 to +1
 			float3 normal = VoxelTex_Normals.Load(int4(texCoord, 0)).xyz;
-			normal = (normal - float3(0.5f, 0.5f, 0.f)) * 2.f;
+			normal = (normal - float3(0.5f, 0.5f, 0.5f)) * 2.f;
 			normal = normalize(normal);
 
 			float4 colour = float4(0.f, 0.f, 0.f, 1.f);
@@ -88,12 +101,15 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 			{
 				float3 ToLight = lightPosVoxelGrid[j] - texCoord;
 				float3 ToLNorm = normalize(ToLight);
+				float range = 1.f / pointLights[j].range * (size / 1800.f);
 				colour += saturate(dot(ToLNorm, normal) * pointLights[j].colour * diffuseColour);
 			}
 			colour = saturate(colour);
 			RadianceVolume[texCoord] = convVec4ToRGBA8(colour * 255.f);
-			
 		}
 		index++;
 	}
+
+	RadianceVolume[lightPosVoxelGrid[0]] = convVec4ToRGBA8(float4(1.f, 0.f, 1.f, 1.f) * 255.f);
+
 }

@@ -127,7 +127,7 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 	
 	float3 normal = cross(normalize(input[1].PosL - input[0].PosL), normalize(input[2].PosL - input[0].PosL)); //Get face normal
 
-	const float halfVoxelSize = (1.f / 64.f) * 0.5f;
+	const float halfVoxelSize = (1.f / 256.f) * 0.5f;
 	float3 triCentre = ((input[0].PosL + input[1].PosL + input[2].PosL) / 3.f);
 
 	//First we find the dominant axis of the triangles normal, in order to maximise the number of fragments that will be generated (Conservative rasterisation)
@@ -152,25 +152,26 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 	[unroll]
 	for (i = 0; i < 3; i++)
 	{	
-		float4 inputPosL;
+
+		//This will enlarge the tri slightly, conservative rasterisation
+		float3 toCentre = normalize(input[i].PosL.xyz - triCentre);
+		toCentre = toCentre * halfVoxelSize;
+		//toCentre = float3(0, 0, 0);
+		float4 inputPosL = float4(input[i].PosL + toCentre,1.f);
 
 		[flatten]
 		switch (index)
 		{
 		case 0:
-			inputPosL = float4(input[i].PosL.yzx, 1.0f);
+			inputPosL = float4(inputPosL.yzx, 1.0f);
 			break;
 		case 1:
-			inputPosL = float4(input[i].PosL.zxy, 1.0f);
+			inputPosL = float4(inputPosL.zxy, 1.0f);
 			break;
 		case 2:
-			inputPosL = float4(input[i].PosL.xyz, 1.0f);
+			inputPosL = float4(inputPosL.xyz, 1.0f);
 			break;
 		}
-		//This will enlarge the tri slightly, conservative rasterisation
-		float3 toCentre = normalize(input[i].PosL.xyz - triCentre);
-		toCentre = toCentre * halfVoxelSize;
-		//toCentre = float3(0, 0, 0);
 
 		output.Tex = input[i].Tex;
 		output.PosW = mul(input[i].PosL, mWorldToVoxelGrid);

@@ -118,6 +118,7 @@ private:
 	ID3D11PixelShader*		m_pDebugPixelShader;
 
 	ID3D11ComputeShader*	m_pInjectRadianceComputeShader;
+	ID3D11SamplerState*		m_pShadowMapSampleState;
 
 	ID3D11InputLayout*		m_pLayout;
 	ID3D11Buffer*			m_pVoxeliseVertexShaderBuffer;

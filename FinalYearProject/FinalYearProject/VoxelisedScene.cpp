@@ -121,7 +121,35 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 	sampDesc.MinLOD = 0;
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-	pDevice->CreateSamplerState(&sampDesc, &m_pSamplerState);
+	result = pDevice->CreateSamplerState(&sampDesc, &m_pSamplerState);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create sampler");
+		return result;
+	}
+
+	//Create ShadowMap Sampler State
+	D3D11_SAMPLER_DESC shadowSamplerDesc;
+	shadowSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	shadowSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
+	shadowSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
+	shadowSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
+	shadowSamplerDesc.MipLODBias = 0;
+	shadowSamplerDesc.MaxAnisotropy = 4;
+	shadowSamplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+	shadowSamplerDesc.BorderColor[0] = 0.0f;
+	shadowSamplerDesc.BorderColor[1] = 0.0f;
+	shadowSamplerDesc.BorderColor[2] = 0.0f;
+	shadowSamplerDesc.BorderColor[3] = 0.0f;
+	shadowSamplerDesc.MinLOD = 0.0f;
+	shadowSamplerDesc.MaxLOD = 0.0f;
+
+	result = pDevice->CreateSamplerState(&shadowSamplerDesc, &m_pShadowMapSampleState);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create shadow map sampler");
+		return result;
+	}
 
 	m_pDebugRenderCube = new Mesh;
 	m_pDebugRenderCube->InitialiseCubeFromTxt(pDevice, pContext, hwnd);
@@ -154,7 +182,24 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 	ID3D11UnorderedAccessView* uav = m_pRadianceVolume->GetUAV();
 	ID3D11ShaderResourceView* srvs[2] = { m_pVoxelisedSceneColours->GetShaderResourceView(), m_pVoxelisedSceneNormals->GetShaderResourceView() };
 	pContext->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
+	
+	ID3D11ShaderResourceView* pShadowCubeArray[NUM_LIGHTS];
+	ID3D11ShaderResourceView* nullSRV = nullptr;
+	for (int i = 0; i < NUM_LIGHTS; i++)
+	{
+		OmnidirectionalShadowMap* pShadowMap = LightManager::Get()->GetPointLight(i)->GetShadowMap();
+		if (pShadowMap)
+		{
+			pShadowCubeArray[i] = pShadowMap->GetShadowMapShaderResource();
+		}
+		else
+		{
+			pShadowCubeArray[i] = nullSRV;
+		}
+	}
 	pContext->CSSetShaderResources(0, 2, srvs);
+	pContext->CSGetShaderResources(2, NUM_LIGHTS, pShadowCubeArray);
+	pContext->CSSetSamplers(1, 1, &m_pShadowMapSampleState);
 	
 	ID3D11Buffer* pLightBuffer = LightManager::Get()->GetLightBuffer();
 	pContext->CSSetConstantBuffers(0, 1, &pLightBuffer);
@@ -401,6 +446,12 @@ void VoxelisedScene::Shutdown()
 	{
 		delete m_pDebugRenderCube;
 		m_pDebugRenderCube = nullptr;
+	}
+
+	if (m_pShadowMapSampleState)
+	{
+		m_pShadowMapSampleState->Release();
+		m_pShadowMapSampleState = nullptr;
 	}
 }
 
