@@ -52,6 +52,8 @@ Texture2D	DiffuseColour;		//Metallic stored in the w component
 Texture2D	Normals;			//Roughness stored in the w component
 TextureCube ShadowMap[NUM_LIGHTS];
 
+Texture3D RadianceVolume[4];
+
 //Sample State
 SamplerState SampleTypePoint;
 SamplerComparisonState ShadowMapSampler;
@@ -182,7 +184,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float3 ToCamera = cameraPosition.xyz - WorldPositionSample.xyz;
 	ToCamera = normalize(ToCamera);
 
-	FinalColour = AmbientColour * DiffuseColourSample;
+	FinalColour = float4(0.f, 0.f, 0.f, 0.f);
 
 	for (int i = 0; i < NUM_LIGHTS; i++)
 	{

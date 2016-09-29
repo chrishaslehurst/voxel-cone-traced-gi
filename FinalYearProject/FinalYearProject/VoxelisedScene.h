@@ -13,7 +13,7 @@
 #include "Texture3D.h"
 
 #define TEXTURE_DIMENSION 256
-#define MIP_LEVELS 3
+#define MIP_LEVELS 4
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -103,7 +103,7 @@ public:
 	void PostRender(ID3D11DeviceContext* pContext);
 	void Shutdown();
 
-	void IncreaseDebugMipLevel() { if (m_iDebugMipLevel < MIP_LEVELS) { m_iDebugMipLevel++; } }
+	void IncreaseDebugMipLevel() { if (m_iDebugMipLevel < MIP_LEVELS-1) { m_iDebugMipLevel++; } }
 	void DecreaseDebugMipLevel() { if (m_iDebugMipLevel > 0) { m_iDebugMipLevel--; } }
 
 private:
@@ -137,7 +137,7 @@ private:
 
 	Texture3D* m_pVoxelisedSceneColours;
 	Texture3D* m_pVoxelisedSceneNormals;
-	Texture3D* m_pRadianceVolume;
+	//Texture3D* m_pRadianceVolume;
 	Texture3D* m_pRadianceVolumeMips[MIP_LEVELS];
 
 	XMMATRIX m_mViewProjMatrices[3];

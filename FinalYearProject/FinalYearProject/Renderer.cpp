@@ -12,6 +12,8 @@ Renderer::Renderer()
 	, m_pModel(nullptr)
 	, m_pFullScreenWindow(nullptr)
 	, m_bDebugRenderVoxels(false)
+	, m_bMinusPressed(false)
+	, m_bPlusPressed(false)
 {
 	m_dCPUFrameStartTime = 0;
 }
@@ -179,13 +181,23 @@ bool Renderer::Update(HWND hwnd)
 	{
 		m_bDebugRenderVoxels = true;
 	}
-	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS))
+	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS) && !m_bPlusPressed)
 	{
 		m_VoxelisePass.IncreaseDebugMipLevel();
+		m_bPlusPressed = true;
 	}
-	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADMINUS))
+	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADPLUS))
+	{
+		m_bPlusPressed = false;
+	}
+	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADMINUS) && !m_bMinusPressed)
 	{
 		m_VoxelisePass.DecreaseDebugMipLevel();
+		m_bMinusPressed = true;
+	}
+	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADMINUS))
+	{
+		m_bMinusPressed = false;
 	}
 	LightManager::Get()->Update(m_pD3D->GetDeviceContext());
 

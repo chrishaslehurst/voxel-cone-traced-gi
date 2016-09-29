@@ -48,6 +48,9 @@ private:
 
 	bool m_bDebugRenderVoxels;
 
+	bool m_bPlusPressed;
+	bool m_bMinusPressed;
+
 	bool Render();
 
 	double m_dCPUFrameStartTime;

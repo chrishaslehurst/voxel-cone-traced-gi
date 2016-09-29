@@ -30,6 +30,7 @@ public:
 	bool IsEscapePressed();
 	void GetMouseLocation(int& x, int &y);
 	bool IsKeyPressed(char input);
+	bool IsKeyReleased(char input);
 
 private:
 
