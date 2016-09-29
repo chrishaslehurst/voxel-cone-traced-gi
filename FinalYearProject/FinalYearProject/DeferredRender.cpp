@@ -175,9 +175,9 @@ void DeferredRender::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool DeferredRender::RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos)
+bool DeferredRender::RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene)
 {
-	if (!SetShaderParameters(pContext, mWorld, mView, mProjection, vCamPos))
+	if (!SetShaderParameters(pContext, mWorld, mView, mProjection, vCamPos, pVoxelisedScene))
 	{
 		return false;
 	}
@@ -443,7 +443,7 @@ void DeferredRender::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwn
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos)
+bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene)
 {
 	HRESULT res;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -517,7 +517,9 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 	}
 	pContext->PSSetShaderResources(BufferType::btMax, NUM_LIGHTS, pShadowCubeArray);
 
-
+	ID3D11ShaderResourceView* pVoxelRadianceVolumes[MIP_LEVELS];
+	pVoxelisedScene->GetRadianceVolumes(pVoxelRadianceVolumes);
+	pContext->PSSetShaderResources(BufferType::btMax + NUM_LIGHTS, MIP_LEVELS, pVoxelRadianceVolumes);
 	return true;
 }
 

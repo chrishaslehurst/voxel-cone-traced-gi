@@ -7,6 +7,7 @@
 #include <D3DCompiler.h>
 #include "Texture2D.h"
 #include "LightManager.h"
+#include "VoxelisedScene.h"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 using namespace DirectX;
@@ -72,7 +73,7 @@ public:
 	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear);
 	void Shutdown();
 
-	bool RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos);
+	bool RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene);
 
 private:
 
@@ -80,7 +81,7 @@ private:
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* pBlob, HWND hwnd, WCHAR* sShaderFilename);
 
-	bool SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCameraPos);
+	bool SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCameraPos, VoxelisedScene* pVoxelisedScene);
 	void RenderShader(ID3D11DeviceContext* pContext, int iIndexCount);
 
 	int m_iTextureWidth;

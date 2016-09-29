@@ -485,6 +485,14 @@ void VoxelisedScene::Shutdown()
 	}
 }
 
+void VoxelisedScene::GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LEVELS])
+{
+	for (int i = 0; i < MIP_LEVELS; i++)
+	{
+		volumes[i] = m_pRadianceVolumeMips[i]->GetShaderResourceView();
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void VoxelisedScene::CreateWorldToVoxelGrid(const AABB& voxelGridAABB)

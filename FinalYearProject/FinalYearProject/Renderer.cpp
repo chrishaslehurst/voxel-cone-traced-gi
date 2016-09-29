@@ -14,6 +14,7 @@ Renderer::Renderer()
 	, m_bDebugRenderVoxels(false)
 	, m_bMinusPressed(false)
 	, m_bPlusPressed(false)
+	, m_bVPressed(false)
 {
 	m_dCPUFrameStartTime = 0;
 }
@@ -177,9 +178,14 @@ bool Renderer::Update(HWND hwnd)
 	{
 		m_pModel->ReloadShaders(m_pD3D->GetDevice(), hwnd);
 	}
-	if (InputManager::Get()->IsKeyPressed(DIK_V))
+	if (InputManager::Get()->IsKeyPressed(DIK_V) && !m_bVPressed)
 	{
-		m_bDebugRenderVoxels = true;
+		m_bDebugRenderVoxels = !m_bDebugRenderVoxels;
+		m_bVPressed = true;
+	}
+	else if (InputManager::Get()->IsKeyReleased(DIK_V))
+	{
+		m_bVPressed = false;
 	}
 	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS) && !m_bPlusPressed)
 	{
@@ -285,7 +291,7 @@ bool Renderer::Render()
 
 
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_DeferredRender.GetTexture(btNormals));
-	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition());
+	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), &m_VoxelisePass);
 	//m_VoxelisePass.RenderDebugViewToTexture(pContext);
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
 	

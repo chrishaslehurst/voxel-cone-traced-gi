@@ -106,6 +106,8 @@ public:
 	void IncreaseDebugMipLevel() { if (m_iDebugMipLevel < MIP_LEVELS-1) { m_iDebugMipLevel++; } }
 	void DecreaseDebugMipLevel() { if (m_iDebugMipLevel > 0) { m_iDebugMipLevel--; } }
 
+	void GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LEVELS]);
+
 private:
 
 	void CreateWorldToVoxelGrid(const AABB& voxelGridAABB);
@@ -137,7 +139,6 @@ private:
 
 	Texture3D* m_pVoxelisedSceneColours;
 	Texture3D* m_pVoxelisedSceneNormals;
-	//Texture3D* m_pRadianceVolume;
 	Texture3D* m_pRadianceVolumeMips[MIP_LEVELS];
 
 	XMMATRIX m_mViewProjMatrices[3];
