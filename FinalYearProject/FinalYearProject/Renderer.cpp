@@ -11,6 +11,7 @@ Renderer::Renderer()
 	, m_pCamera(nullptr)
 	, m_pModel(nullptr)
 	, m_pFullScreenWindow(nullptr)
+	, m_bDebugRenderVoxels(false)
 {
 	m_dCPUFrameStartTime = 0;
 }
@@ -174,6 +175,18 @@ bool Renderer::Update(HWND hwnd)
 	{
 		m_pModel->ReloadShaders(m_pD3D->GetDevice(), hwnd);
 	}
+	if (InputManager::Get()->IsKeyPressed(DIK_V))
+	{
+		m_bDebugRenderVoxels = true;
+	}
+	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS))
+	{
+		m_VoxelisePass.IncreaseDebugMipLevel();
+	}
+	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADMINUS))
+	{
+		m_VoxelisePass.DecreaseDebugMipLevel();
+	}
 	LightManager::Get()->Update(m_pD3D->GetDeviceContext());
 
 	//Render the scene
@@ -227,6 +240,8 @@ bool Renderer::Render()
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
 
 	m_VoxelisePass.RenderInjectRadiancePass(pContext);
+	m_VoxelisePass.GenerateMips(pContext);
+
 
 	m_pD3D->TurnZBufferOn();
 
@@ -268,7 +283,10 @@ bool Renderer::Render()
 	m_pD3D->TurnZBufferOn();
 	m_pD3D->TurnOnAlphaBlending();
 
-	m_VoxelisePass.RenderDebugCubes(pContext, mWorld, mView, mProjection, m_pCamera);
+	if (m_bDebugRenderVoxels)
+	{
+		m_VoxelisePass.RenderDebugCubes(pContext, mWorld, mView, mProjection, m_pCamera);
+	}
 
 	GPUProfiler::Get()->EndFrame(pContext);
 	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));

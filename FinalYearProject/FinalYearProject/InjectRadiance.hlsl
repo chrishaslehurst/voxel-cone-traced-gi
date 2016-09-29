@@ -109,7 +109,4 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 		}
 		index++;
 	}
-
-	RadianceVolume[lightPosVoxelGrid[0]] = convVec4ToRGBA8(float4(1.f, 0.f, 1.f, 1.f) * 255.f);
-
 }

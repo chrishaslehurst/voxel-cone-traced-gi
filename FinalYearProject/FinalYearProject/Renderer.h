@@ -46,6 +46,7 @@ private:
 	VoxelisedScene   m_VoxelisePass;
 	OrthoWindow* m_pFullScreenWindow;
 
+	bool m_bDebugRenderVoxels;
 
 	bool Render();
 

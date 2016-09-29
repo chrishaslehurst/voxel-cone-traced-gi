@@ -9,6 +9,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 VoxelisedScene::VoxelisedScene()
+	:m_iDebugMipLevel(0)
 {
 	m_sNumThreads = std::to_string(NUM_THREADS);
 
@@ -92,6 +93,14 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 	m_pRadianceVolume = new Texture3D;
 	m_pRadianceVolume->Init(pDevice, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
 
+	float mipScale = 1;
+	for (int i = 0; i < MIP_LEVELS; i++)
+	{
+		mipScale *= 0.5f;
+		m_pRadianceVolumeMips[i] = new Texture3D;
+		m_pRadianceVolumeMips[i]->Init(pDevice, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
+	}
+
 	//Initialise Rasteriser state
 	D3D11_RASTERIZER_DESC2 rasterDesc;
 	ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC2));
@@ -150,9 +159,6 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 		VS_LOG_VERBOSE("Failed to create shadow map sampler");
 		return result;
 	}
-
-	m_pDebugRenderCube = new Mesh;
-	m_pDebugRenderCube->InitialiseCubeFromTxt(pDevice, pContext, hwnd);
 	
 }
 
@@ -215,6 +221,40 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void VoxelisedScene::GenerateMips(ID3D11DeviceContext* pContext)
+{
+	ID3D11UnorderedAccessView* ppUAViewNULL = nullptr;
+	ID3D11ShaderResourceView* ppSRVNull = nullptr;
+
+	pContext->CSSetShader(m_pGenerateMipsShader, nullptr, 0);
+
+	ID3D11ShaderResourceView* pSrcVolume = m_pRadianceVolume->GetShaderResourceView();
+	ID3D11UnorderedAccessView* pDestVolume = m_pRadianceVolumeMips[0]->GetUAV();
+
+	pContext->CSSetUnorderedAccessViews(0, 1, &pDestVolume, nullptr);
+	pContext->CSSetShaderResources(0, 1, &pSrcVolume);
+
+	pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
+
+	for (int i = 1; i < MIP_LEVELS; i++)
+	{
+		ID3D11ShaderResourceView* pSrcVolume = m_pRadianceVolumeMips[i-1]->GetShaderResourceView();
+		ID3D11UnorderedAccessView* pDestVolume = m_pRadianceVolumeMips[i]->GetUAV();
+
+		pContext->CSSetUnorderedAccessViews(0, 1, &pDestVolume, nullptr);
+		pContext->CSSetShaderResources(0, 1, &pSrcVolume);
+
+		pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
+	}
+
+	//Reset
+	pContext->CSSetShader(nullptr, nullptr, 0);
+	pContext->CSSetUnorderedAccessViews(0, 1, &ppUAViewNULL, nullptr);
+	pContext->CSSetShaderResources(0, 1, &ppSRVNull);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera)
 {
 	pContext->IASetInputLayout(m_pDebugCubesLayout);
@@ -223,7 +263,16 @@ void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMAT
 	pContext->GSSetShader(m_pDebugGeometryShader, nullptr, 0);
 
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
-	ID3D11ShaderResourceView* srv = m_pRadianceVolume->GetShaderResourceView();
+	ID3D11ShaderResourceView* srv;
+	if (m_iDebugMipLevel == 0)
+	{
+		srv = m_pRadianceVolume->GetShaderResourceView();
+	}
+	else
+	{
+		srv = m_pRadianceVolumeMips[m_iDebugMipLevel-1]->GetShaderResourceView();
+	}
+
 	pContext->GSSetShaderResources(0, 1, &srv);
 
 	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);
@@ -442,11 +491,6 @@ void VoxelisedScene::Shutdown()
 		delete m_pRadianceVolume;
 		m_pRadianceVolume = nullptr;
 	}
-	if (m_pDebugRenderCube)
-	{
-		delete m_pDebugRenderCube;
-		m_pDebugRenderCube = nullptr;
-	}
 
 	if (m_pShadowMapSampleState)
 	{
@@ -536,6 +580,7 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	ID3D10Blob* pGeometryShaderBuffer(nullptr);
 	ID3D10Blob* pComputeShaderBuffer(nullptr);
 	ID3D10Blob* pRadianceComputeShaderBuffer(nullptr);
+	ID3D10Blob* pGenerateMipsShaderBuffer(nullptr);
 
 	//Compile the clear voxels compute shader code
 	HRESULT result = D3DCompileFromFile(L"Voxelise_Clear.hlsl", m_ComputeShaderDefines, nullptr, "CSClearVoxels", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer, &pErrorMessage);
@@ -584,6 +629,31 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 		VS_LOG_VERBOSE("Failed to create the compute shader.");
 		return false;
 	}
+
+
+	//Compile the clear voxels compute shader code
+	result = D3DCompileFromFile(L"GenerateMips.hlsl", m_ComputeShaderDefines, nullptr, "CSGenerateMips", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pGenerateMipsShaderBuffer, &pErrorMessage);
+	if (FAILED(result))
+	{
+		if (pErrorMessage)
+		{
+			//If the shader failed to compile it should have written something to error message, so we output that here
+			OutputShaderErrorMessage(pErrorMessage, hwnd, L"GenerateMips.hlsl");
+		}
+		else
+		{
+			//if it hasn't, then it couldn't find the shader file..
+			MessageBox(hwnd, L"GenerateMips.hlsl", L"Missing Shader File", MB_OK);
+		}
+		return false;
+	}
+	result = pDevice->CreateComputeShader(pGenerateMipsShaderBuffer->GetBufferPointer(), pGenerateMipsShaderBuffer->GetBufferSize(), nullptr, &m_pGenerateMipsShader);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create the compute shader.");
+		return false;
+	}
+
 
 
 	//Compile the voxelisation pass vertex shader code
@@ -814,6 +884,12 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 
 	pDebugVertexShaderBuffer->Release();
 	pDebugVertexShaderBuffer = nullptr;
+
+	pRadianceComputeShaderBuffer->Release();
+	pRadianceComputeShaderBuffer = nullptr;
+
+	pGenerateMipsShaderBuffer->Release();
+	pGenerateMipsShaderBuffer = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -13,6 +13,7 @@
 #include "Texture3D.h"
 
 #define TEXTURE_DIMENSION 256
+#define MIP_LEVELS 3
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -91,6 +92,7 @@ public:
 	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, const AABB& voxelGridAABB);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderInjectRadiancePass(ID3D11DeviceContext* pContext);
+	void GenerateMips(ID3D11DeviceContext* pContext);
 	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera);
 	
 	void RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pVoxelise);
@@ -100,6 +102,9 @@ public:
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 	void PostRender(ID3D11DeviceContext* pContext);
 	void Shutdown();
+
+	void IncreaseDebugMipLevel() { if (m_iDebugMipLevel < MIP_LEVELS) { m_iDebugMipLevel++; } }
+	void DecreaseDebugMipLevel() { if (m_iDebugMipLevel > 0) { m_iDebugMipLevel--; } }
 
 private:
 
@@ -120,6 +125,8 @@ private:
 	ID3D11ComputeShader*	m_pInjectRadianceComputeShader;
 	ID3D11SamplerState*		m_pShadowMapSampleState;
 
+	ID3D11ComputeShader*	m_pGenerateMipsShader;
+
 	ID3D11InputLayout*		m_pLayout;
 	ID3D11Buffer*			m_pVoxeliseVertexShaderBuffer;
 	ID3D11Buffer*			m_pMatrixBuffer;
@@ -131,6 +138,7 @@ private:
 	Texture3D* m_pVoxelisedSceneColours;
 	Texture3D* m_pVoxelisedSceneNormals;
 	Texture3D* m_pRadianceVolume;
+	Texture3D* m_pRadianceVolumeMips[MIP_LEVELS];
 
 	XMMATRIX m_mViewProjMatrices[3];
 	XMFLOAT3 m_vVoxelGridSize;
@@ -139,8 +147,6 @@ private:
 
 	XMMATRIX m_mWorldToVoxelGrid;
 
-	Mesh* m_pDebugRenderCube;
-
 	D3D_SHADER_MACRO m_ComputeShaderDefines[4];
 
 	std::string m_sNumThreads;
@@ -148,8 +154,10 @@ private:
 	std::string m_sNumGroups;
 
 	ID3D11InputLayout*		m_pDebugCubesLayout;
-	ID3D11Buffer* m_pDebugCubesVertexBuffer;
-	ID3D11Buffer* m_pDebugCubesIndexBuffer;
+	ID3D11Buffer*			m_pDebugCubesVertexBuffer;
+	ID3D11Buffer*			m_pDebugCubesIndexBuffer;
+
+	int m_iDebugMipLevel;
 
 };
 
