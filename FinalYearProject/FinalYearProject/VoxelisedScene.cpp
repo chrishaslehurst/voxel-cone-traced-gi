@@ -472,12 +472,11 @@ void VoxelisedScene::Shutdown()
 		delete m_pVoxelisedSceneNormals;
 		m_pVoxelisedSceneNormals = nullptr;
 	}
-//	if (m_pRadianceVolume)
-//	{
-//		delete m_pRadianceVolume;
-//		m_pRadianceVolume = nullptr;
-//	}
-
+	for (int i = 0; i < MIP_LEVELS; i++)
+	{
+		delete m_pRadianceVolumeMips[i];
+		m_pRadianceVolumeMips[i] = nullptr;
+	}
 	if (m_pShadowMapSampleState)
 	{
 		m_pShadowMapSampleState->Release();

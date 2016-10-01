@@ -107,7 +107,9 @@ public:
 	void DecreaseDebugMipLevel() { if (m_iDebugMipLevel > 0) { m_iDebugMipLevel--; } }
 
 	void GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LEVELS]);
+	const XMMATRIX& GetWorldToVoxelMatrix() { return m_mWorldToVoxelGrid; }
 
+	float GetVoxelScale() { return m_vVoxelGridSize.x / TEXTURE_DIMENSION; } //size of one voxel
 private:
 
 	void CreateWorldToVoxelGrid(const AABB& voxelGridAABB);

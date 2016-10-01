@@ -99,7 +99,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 
 		pLightManager->SetAmbientLightColour(XMFLOAT4(0.05f, 0.05f, 0.05f, 1.f));
 
-		pLightManager->AddPointLight(XMFLOAT3(0.f, 1250.f, 0.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
+		pLightManager->AddPointLight(XMFLOAT3(250.f, 500.f, 50.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
 		pLightManager->GetPointLight(0)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(0)->GetRange());
 	//	pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 3000.f);
 	//	pLightManager->GetPointLight(1)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(1)->GetRange());

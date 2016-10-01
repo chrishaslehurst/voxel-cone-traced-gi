@@ -54,8 +54,9 @@ public:
 			_mm_free(p);
 		}
 
+		XMMATRIX mWorldToVoxelGrid;
 		XMFLOAT3 vCameraPosition;
-		float padding;
+		float fVoxelScale;
 	};
 
 

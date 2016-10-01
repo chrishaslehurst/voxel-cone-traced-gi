@@ -3,6 +3,8 @@
 
 static const float DepthBias = 0.001f;
 
+#define MIP_COUNT 4
+
 //Globals
 cbuffer MatrixBuffer
 {
@@ -24,12 +26,15 @@ cbuffer LightBuffer
 	float4 DirectionalLightColour;
 	float3 DirectionalLightDirection;
 	PointLight pointLights[NUM_LIGHTS];
+
 };
 
 cbuffer CameraBuffer
 {
+	
+	matrix mWorldToVoxelGrid;
 	float3 cameraPosition;
-	float padding; //needs to be a multiple of 16 for CreateBuffer Requirements
+	float voxelScale; //size of one voxel in world units..
 };
 
 //Structs
@@ -52,7 +57,7 @@ Texture2D	DiffuseColour;		//Metallic stored in the w component
 Texture2D	Normals;			//Roughness stored in the w component
 TextureCube ShadowMap[NUM_LIGHTS];
 
-Texture3D RadianceVolume[4];
+Texture3D<float4> RadianceVolume[MIP_COUNT];
 
 //Sample State
 SamplerState SampleTypePoint;
@@ -112,7 +117,6 @@ float4 CookTorranceBRDF(float3 ToLight, float3 ToCamera, float3 SurfaceNormal, f
 
 	// 0.03 default specular value for dielectric.]
 	float3 realSpecularColour = lerp(0.03f, DiffuseColour, Metallic);
-
 	float D = NormalDistributionFunction(NdotH, Roughness);
 	float3 F = SchlickFresnel(1.f - Roughness, VdotH) * realSpecularColour;
 	float G = SchlickGeometricAttenuation(Roughness, NdotV, NdotL);
@@ -150,6 +154,22 @@ float CalculateShadowFactor(int lightIdx, float3 ToLight, float ReciprocalRange)
 }
 
 
+//GI Functions---------------------------
+
+float getMipLevelFromRadius(float radius)
+{
+	return log2((radius + 0.01f) * voxelScale) + MIP_COUNT;
+}
+
+
+//Based off of GGX roughness; gets angle that encompasses 90% of samples in the IBL image approximation
+float calculateSpecularConeHalfAngle(float roughness)
+{
+	return acos(sqrt(0.11111f / (roughness * roughness + 0.11111f)));
+}
+
+//----------------------------------------
+
 
 //Vertex Shader
 PixelInput VSMain(VertexInput input)
@@ -186,6 +206,53 @@ float4 PSMain(PixelInput input) : SV_TARGET
 
 	FinalColour = float4(0.f, 0.f, 0.f, 0.f);
 
+	//Specular GI------------------------------------
+	int3 texDimensions;
+	RadianceVolume[0].GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
+	float occlusion = 0;
+	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
+	float3 reflectVector = -((2 * (dot(Normal, -ToCamera) * Normal)) + ToCamera);
+	reflectVector = normalize(reflectVector);
+	float4 samplePos = mul(WorldPositionSample, mWorldToVoxelGrid);
+
+	float3 texCoord = float3((((samplePos.x * 0.5) + 0.5f) * texDimensions.x),
+		(((samplePos.y * 0.5) + 0.5f) * texDimensions.x),
+		(((samplePos.z * 0.5) + 0.5f) * texDimensions.x));
+	texCoord.xyz += reflectVector; //offset to avoid self intersect..
+	
+	float radiusRatio = sin(calculateSpecularConeHalfAngle(Roughness));
+	float distance = 1.f;
+	for (int i = 0; i < 256; i++)
+	{
+		float currentRadius = radiusRatio * distance;
+		float MipLevel = getMipLevelFromRadius(currentRadius);
+		float x, y, z;
+		float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
+		if (RadianceVolume[0].Load(int4(texCoord, 0)).a > 0.f)
+		{
+			for (z = -1.5; z <= 1.5; z += 1.5)
+			{
+				for (y = -1.5; y <= 1.5; y += 1.5)
+				{
+					for (x = -1.5; x <= 1.5; x += 1.5)
+					{
+						tempGI += RadianceVolume[0].Load(int4(texCoord + float3(x, y, z), 0));
+					}
+				}
+			}
+			tempGI /= 27.0;
+		}
+		GIColour += tempGI;
+		if (GIColour.a > 0.99f)
+		{
+			break;
+		}
+		texCoord += (reflectVector);
+		distance += 1.f;
+	}
+	
+	//---------------------
+
 	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
 		float3 ToLight = pointLights[i].position.xyz - WorldPositionSample.xyz;
@@ -193,7 +260,11 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		FinalColour += Light * CalculateAttenuation(ToLight, pointLights[i].range) * pointLights[i].colour * pointLights[i].colour.w * CalculateShadowFactor(i, ToLight, pointLights[i].range);
 	}
 	
-	
+	float3 H = normalize(ToCamera + reflectVector);
+	float VdotH = saturate(dot(ToCamera, H));
+	GIColour = SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
+	GIColour = saturate(GIColour);
 
-	return saturate(FinalColour);
+
+	return saturate(FinalColour + GIColour);
 }

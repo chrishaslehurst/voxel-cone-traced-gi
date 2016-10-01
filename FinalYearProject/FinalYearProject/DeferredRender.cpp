@@ -480,8 +480,9 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 	CameraBuffer* pCameraData;
 	pCameraData = (CameraBuffer*)mappedResource.pData;
 
-	pCameraData->padding = 0.f;
+	pCameraData->fVoxelScale = pVoxelisedScene->GetVoxelScale();
 	pCameraData->vCameraPosition = vCamPos;
+	pCameraData->mWorldToVoxelGrid = pVoxelisedScene->GetWorldToVoxelMatrix();
 
 	pContext->Unmap(m_pCameraBuffer, 0);
 

@@ -32,7 +32,6 @@ HRESULT Texture3D::Init(ID3D11Device* pDevice, int iTextureWidth, int iTextureHe
 	textureDesc.CPUAccessFlags = cpuAccessFlags;
 	textureDesc.MiscFlags = MiscFlags;
 
-
 	HRESULT result = pDevice->CreateTexture3D(&textureDesc, nullptr, &m_pTexture);
 	if (FAILED(result))
 	{
@@ -72,6 +71,8 @@ HRESULT Texture3D::Init(ID3D11Device* pDevice, int iTextureWidth, int iTextureHe
 			return false;
 		}
 	}
+	
+	
 }
 
 void Texture3D::Shutdown()
