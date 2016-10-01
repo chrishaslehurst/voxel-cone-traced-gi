@@ -19,7 +19,7 @@ public:
 	ID3D11ShaderResourceView* GetShaderResourceView();
 	ID3D11RenderTargetView* GetRenderTargetView();
 	ID3D11UnorderedAccessView* GetUAV();
-
+	ID3D11Texture3D*		GetTexture() { return m_pTexture; }
 private:
 
 	ID3D11ShaderResourceView* m_pShaderResourceView;

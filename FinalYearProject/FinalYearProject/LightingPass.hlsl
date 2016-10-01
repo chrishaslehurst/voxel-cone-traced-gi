@@ -228,7 +228,8 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		float MipLevel = getMipLevelFromRadius(currentRadius);
 		float x, y, z;
 		float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
-		if (RadianceVolume[0].Load(int4(texCoord, 0)).a > 0.f)
+		MipLevel = 0;
+		if (RadianceVolume[0].Load(int4(texCoord * (1.f / 1.f + MipLevel), MipLevel)).a > 0.f)
 		{
 			for (z = -1.5; z <= 1.5; z += 1.5)
 			{
@@ -236,7 +237,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 				{
 					for (x = -1.5; x <= 1.5; x += 1.5)
 					{
-						tempGI += RadianceVolume[0].Load(int4(texCoord + float3(x, y, z), 0));
+						tempGI += RadianceVolume[0].Load(int4((texCoord + float3(x, y, z)) * (1.f/1.f+MipLevel), MipLevel));
 					}
 				}
 			}

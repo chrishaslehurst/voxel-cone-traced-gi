@@ -97,7 +97,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 	for (int i = 0; i < MIP_LEVELS; i++)
 	{
 		m_pRadianceVolumeMips[i] = new Texture3D;
-		m_pRadianceVolumeMips[i]->Init(pDevice, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
+		m_pRadianceVolumeMips[i]->Init(pDevice, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, MIP_LEVELS, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
 		mipScale *= 0.5f;
 	}
 
@@ -236,6 +236,8 @@ void VoxelisedScene::GenerateMips(ID3D11DeviceContext* pContext)
 		pContext->CSSetShaderResources(0, 1, &pSrcVolume);
 
 		pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
+
+		pContext->CopySubresourceRegion(m_pRadianceVolumeMips[0]->GetTexture(), i, 0, 0, 0, m_pRadianceVolumeMips[i]->GetTexture(), 0, nullptr);
 	}
 
 	//Reset
