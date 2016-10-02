@@ -191,7 +191,7 @@ PixelInput VSMain(VertexInput input)
 //Pixel Shader
 float4 PSMain(PixelInput input) : SV_TARGET
 {
-	float4 FinalColour = float4(1,1,1,1);
+	
 
 	float4 NormalSample = Normals.Sample(SampleTypePoint, input.tex);
 	float3 Normal = normalize(NormalSample.rgb);
@@ -204,7 +204,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float3 ToCamera = cameraPosition.xyz - WorldPositionSample.xyz;
 	ToCamera = normalize(ToCamera);
 
-	FinalColour = float4(0.f, 0.f, 0.f, 0.f);
+	
 
 	//Specular GI------------------------------------
 	int3 texDimensions;
@@ -218,7 +218,8 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float3 texCoord = float3((((samplePos.x * 0.5) + 0.5f) * texDimensions.x),
 		(((samplePos.y * 0.5) + 0.5f) * texDimensions.x),
 		(((samplePos.z * 0.5) + 0.5f) * texDimensions.x));
-	texCoord.xyz += reflectVector; //offset to avoid self intersect..
+	texCoord.xyz += reflectVector*2; //offset to avoid self intersect..
+	
 	float radiusRatio = sin(calculateSpecularConeHalfAngle(Roughness * Roughness));
 	float distance = 1.f;
 	for (int i = 0; i < 256; i++)
@@ -226,8 +227,9 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		float currentRadius = radiusRatio * distance;
 		int MipLevel = floor(getMipLevelFromRadius(currentRadius));
 		float x, y, z;
-		MipLevel = clamp(MipLevel, 0, 1);
+		MipLevel = clamp(MipLevel, 0, 2);
 		float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
+		float samples = 0.f;
 		if (RadianceVolume[0].Load(int4((texCoord * pow(0.5f, MipLevel)), MipLevel)).a > 0.f)
 		{
 			for (z = -1.5; z <= 1.5; z += 1.5)
@@ -236,11 +238,12 @@ float4 PSMain(PixelInput input) : SV_TARGET
 				{
 					for (x = -1.5; x <= 1.5; x += 1.5)
 					{
+						samples++;
 						tempGI += RadianceVolume[0].Load(int4((texCoord + float3(x,y,z)) * pow(0.5f, MipLevel), MipLevel));
 					}
 				}
 			}
-			tempGI /= 27.0;
+			tempGI /= samples;
 		}
 		if (tempGI.a > 1.f - GIColour.a)
 		{
@@ -250,14 +253,17 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		GIColour.a += tempGI.a;
 		if (GIColour.a > 0.99f)
 		{
+			//float3 H = normalize(ToCamera + reflectVector);
+			//float VdotH = saturate(dot(ToCamera, H));
+			//return SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
 			break;
 		}
-		texCoord += (reflectVector);
-		distance += 1.f;
+		texCoord += (reflectVector) * pow(0.5f, MipLevel);
+		distance += pow(0.5f, MipLevel);
 	}
 	
 	//---------------------
-
+	float4 FinalColour = float4(0.f, 0.f, 0.f, 1.f);
 	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
 		float3 ToLight = pointLights[i].position.xyz - WorldPositionSample.xyz;
@@ -268,8 +274,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float3 H = normalize(ToCamera + reflectVector);
 	float VdotH = saturate(dot(ToCamera, H));
 	GIColour = SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
+	GIColour.a = 1.f;
 	GIColour = saturate(GIColour);
-
-
 	return saturate(FinalColour + GIColour);
 }
