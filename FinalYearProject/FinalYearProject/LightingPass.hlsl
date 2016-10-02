@@ -168,6 +168,48 @@ float calculateSpecularConeHalfAngle(float roughness)
 	return acos(sqrt(0.11111f / (roughness * roughness + 0.11111f)));
 }
 
+float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition, float coneRadius, inout bool outsideVolume)
+{
+	int3 texDimensions;
+	RadianceVolume.GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
+
+	float4 voxPos = mul(worldPosition, mWorldToVoxelGrid);
+
+	
+
+	float3 texCoord = float3((((voxPos.x * 0.5) + 0.5f) * texDimensions.x),
+		(((voxPos.y * 0.5) + 0.5f) * texDimensions.x),
+		(((voxPos.z * 0.5) + 0.5f) * texDimensions.x));
+	
+	if (any(texCoord.xyz < 0.0f) || any(texCoord.xyz > texDimensions.x))
+	{
+		//Early out if we've traced out of the volume..
+		outsideVolume = true;
+		return float4(0.f, 0.f, 0.f, 0.f);
+	}
+
+	int MipLevel = clamp(floor(getMipLevelFromRadius(coneRadius)), 0, 0);
+
+	float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
+	float samples = 0.f;
+	if (RadianceVolume.Load(int4((texCoord * pow(0.5f, MipLevel)), MipLevel)).a > 0.f)
+	{
+		for (float z = -1.5; z <= 1.5; z += 1.5)
+		{
+			for (float y = -1.5; y <= 1.5; y += 1.5)
+			{
+				for (float x = -1.5; x <= 1.5; x += 1.5)
+				{
+					samples++;
+					tempGI += RadianceVolume.Load(int4((texCoord + float3(x, y, z)) * pow(0.5f, MipLevel), MipLevel));
+				}
+			}
+		}
+		tempGI /= samples;
+	}
+	return tempGI;
+}
+
 //----------------------------------------
 
 
@@ -207,43 +249,26 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	
 
 	//Specular GI------------------------------------
-	int3 texDimensions;
-	RadianceVolume[0].GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
+	
 	float occlusion = 0;
 	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
 	float3 reflectVector = -((2 * (dot(Normal, -ToCamera) * Normal)) + ToCamera);
 	reflectVector = normalize(reflectVector);
-	float4 samplePos = mul(WorldPositionSample, mWorldToVoxelGrid);
-
-	float3 texCoord = float3((((samplePos.x * 0.5) + 0.5f) * texDimensions.x),
-		(((samplePos.y * 0.5) + 0.5f) * texDimensions.x),
-		(((samplePos.z * 0.5) + 0.5f) * texDimensions.x));
-	texCoord.xyz += reflectVector*2; //offset to avoid self intersect..
+	
+	float3 SamplePos = WorldPositionSample.xyz + Normal; //offset to avoid self intersect..
 	
 	float radiusRatio = sin(calculateSpecularConeHalfAngle(Roughness * Roughness));
 	float distance = 1.f;
+	
 	for (int i = 0; i < 256; i++)
 	{
 		float currentRadius = radiusRatio * distance;
-		int MipLevel = floor(getMipLevelFromRadius(currentRadius));
-		float x, y, z;
-		MipLevel = clamp(MipLevel, 0, 2);
-		float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
-		float samples = 0.f;
-		if (RadianceVolume[0].Load(int4((texCoord * pow(0.5f, MipLevel)), MipLevel)).a > 0.f)
+		
+		bool outsideVolume = false;
+		float4 tempGI = sampleVoxelVolume(RadianceVolume[0], float4(SamplePos.xyz, 1.f), currentRadius, outsideVolume);
+		if (outsideVolume)
 		{
-			for (z = -1.5; z <= 1.5; z += 1.5)
-			{
-				for (y = -1.5; y <= 1.5; y += 1.5)
-				{
-					for (x = -1.5; x <= 1.5; x += 1.5)
-					{
-						samples++;
-						tempGI += RadianceVolume[0].Load(int4((texCoord + float3(x,y,z)) * pow(0.5f, MipLevel), MipLevel));
-					}
-				}
-			}
-			tempGI /= samples;
+			break;
 		}
 		if (tempGI.a > 1.f - GIColour.a)
 		{
@@ -258,8 +283,8 @@ float4 PSMain(PixelInput input) : SV_TARGET
 			//return SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
 			break;
 		}
-		texCoord += (reflectVector) * pow(0.5f, MipLevel);
-		distance += pow(0.5f, MipLevel);
+		SamplePos += (reflectVector) * voxelScale;
+		distance += voxelScale;
 	}
 	
 	//---------------------
