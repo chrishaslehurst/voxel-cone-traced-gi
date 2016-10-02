@@ -219,17 +219,16 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		(((samplePos.y * 0.5) + 0.5f) * texDimensions.x),
 		(((samplePos.z * 0.5) + 0.5f) * texDimensions.x));
 	texCoord.xyz += reflectVector; //offset to avoid self intersect..
-	
-	float radiusRatio = sin(calculateSpecularConeHalfAngle(Roughness));
+	float radiusRatio = sin(calculateSpecularConeHalfAngle(Roughness * Roughness));
 	float distance = 1.f;
 	for (int i = 0; i < 256; i++)
 	{
 		float currentRadius = radiusRatio * distance;
-		float MipLevel = getMipLevelFromRadius(currentRadius);
+		int MipLevel = floor(getMipLevelFromRadius(currentRadius));
 		float x, y, z;
+		MipLevel = clamp(MipLevel, 0, 1);
 		float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
-		MipLevel = 0;
-		if (RadianceVolume[0].Load(int4(texCoord * (1.f / 1.f + MipLevel), MipLevel)).a > 0.f)
+		if (RadianceVolume[0].Load(int4((texCoord * pow(0.5f, MipLevel)), MipLevel)).a > 0.f)
 		{
 			for (z = -1.5; z <= 1.5; z += 1.5)
 			{
@@ -237,13 +236,18 @@ float4 PSMain(PixelInput input) : SV_TARGET
 				{
 					for (x = -1.5; x <= 1.5; x += 1.5)
 					{
-						tempGI += RadianceVolume[0].Load(int4((texCoord + float3(x, y, z)) * (1.f/1.f+MipLevel), MipLevel));
+						tempGI += RadianceVolume[0].Load(int4((texCoord + float3(x,y,z)) * pow(0.5f, MipLevel), MipLevel));
 					}
 				}
 			}
 			tempGI /= 27.0;
 		}
-		GIColour += tempGI;
+		if (tempGI.a > 1.f - GIColour.a)
+		{
+			tempGI.a = 1.f - GIColour.a;
+		}
+		GIColour.rgb += tempGI.rgb * tempGI.a;
+		GIColour.a += tempGI.a;
 		if (GIColour.a > 0.99f)
 		{
 			break;

@@ -4,6 +4,8 @@ cbuffer MatrixBuffer
 	matrix mWorldMatrix;
 	matrix mViewMatrix;
 	matrix mProjectionMatrix;
+	int mipLevel;
+	int3 padding;
 };
 
 cbuffer PerCubeBuffer
@@ -45,7 +47,7 @@ GSInput VSMain(VertexInput input)
 [maxvertexcount(30)]
 void GSMain(point GSInput input[1], inout TriangleStream<PixelInput> outputStream)
 {
-	float4 colour = VoxelVolume.Load(int4(input[0].worldPosition.xyz, 0));
+	float4 colour = VoxelVolume.Load(int4(input[0].worldPosition.xyz, mipLevel));
 	if (colour.a > 0)
 	{
 		PixelInput outputs[8];

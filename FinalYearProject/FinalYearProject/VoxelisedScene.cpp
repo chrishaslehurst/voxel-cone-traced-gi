@@ -258,7 +258,7 @@ void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMAT
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 	ID3D11ShaderResourceView* srv;
 	
-	srv = m_pRadianceVolumeMips[m_iDebugMipLevel]->GetShaderResourceView();
+	srv = m_pRadianceVolumeMips[0]->GetShaderResourceView();
 	
 
 	pContext->GSSetShaderResources(0, 1, &srv);
@@ -372,6 +372,10 @@ bool VoxelisedScene::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, c
 		pBuffer->world = mWorld;
 		pBuffer->view = mView;
 		pBuffer->projection = mProjection;
+		pBuffer->DebugMipLevel = m_iDebugMipLevel;
+		pBuffer->padding[0] = 0;
+		pBuffer->padding[1] = 0;
+		pBuffer->padding[2] = 0;
 
 		pDeviceContext->Unmap(m_pMatrixBuffer, 0);
 	}

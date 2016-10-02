@@ -59,6 +59,8 @@ public:
 		XMMATRIX world;
 		XMMATRIX view;
 		XMMATRIX projection;
+		int DebugMipLevel;
+		int padding[3];
 
 		void* operator new(size_t i)
 		{
