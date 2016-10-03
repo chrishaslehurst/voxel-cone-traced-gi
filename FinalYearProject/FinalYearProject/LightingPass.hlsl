@@ -3,6 +3,29 @@
 
 static const float DepthBias = 0.001f;
 
+//Diffuse GI Constants for tracing cones---------------------------
+
+static const float3 ConeSampleDirections[] =
+{
+	float3(0.0f, 1.0f, 0.0f),
+	float3(0.0f, 0.5f, 0.866025f),
+	float3(0.823639f, 0.5f, 0.267617f),
+	float3(0.509037f, 0.5f, -0.7006629f),
+	float3(-0.50937f, 0.5f, -0.7006629f),
+	float3(-0.823639f, 0.5f, 0.267617f)
+};
+static const float ConeSampleWeights[] =
+{
+	PI / 4.0f,
+	3 * PI / 20.0f,
+	3 * PI / 20.0f,
+	3 * PI / 20.0f,
+	3 * PI / 20.0f,
+	3 * PI / 20.0f,
+};
+static const float diffuseRadiusRatio = sin(0.53f);//60 degree cones
+
+//-------------------------------------------------------------
 #define MIP_COUNT 4
 
 //Globals
@@ -155,6 +178,11 @@ float CalculateShadowFactor(int lightIdx, float3 ToLight, float ReciprocalRange)
 
 
 //GI Functions---------------------------
+void accumulateColorOcclusion(float4 sampleColor, inout float3 colorAccum, inout float occlusionAccum)
+{
+	colorAccum = occlusionAccum * colorAccum + (1.0f - sampleColor.a) * sampleColor.a * sampleColor.rgb;
+	occlusionAccum = occlusionAccum + (1.0f - occlusionAccum) * sampleColor.a;
+}
 
 float getMipLevelFromRadius(float radius)
 {
@@ -175,8 +203,6 @@ float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition,
 
 	float4 voxPos = mul(worldPosition, mWorldToVoxelGrid);
 
-	
-
 	float3 texCoord = float3((((voxPos.x * 0.5) + 0.5f) * texDimensions.x),
 		(((voxPos.y * 0.5) + 0.5f) * texDimensions.x),
 		(((voxPos.z * 0.5) + 0.5f) * texDimensions.x));
@@ -194,20 +220,90 @@ float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition,
 	float samples = 0.f;
 	if (RadianceVolume.Load(int4((texCoord * pow(0.5f, MipLevel)), MipLevel)).a > 0.f)
 	{
-		for (float z = -1.5; z <= 1.5; z += 1.5)
+		//Trilinearly sample the volume to reduce noise/aliasing..
+		for (float z = -1; z <= 1; z += 1)
 		{
-			for (float y = -1.5; y <= 1.5; y += 1.5)
+			for (float y = -1; y <= 1; y += 1)
 			{
-				for (float x = -1.5; x <= 1.5; x += 1.5)
+				for (float x = -1; x <= 1; x += 1)
 				{
 					samples++;
-					tempGI += RadianceVolume.Load(int4((texCoord + float3(x, y, z)) * pow(0.5f, MipLevel), MipLevel));
+					tempGI += RadianceVolume.Load(int4((texCoord + float3(x,y,z)) * pow(0.5f, MipLevel), MipLevel));
 				}
 			}
 		}
 		tempGI /= samples;
 	}
 	return tempGI;
+}
+
+float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float RadiusRatio, float voxelScale, int distanceInVoxelsToTrace)
+{
+	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
+	float3 SamplePos = StartPos.xyz + Normal; //offset to avoid self intersect..
+
+	
+	float distance = 1.f;
+	for (int i = 0; i < distanceInVoxelsToTrace; i++)
+	{
+		float currentRadius = RadiusRatio * distance;
+
+		bool outsideVolume = false;
+		float4 tempGI = sampleVoxelVolume(RadianceVolume[0], float4(SamplePos.xyz, 1.f), currentRadius, outsideVolume);
+		if (outsideVolume)
+		{
+			break;
+		}
+		if (tempGI.a > 1.f - GIColour.a)
+		{
+			tempGI.a = 1.f - GIColour.a;
+		}
+		GIColour.rgb += tempGI.rgb * tempGI.a;
+		GIColour.a += tempGI.a;
+		if (GIColour.a > 0.95f)
+		{
+			//float3 H = normalize(ToCamera + reflectVector);
+			//float VdotH = saturate(dot(ToCamera, H));
+			//return SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
+			break;
+		}
+		SamplePos += Direction * voxelScale;
+		distance += voxelScale;
+	}
+	return GIColour;
+}
+
+float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float RadiusRatio, float voxelScale, int distanceInVoxelsToTrace, inout float AOAccumulation)
+{
+	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
+	float3 SamplePos = StartPos.xyz + (Normal * 2); //offset to avoid self intersect..
+
+	float distance = 1.f;
+	float AccumulatedOcclusion = 0.0f;
+	for (int i = 0; i < 16; i++)
+	{
+		float currentRadius = RadiusRatio * distance;
+
+		bool outsideVolume = false;
+		float4 tempGI = sampleVoxelVolume(RadianceVolume[0], float4(SamplePos.xyz, 1.f), currentRadius, outsideVolume);
+		if (outsideVolume)
+		{
+			break;
+		}
+		
+		GIColour.rgb = AccumulatedOcclusion * GIColour.rgb + (1.0f - tempGI.a) * tempGI.a * tempGI.rgb;
+		AccumulatedOcclusion = AccumulatedOcclusion + (1.0f - AccumulatedOcclusion) * tempGI.a;
+	
+		AOAccumulation += tempGI.a * (0.1f / distance + 1.f);
+
+		if (AccumulatedOcclusion >= 0.99f)
+		{
+			break;
+		}
+		SamplePos += Direction * voxelScale;
+		distance += voxelScale;
+	}
+	return float4(GIColour.rgb, 1.f);
 }
 
 //----------------------------------------
@@ -233,8 +329,6 @@ PixelInput VSMain(VertexInput input)
 //Pixel Shader
 float4 PSMain(PixelInput input) : SV_TARGET
 {
-	
-
 	float4 NormalSample = Normals.Sample(SampleTypePoint, input.tex);
 	float3 Normal = normalize(NormalSample.rgb);
 	float Roughness = NormalSample.a;
@@ -246,48 +340,51 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float3 ToCamera = cameraPosition.xyz - WorldPositionSample.xyz;
 	ToCamera = normalize(ToCamera);
 
-	
+	int3 texDimensions;
+	RadianceVolume[0].GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
 
 	//Specular GI------------------------------------
 	
 	float occlusion = 0;
-	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
+	float4 SpecularGI = float4(0.f, 0.f, 0.f, 0.f);
 	float3 reflectVector = -((2 * (dot(Normal, -ToCamera) * Normal)) + ToCamera);
 	reflectVector = normalize(reflectVector);
 	
-	float3 SamplePos = WorldPositionSample.xyz + Normal; //offset to avoid self intersect..
-	
 	float radiusRatio = sin(calculateSpecularConeHalfAngle(Roughness * Roughness));
-	float distance = 1.f;
 	
-	for (int i = 0; i < 256; i++)
+	float3 H = normalize(ToCamera + reflectVector);
+	float VdotH = saturate(dot(ToCamera, H));
+
+	SpecularGI = TraceSpecularCone(WorldPositionSample, Normal, reflectVector, radiusRatio, voxelScale, texDimensions.x);
+	SpecularGI = saturate(SchlickFresnel(1.f - Roughness, VdotH) * SpecularGI);
+
+	//---------------------
+
+	//Diffuse GI-------------------------------------
+	
+	float3 up = (Normal.y * Normal.y) > 0.95f ? float3(0.0f, 0.0f, 1.0f) : float3(0.0f, 1.0f, 0.0f);
+	float3 right = cross(Normal, up);
+	up = cross(Normal, right);
+
+	float4 accumulatedDiffuse = float4(0.f, 0.f, 0.f, 0.f);
+	float accumulatedDiffuseOcclusion = 0.f;
+
+	for (int coneIndex = 0; coneIndex < 6; coneIndex++)
 	{
-		float currentRadius = radiusRatio * distance;
-		
-		bool outsideVolume = false;
-		float4 tempGI = sampleVoxelVolume(RadianceVolume[0], float4(SamplePos.xyz, 1.f), currentRadius, outsideVolume);
-		if (outsideVolume)
-		{
-			break;
-		}
-		if (tempGI.a > 1.f - GIColour.a)
-		{
-			tempGI.a = 1.f - GIColour.a;
-		}
-		GIColour.rgb += tempGI.rgb * tempGI.a;
-		GIColour.a += tempGI.a;
-		if (GIColour.a > 0.99f)
-		{
-			//float3 H = normalize(ToCamera + reflectVector);
-			//float VdotH = saturate(dot(ToCamera, H));
-			//return SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
-			break;
-		}
-		SamplePos += (reflectVector) * voxelScale;
-		distance += voxelScale;
+		float3 coneDirection = Normal;
+		coneDirection += ConeSampleDirections[coneIndex].x * right + ConeSampleDirections[coneIndex].z * up;
+		coneDirection = normalize(coneDirection);
+
+		float accumulatedAO = 0.f;
+		float4 accumulatedColour = TraceDiffuseCone(WorldPositionSample, Normal, coneDirection, diffuseRadiusRatio, voxelScale, texDimensions.x * 0.125f, accumulatedAO);
+
+		accumulatedDiffuse += accumulatedColour * ConeSampleWeights[coneIndex];
+		accumulatedDiffuseOcclusion += accumulatedAO * ConeSampleWeights[coneIndex];
 	}
+	float4 DiffuseGI = accumulatedDiffuse;
 	
 	//---------------------
+
 	float4 FinalColour = float4(0.f, 0.f, 0.f, 1.f);
 	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
@@ -295,11 +392,5 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		float4 Light = CookTorranceBRDF(ToLight, ToCamera, Normal, Roughness, MetallicSample.r, DiffuseColourSample.rgb);
 		FinalColour += Light * CalculateAttenuation(ToLight, pointLights[i].range) * pointLights[i].colour * pointLights[i].colour.w * CalculateShadowFactor(i, ToLight, pointLights[i].range);
 	}
-	
-	float3 H = normalize(ToCamera + reflectVector);
-	float VdotH = saturate(dot(ToCamera, H));
-	GIColour = SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
-	GIColour.a = 1.f;
-	GIColour = saturate(GIColour);
-	return saturate(FinalColour + GIColour);
+	return saturate((FinalColour + SpecularGI + DiffuseGI));
 }
