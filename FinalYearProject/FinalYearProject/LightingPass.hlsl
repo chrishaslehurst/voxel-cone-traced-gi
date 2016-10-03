@@ -276,7 +276,7 @@ float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float
 float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float RadiusRatio, float voxelScale, int distanceInVoxelsToTrace, inout float AOAccumulation)
 {
 	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
-	float3 SamplePos = StartPos.xyz + (Normal * 2); //offset to avoid self intersect..
+	float3 SamplePos = StartPos.xyz + (Normal); //offset to avoid self intersect..
 
 	float distance = 1.f;
 	float AccumulatedOcclusion = 0.0f;
@@ -294,8 +294,8 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 		GIColour.rgb = AccumulatedOcclusion * GIColour.rgb + (1.0f - tempGI.a) * tempGI.a * tempGI.rgb;
 		AccumulatedOcclusion = AccumulatedOcclusion + (1.0f - AccumulatedOcclusion) * tempGI.a;
 	
-		AOAccumulation += tempGI.a * (0.1f / distance + 1.f);
-
+		AOAccumulation += tempGI.a * (0.1f / (distance));
+	//	AOAccumulation = 0.f;
 		if (AccumulatedOcclusion >= 0.99f)
 		{
 			break;
@@ -381,7 +381,8 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		accumulatedDiffuse += accumulatedColour * ConeSampleWeights[coneIndex];
 		accumulatedDiffuseOcclusion += accumulatedAO * ConeSampleWeights[coneIndex];
 	}
-	float4 DiffuseGI = accumulatedDiffuse;
+	
+	float4 DiffuseGI = accumulatedDiffuse * (1.f - accumulatedDiffuseOcclusion) * DiffuseColourSample;
 	
 	//---------------------
 
