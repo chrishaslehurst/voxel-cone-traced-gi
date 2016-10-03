@@ -186,7 +186,7 @@ void accumulateColorOcclusion(float4 sampleColor, inout float3 colorAccum, inout
 
 float getMipLevelFromRadius(float radius)
 {
-	return log2((radius + 0.01f) * voxelScale) + MIP_COUNT;
+	return (radius / voxelScale) - 1;
 }
 
 
@@ -214,7 +214,7 @@ float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition,
 		return float4(0.f, 0.f, 0.f, 0.f);
 	}
 
-	int MipLevel = clamp(floor(getMipLevelFromRadius(coneRadius)), 0, 0);
+	int MipLevel = clamp(getMipLevelFromRadius(coneRadius), 0, 2);
 
 	float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
 	float samples = 0.f;
@@ -294,8 +294,8 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 		GIColour.rgb = AccumulatedOcclusion * GIColour.rgb + (1.0f - tempGI.a) * tempGI.a * tempGI.rgb;
 		AccumulatedOcclusion = AccumulatedOcclusion + (1.0f - AccumulatedOcclusion) * tempGI.a;
 	
-		AOAccumulation += tempGI.a * (0.1f / (distance));
-	//	AOAccumulation = 0.f;
+		AOAccumulation += tempGI.a * (0.1f / (i+1));
+		AOAccumulation = 0.f;
 		if (AccumulatedOcclusion >= 0.99f)
 		{
 			break;
