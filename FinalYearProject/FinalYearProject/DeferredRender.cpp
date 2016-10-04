@@ -304,12 +304,12 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 
 	//Create ShadowMap Sampler State
 	D3D11_SAMPLER_DESC shadowSamplerDesc;
-	shadowSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
-	shadowSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
-	shadowSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
-	shadowSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
+	shadowSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+	shadowSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	shadowSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	shadowSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
 	shadowSamplerDesc.MipLODBias = 0;
-	shadowSamplerDesc.MaxAnisotropy = 4;
+	shadowSamplerDesc.MaxAnisotropy = 16;
 	shadowSamplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
 	shadowSamplerDesc.BorderColor[0] = 0.0f;
 	shadowSamplerDesc.BorderColor[1] = 0.0f;
@@ -323,6 +323,30 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 	{
 		VS_LOG_VERBOSE("Failed to create shadow map sampler");
 		return res;
+	}
+
+	// Create a texture sampler state description for the voxel sampler
+	D3D11_SAMPLER_DESC voxelSamplerDesc;
+	voxelSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	voxelSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	voxelSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	voxelSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	voxelSamplerDesc.MipLODBias = 0.0f;
+	voxelSamplerDesc.MaxAnisotropy = 16;
+	voxelSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	voxelSamplerDesc.BorderColor[0] = 0;
+	voxelSamplerDesc.BorderColor[1] = 0;
+	voxelSamplerDesc.BorderColor[2] = 0;
+	voxelSamplerDesc.BorderColor[3] = 0;
+	voxelSamplerDesc.MinLOD = 0;
+	voxelSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	// Create the texture sampler state for the voxel sampler
+	res = pDevice->CreateSamplerState(&voxelSamplerDesc, &m_pVoxelSampler);
+	if (FAILED(res))
+	{
+		VS_LOG_VERBOSE("Failed to create texture sampler state");
+		return false;
 	}
 
 	D3D11_BUFFER_DESC matrixBufferDesc;
@@ -538,6 +562,7 @@ void DeferredRender::RenderShader(ID3D11DeviceContext* pContext, int iIndexCount
 	// Set the sampler state in the pixel shader.
 	pContext->PSSetSamplers(0, 1, &m_pSampleState);
 	pContext->PSSetSamplers(1, 1, &m_pShadowMapSampleState);
+	pContext->PSSetSamplers(2, 1, &m_pVoxelSampler);
 
 	// Render the geometry.
 	pContext->DrawIndexed(iIndexCount, 0, 0);

@@ -99,6 +99,7 @@ private:
 	ID3D11InputLayout* m_pLayout;
 	ID3D11SamplerState* m_pSampleState;
 	ID3D11SamplerState* m_pShadowMapSampleState;
+	ID3D11SamplerState* m_pVoxelSampler;
 	ID3D11Buffer* m_pMatrixBuffer;
 
 	ID3D11Buffer* m_pCameraBuffer;

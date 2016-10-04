@@ -85,6 +85,7 @@ Texture3D<float4> RadianceVolume[MIP_COUNT];
 //Sample State
 SamplerState SampleTypePoint;
 SamplerComparisonState ShadowMapSampler;
+SamplerState VoxelSampler;
 
 //Functions
 float3 CalculateLambertDiffuseBRDF(float3 DiffuseColour, float Metallic)
@@ -198,50 +199,28 @@ float calculateSpecularConeHalfAngle(float roughness)
 
 float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition, float coneRadius, inout bool outsideVolume)
 {
-	int3 texDimensions;
-	RadianceVolume.GetDimensions(texDimensions.x, texDimensions.y, texDimensions.z);
-
 	float4 voxPos = mul(worldPosition, mWorldToVoxelGrid);
 
-	float3 texCoord = float3((((voxPos.x * 0.5) + 0.5f) * texDimensions.x),
-		(((voxPos.y * 0.5) + 0.5f) * texDimensions.x),
-		(((voxPos.z * 0.5) + 0.5f) * texDimensions.x));
+	float3 texCoord = float3((((voxPos.x * 0.5) + 0.5f)),
+		(((voxPos.y * 0.5) + 0.5f)),
+		(((voxPos.z * 0.5) + 0.5f)));
 	
-	if (any(texCoord.xyz < 0.0f) || any(texCoord.xyz > texDimensions.x))
+	if (any(texCoord.xyz < 0.0f) || any(texCoord.xyz > 1.f))
 	{
 		//Early out if we've traced out of the volume..
 		outsideVolume = true;
 		return float4(0.f, 0.f, 0.f, 0.f);
 	}
 
-	int MipLevel = clamp(getMipLevelFromRadius(coneRadius), 0, 2);
-
-	float4 tempGI = float4(0.f, 0.f, 0.f, 0.f);
-	float samples = 0.f;
-	if (RadianceVolume.Load(int4((texCoord * pow(0.5f, MipLevel)), MipLevel)).a > 0.f)
-	{
-		//Trilinearly sample the volume to reduce noise/aliasing..
-		for (float z = -1; z <= 1; z += 1)
-		{
-			for (float y = -1; y <= 1; y += 1)
-			{
-				for (float x = -1; x <= 1; x += 1)
-				{
-					samples++;
-					tempGI += RadianceVolume.Load(int4((texCoord + float3(x,y,z)) * pow(0.5f, MipLevel), MipLevel));
-				}
-			}
-		}
-		tempGI /= samples;
-	}
-	return tempGI;
+	int MipLevel = clamp(getMipLevelFromRadius(coneRadius), 0, 3);
+	
+	return RadianceVolume.SampleLevel(VoxelSampler, texCoord, MipLevel);;
 }
 
 float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float RadiusRatio, float voxelScale, int distanceInVoxelsToTrace)
 {
 	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
 	float3 SamplePos = StartPos.xyz + Normal; //offset to avoid self intersect..
-
 	
 	float distance = 1.f;
 	for (int i = 0; i < distanceInVoxelsToTrace; i++)
@@ -262,9 +241,6 @@ float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float
 		GIColour.a += tempGI.a;
 		if (GIColour.a > 0.95f)
 		{
-			//float3 H = normalize(ToCamera + reflectVector);
-			//float VdotH = saturate(dot(ToCamera, H));
-			//return SchlickFresnel(1.f - Roughness, VdotH) * GIColour;
 			break;
 		}
 		SamplePos += Direction * voxelScale;
@@ -276,32 +252,37 @@ float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float
 float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float RadiusRatio, float voxelScale, int distanceInVoxelsToTrace, inout float AOAccumulation)
 {
 	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
-	float3 SamplePos = StartPos.xyz + (Normal); //offset to avoid self intersect..
+	float3 SamplePos = StartPos.xyz + (Normal*voxelScale); //offset to avoid self intersect..
 
-	float distance = 1.f;
+	float currentDistance = voxelScale;
+	float currentRadius = RadiusRatio * currentDistance;
 	float AccumulatedOcclusion = 0.0f;
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < distanceInVoxelsToTrace; i++)
 	{
-		float currentRadius = RadiusRatio * distance;
-
 		bool outsideVolume = false;
 		float4 tempGI = sampleVoxelVolume(RadianceVolume[0], float4(SamplePos.xyz, 1.f), currentRadius, outsideVolume);
 		if (outsideVolume)
 		{
 			break;
 		}
-		
+
+		float lastDistance = currentDistance;
+		currentDistance = currentDistance / (1.0f - RadiusRatio);
+
+		float currentRadius = RadiusRatio * currentDistance;
+		SamplePos = StartPos.xyz + (Direction * currentDistance);
+
 		GIColour.rgb = AccumulatedOcclusion * GIColour.rgb + (1.0f - tempGI.a) * tempGI.a * tempGI.rgb;
 		AccumulatedOcclusion = AccumulatedOcclusion + (1.0f - AccumulatedOcclusion) * tempGI.a;
 	
-		AOAccumulation += tempGI.a * (0.1f / (i+1));
-		AOAccumulation = 0.f;
+		AOAccumulation += tempGI.a * (0.1f / (currentDistance +1));
+		//AOAccumulation = 0.f;
 		if (AccumulatedOcclusion >= 0.99f)
 		{
 			break;
 		}
-		SamplePos += Direction * voxelScale;
-		distance += voxelScale;
+		
+		
 	}
 	return float4(GIColour.rgb, 1.f);
 }
@@ -376,7 +357,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		coneDirection = normalize(coneDirection);
 
 		float accumulatedAO = 0.f;
-		float4 accumulatedColour = TraceDiffuseCone(WorldPositionSample, Normal, coneDirection, diffuseRadiusRatio, voxelScale, texDimensions.x * 0.125f, accumulatedAO);
+		float4 accumulatedColour = TraceDiffuseCone(WorldPositionSample, Normal, coneDirection, diffuseRadiusRatio, voxelScale, 64, accumulatedAO);
 
 		accumulatedDiffuse += accumulatedColour * ConeSampleWeights[coneIndex];
 		accumulatedDiffuseOcclusion += accumulatedAO * ConeSampleWeights[coneIndex];

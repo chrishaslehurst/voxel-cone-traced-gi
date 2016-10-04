@@ -124,7 +124,7 @@ private:
 	ID3D11ShaderResourceView*	m_pShadowMapCubeShaderView;
 	
 
-	static const int kShadowMapSize = 512;
+	static const int kShadowMapSize = 1024;
 	XMMATRIX m_LightViewProjMatrices[6];
 	XMMATRIX m_LightProjMatrix;
 };
