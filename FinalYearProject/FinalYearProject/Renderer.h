@@ -43,7 +43,7 @@ private:
 
 	DeferredRender m_DeferredRender;
 	RenderTextureToScreen m_DebugRenderTexture;
-	VoxelisedScene   m_VoxelisePass;
+	VoxelisedScene   m_VoxelisedScene;
 	OrthoWindow* m_pFullScreenWindow;
 
 	bool m_bDebugRenderVoxels;

@@ -26,6 +26,7 @@ private:
 	ID3D11RenderTargetView*   m_pRenderTargetView;
 	ID3D11UnorderedAccessView* m_pUAV;
 	ID3D11Texture3D*		  m_pTexture;
+	
 	ID3D11Buffer*				pTilePool;
 };
 

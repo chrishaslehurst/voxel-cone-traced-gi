@@ -113,7 +113,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		pLightManager->SetDirectionalLightDirection(XMFLOAT3(0.2f, -0.1f, 0.2f));
 	}
 	m_DebugRenderTexture.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, iScreenWidth, iScreenHeight, SCREEN_DEPTH, SCREEN_NEAR);
-	m_VoxelisePass.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB());
+	m_VoxelisedScene.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_pModel->GetWholeModelAABB());
 
 	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
 	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
@@ -189,7 +189,7 @@ bool Renderer::Update(HWND hwnd)
 	}
 	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS) && !m_bPlusPressed)
 	{
-		m_VoxelisePass.IncreaseDebugMipLevel();
+		m_VoxelisedScene.IncreaseDebugMipLevel();
 		m_bPlusPressed = true;
 	}
 	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADPLUS))
@@ -198,7 +198,7 @@ bool Renderer::Update(HWND hwnd)
 	}
 	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADMINUS) && !m_bMinusPressed)
 	{
-		m_VoxelisePass.DecreaseDebugMipLevel();
+		m_VoxelisedScene.DecreaseDebugMipLevel();
 		m_bMinusPressed = true;
 	}
 	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADMINUS))
@@ -249,16 +249,18 @@ bool Renderer::Render()
 
 	//Clear the voxel volume..
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
-	m_VoxelisePass.RenderClearVoxelsPass(pContext);
+	m_VoxelisedScene.RenderClearVoxelsPass(pContext);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
 
 	//Render the scene to the volume..
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxelisePass);
-	m_VoxelisePass.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+	m_VoxelisedScene.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
 
-	m_VoxelisePass.RenderInjectRadiancePass(pContext);
-	m_VoxelisePass.GenerateMips(pContext);
+	m_VoxelisedScene.UpdateTiles(pContext);
+
+	m_VoxelisedScene.RenderInjectRadiancePass(pContext);
+	m_VoxelisedScene.GenerateMips(pContext);
 
 
 	m_pD3D->TurnZBufferOn();
@@ -291,7 +293,7 @@ bool Renderer::Render()
 
 
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_DeferredRender.GetTexture(btNormals));
-	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), &m_VoxelisePass);
+	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), &m_VoxelisedScene);
 	//m_VoxelisePass.RenderDebugViewToTexture(pContext);
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
 	
@@ -303,7 +305,7 @@ bool Renderer::Render()
 
 	if (m_bDebugRenderVoxels)
 	{
-		m_VoxelisePass.RenderDebugCubes(pContext, mWorld, mView, mProjection, m_pCamera);
+		m_VoxelisedScene.RenderDebugCubes(pContext, mWorld, mView, mProjection, m_pCamera);
 	}
 
 	GPUProfiler::Get()->EndFrame(pContext);

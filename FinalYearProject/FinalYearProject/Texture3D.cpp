@@ -75,7 +75,7 @@ HRESULT Texture3D::Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, 
 		float Depth = 256 / 16;
 		TRS.NumTiles = Width*Height*Depth;
 
-		UINT RangeFlags = D3D11_TILE_RANGE_REUSE_SINGLE_TILE;
+		UINT RangeFlags = 0;
 		UINT startOffset = 0;
 		
 		result = pContext->UpdateTileMappings(m_pTexture, 1, &coord, &TRS, pTilePool, 1, &RangeFlags, &startOffset, nullptr, D3D11_TILE_MAPPING_NO_OVERWRITE);

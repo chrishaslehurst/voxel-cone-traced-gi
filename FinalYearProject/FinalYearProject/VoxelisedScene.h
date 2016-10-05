@@ -113,6 +113,10 @@ public:
 	const XMMATRIX& GetWorldToVoxelMatrix() { return m_mWorldToVoxelGrid; }
 
 	float GetVoxelScale() { return m_vVoxelGridSize.x / TEXTURE_DIMENSION; } //size of one voxel
+
+#if TILED_RESOURCES
+	void UpdateTiles(ID3D11DeviceContext3* pDeviceContext);
+#endif
 private:
 
 	void CreateWorldToVoxelGrid(const AABB& voxelGridAABB);
@@ -164,6 +168,11 @@ private:
 	ID3D11Buffer*			m_pDebugCubesIndexBuffer;
 
 	int m_iDebugMipLevel;
+
+#if TILED_RESOURCES
+	Texture3D* m_pTileOccupation;
+	ID3D11Texture3D* m_pTileOccupationStaging;
+#endif
 
 };
 

@@ -86,6 +86,22 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	UINT MiscFlags = 0;
 #if TILED_RESOURCES
 	MiscFlags = D3D11_RESOURCE_MISC_TILED;
+
+	m_pTileOccupation = new Texture3D;
+	m_pTileOccupation->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
+
+	D3D11_TEXTURE3D_DESC textureDesc;
+	m_pTileOccupation->GetTexture()->GetDesc(&textureDesc);
+	textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	textureDesc.Usage = D3D11_USAGE_STAGING;
+	textureDesc.BindFlags = 0;
+	result = pDevice->CreateTexture3D(&textureDesc, nullptr, &m_pTileOccupationStaging);
+	if (FAILED(result))
+	{
+		VS_LOG_VERBOSE("Failed to create tile occupation staging texture")
+		return false;
+	}
+
 #endif
 	m_pVoxelisedSceneColours = new Texture3D;
 	m_pVoxelisedSceneColours->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags);
@@ -93,8 +109,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	m_pVoxelisedSceneNormals = new Texture3D;
 	m_pVoxelisedSceneNormals->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags);
 
-// 	m_pRadianceVolume = new Texture3D;
-// 	m_pRadianceVolume->Init(pDevice, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE);
+
 
 	float mipScale = 1;
 	for (int i = 0; i < MIP_LEVELS; i++)
@@ -357,8 +372,13 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerState);
 
+#if TILED_RESOURCES
+	ID3D11UnorderedAccessView* uavs[3] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV(), m_pTileOccupation->GetUAV() };
+	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 3, uavs, 0);
+#else
 	ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
 	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
+#endif
 
 	return true;
 }
@@ -493,12 +513,31 @@ void VoxelisedScene::Shutdown()
 	}
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void VoxelisedScene::GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LEVELS])
 {
 	for (int i = 0; i < MIP_LEVELS; i++)
 	{
 		volumes[i] = m_pRadianceVolumeMips[i]->GetShaderResourceView();
 	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
+{
+	pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation->GetTexture(), 0, nullptr);
+	
+	D3D11_MAPPED_SUBRESOURCE pTexture;
+	HRESULT res = pContext->Map(m_pTileOccupationStaging, 0, D3D11_MAP_READ, 0, &pTexture);
+	if (FAILED(res))
+	{
+		VS_LOG_VERBOSE("Couldn't map resource..")
+		return;
+	}
+	UINT* pTexData = static_cast<UINT*>(pTexture.pData);
+	UINT num = pTexData[0];
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

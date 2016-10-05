@@ -54,6 +54,7 @@ struct PSInput
 RWTexture3D<uint> VoxelTex_Colour : register(u0); //This is where we will write the voxel colours to..
 RWTexture3D<uint> VoxelTex_Normals : register(u1);
 
+RWTexture3D<uint> VoxelOccupancy : register(u2);
 
 Texture2D diffuseTexture; 
 
@@ -193,6 +194,8 @@ void PSMain(PSInput input)
 	uint3 texCoord = uint3((((input.PosW.x * 0.5) + 0.5f) * texDimensions.x),
 						   (((input.PosW.y * 0.5) + 0.5f) * texDimensions.x),
 						   (((input.PosW.z * 0.5) + 0.5f) * texDimensions.x));
+
+	VoxelOccupancy[uint3(floor(texCoord.x / 32), floor(texCoord.y / 32), floor(texCoord.z / 16))] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);;
 
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
 	

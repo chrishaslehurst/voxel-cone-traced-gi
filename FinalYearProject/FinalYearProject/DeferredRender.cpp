@@ -493,8 +493,6 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 	//Unlock the buffer
 	pContext->Unmap(m_pMatrixBuffer, 0);
 
-	
-
 	res = pContext->Map(m_pCameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(res))
 	{
