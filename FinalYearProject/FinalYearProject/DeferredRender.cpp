@@ -327,7 +327,7 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 
 	// Create a texture sampler state description for the voxel sampler
 	D3D11_SAMPLER_DESC voxelSamplerDesc;
-	voxelSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	voxelSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
 	voxelSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
 	voxelSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
 	voxelSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;

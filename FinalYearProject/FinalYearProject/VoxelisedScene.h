@@ -14,6 +14,7 @@
 
 #define TEXTURE_DIMENSION 256
 #define MIP_LEVELS 4
+#define TILED_RESOURCES 1
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -91,7 +92,7 @@ public:
 	VoxelisedScene();
 	~VoxelisedScene();
 
-	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, const AABB& voxelGridAABB);
+	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderInjectRadiancePass(ID3D11DeviceContext* pContext);
 	void GenerateMips(ID3D11DeviceContext* pContext);

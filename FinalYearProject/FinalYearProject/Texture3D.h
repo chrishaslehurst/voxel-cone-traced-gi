@@ -12,7 +12,7 @@ public:
 	Texture3D();
 	~Texture3D();
 
-	HRESULT Init(ID3D11Device* pDevice, int iTextureWidth, int iTextureHeight, int iTextureDepth, int mipLevels, DXGI_FORMAT format, DXGI_FORMAT uavFormat, DXGI_FORMAT srvFormat, D3D11_USAGE usage, UINT bindFlags, UINT cpuAccessFlags = 0, UINT MiscFlags = 0);
+	HRESULT Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, int iTextureWidth, int iTextureHeight, int iTextureDepth, int mipLevels, DXGI_FORMAT format, DXGI_FORMAT uavFormat, DXGI_FORMAT srvFormat, D3D11_USAGE usage, UINT bindFlags, UINT cpuAccessFlags = 0, UINT MiscFlags = 0);
 
 	void Shutdown();
 
@@ -26,6 +26,7 @@ private:
 	ID3D11RenderTargetView*   m_pRenderTargetView;
 	ID3D11UnorderedAccessView* m_pUAV;
 	ID3D11Texture3D*		  m_pTexture;
+	ID3D11Buffer*				pTilePool;
 };
 
 #endif // !TEXTURE3D_H
