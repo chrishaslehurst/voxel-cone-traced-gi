@@ -10,6 +10,9 @@
 
 VoxelisedScene::VoxelisedScene()
 	:m_iDebugMipLevel(0)
+#if TILED_RESOURCES
+	, m_iCurrentOccupationTexture(0)
+#endif
 {
 	m_sNumThreads = std::to_string(NUM_THREADS);
 
@@ -24,7 +27,18 @@ VoxelisedScene::VoxelisedScene()
 	m_ComputeShaderDefines[csdNumGroups].Definition = m_sNumGroups.c_str();
 	m_ComputeShaderDefines[csdNulls].Name = nullptr;
 	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
-	
+#if TILED_RESOURCES
+	for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+	{
+		for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+		{
+			for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+			{
+				m_bPreviousFrameOccupation[z][y][x] = false;
+			}
+		}
+	}
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,11 +101,13 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 #if TILED_RESOURCES
 	MiscFlags = D3D11_RESOURCE_MISC_TILED;
 
-	m_pTileOccupation = new Texture3D;
-	m_pTileOccupation->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
-
+	for (int i = 0; i < 3; i++)
+	{
+		m_pTileOccupation[i] = new Texture3D;
+		m_pTileOccupation[i]->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
+	}
 	D3D11_TEXTURE3D_DESC textureDesc;
-	m_pTileOccupation->GetTexture()->GetDesc(&textureDesc);
+	m_pTileOccupation[0]->GetTexture()->GetDesc(&textureDesc);
 	textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 	textureDesc.Usage = D3D11_USAGE_STAGING;
 	textureDesc.BindFlags = 0;
@@ -223,7 +239,6 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 	}
 	pContext->CSSetShaderResources(0, 2, srvs);
 	pContext->CSGetShaderResources(2, NUM_LIGHTS, pShadowCubeArray);
-	pContext->CSSetSamplers(1, 1, &m_pShadowMapSampleState);
 	
 	ID3D11Buffer* pLightBuffer = LightManager::Get()->GetLightBuffer();
 	pContext->CSSetConstantBuffers(0, 1, &pLightBuffer);
@@ -373,7 +388,9 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerState);
 
 #if TILED_RESOURCES
-	ID3D11UnorderedAccessView* uavs[3] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV(), m_pTileOccupation->GetUAV() };
+	//Necessary for triple buffering to avoid gpu syncs
+	m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
+	ID3D11UnorderedAccessView* uavs[3] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
 	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 3, uavs, 0);
 #else
 	ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
@@ -426,8 +443,8 @@ void VoxelisedScene::PostRender(ID3D11DeviceContext* pContext)
 	pContext->GSSetShader(nullptr, nullptr, 0);
 	pContext->PSSetShader(nullptr, nullptr, 0);
 
-	ID3D11UnorderedAccessView* ppUAViewNULL[1] = { nullptr };
-	pContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 1, ppUAViewNULL, 0);
+	ID3D11UnorderedAccessView* ppUAViewNULL[3] = { nullptr, nullptr, nullptr };
+	pContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 3, ppUAViewNULL, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -525,9 +542,20 @@ void VoxelisedScene::GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void VoxelisedScene::Update(ID3D11DeviceContext3* pDeviceContext)
+{
+#if TILED_RESOURCES
+	UpdateTiles(pDeviceContext);
+#endif
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if TILED_RESOURCES
 void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 {
-	pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation->GetTexture(), 0, nullptr);
+
+	int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % 3;
+	pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation[iFrameMinus2TileOccupation]->GetTexture(), 0, nullptr);
 	
 	D3D11_MAPPED_SUBRESOURCE pTexture;
 	HRESULT res = pContext->Map(m_pTileOccupationStaging, 0, D3D11_MAP_READ, 0, &pTexture);
@@ -537,11 +565,43 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 		return;
 	}
 	UINT* pTexData = static_cast<UINT*>(pTexture.pData);
+
 	UINT num = pTexData[0];
+	int index = 0;
+	for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+	{
+		for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+		{
+			index = z * (pTexture.DepthPitch/4) + y * (pTexture.RowPitch/4);
+			for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+			{
+				//TODO: Implement the gpu readback correctly so we can map only the correct tiles..
+				UINT* TexData = &pTexData[index];
+				if (pTexData[index] > 0)
+				{
+					if (!m_bPreviousFrameOccupation[z][y][x])
+					{
+						m_pRadianceVolumeMips[0]->MapTile(pContext, x, y, z, 0);
+						m_pVoxelisedSceneColours->MapTile(pContext, x, y, z, 0);
+						m_pVoxelisedSceneNormals->MapTile(pContext, x, y, z, 0);
+					}
+					m_bPreviousFrameOccupation[z][y][x] = true;
+				}
+				else
+				{
+					//TODO: and unmap the tile..
+					m_bPreviousFrameOccupation[z][y][x] = false;
+				}
+				index++;
+			}
+		}
+	}
+
+	pContext->Unmap(m_pTileOccupationStaging, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+#endif
 void VoxelisedScene::CreateWorldToVoxelGrid(const AABB& voxelGridAABB)
 {
 	//Initialise Matrices..
@@ -610,8 +670,6 @@ void VoxelisedScene::CreateWorldToVoxelGrid(const AABB& voxelGridAABB)
 
 HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
 {
-	
-
 	ID3D10Blob* pErrorMessage(nullptr);
 	ID3D10Blob* pVertexShaderBuffer(nullptr);
 	ID3D10Blob* pPixelShaderBuffer(nullptr);

@@ -1,11 +1,16 @@
 #include "Texture3D.h"
 #include "Debugging.h"
 
+//Tiles are 32x32x16 grids of 32 byte pixels given the format RGBA8
+static const int kTileSizeInBytes = 32 * 32 * 32 * 16;
+
 Texture3D::Texture3D()
 	: m_pTexture(nullptr)
 	, m_pUAV(nullptr)
 	, m_pShaderResourceView(nullptr)
 	, m_pRenderTargetView(nullptr)
+	, m_iNumTilesMapped(0)
+	, m_iBufferSizeInTiles(1)
 {
 
 }
@@ -43,7 +48,7 @@ HRESULT Texture3D::Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, 
 	{
 		D3D11_BUFFER_DESC tilePoolDesc;
 		ZeroMemory(&tilePoolDesc, sizeof(tilePoolDesc));
-		tilePoolDesc.ByteWidth = 32 * 256 * 256 * 256;
+		tilePoolDesc.ByteWidth = m_iBufferSizeInTiles * kTileSizeInBytes;
 		tilePoolDesc.Usage = D3D11_USAGE_DEFAULT;
 		tilePoolDesc.MiscFlags = D3D11_RESOURCE_MISC_TILE_POOL;
 
@@ -51,37 +56,6 @@ HRESULT Texture3D::Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, 
 		if (FAILED(result))
 		{
 			VS_LOG_VERBOSE("Failed to create tile pool");
-			return false;
-		}
-
-	//	result = pContext->ResizeTilePool(pTilePool, 32 * 256 * 256 * 256);
-	//	if (FAILED(result))
-	//	{
-	//		VS_LOG_VERBOSE("Failed to create tile pool");
-	//		return false;
-	//	}
-
-
-		D3D11_TILED_RESOURCE_COORDINATE coord;
-		coord.X = 0;
-		coord.Y = 0;
-		coord.Z = 0;
-		coord.Subresource = 0;
-
-		D3D11_TILE_REGION_SIZE TRS;
-		TRS.bUseBox = false;
-		float Width = 256 / 32;
-		float Height = 256 / 32;
-		float Depth = 256 / 16;
-		TRS.NumTiles = Width*Height*Depth;
-
-		UINT RangeFlags = 0;
-		UINT startOffset = 0;
-		
-		result = pContext->UpdateTileMappings(m_pTexture, 1, &coord, &TRS, pTilePool, 1, &RangeFlags, &startOffset, nullptr, D3D11_TILE_MAPPING_NO_OVERWRITE);
-		if (FAILED(result))
-		{
-			VS_LOG_VERBOSE("Failed to map tiles");
 			return false;
 		}
 	}
@@ -159,5 +133,44 @@ ID3D11RenderTargetView* Texture3D::GetRenderTargetView()
 ID3D11UnorderedAccessView* Texture3D::GetUAV()
 {
 	return m_pUAV;
+}
+
+HRESULT Texture3D::MapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel)
+{
+	if ((m_iNumTilesMapped + 1) > m_iBufferSizeInTiles)
+	{
+		if (FAILED(pContext->ResizeTilePool(pTilePool, (m_iBufferSizeInTiles + 1) * kTileSizeInBytes)))
+		{
+			VS_LOG_VERBOSE("Failed to create tile pool");
+			return false;
+		}
+		m_iBufferSizeInTiles++;
+	}
+	D3D11_TILED_RESOURCE_COORDINATE coord;
+	coord.X = x;
+	coord.Y = y;
+	coord.Z = z;
+	coord.Subresource = mipLevel;
+
+	D3D11_TILE_REGION_SIZE TRS;
+	TRS.bUseBox = false;
+	TRS.NumTiles = 1;
+
+	UINT RangeFlags = 0;
+	UINT startOffset = m_iNumTilesMapped;
+
+	if (FAILED(pContext->UpdateTileMappings(m_pTexture, 1, &coord, NULL, pTilePool, 1, &RangeFlags, &startOffset, nullptr, D3D11_TILE_MAPPING_NO_OVERWRITE)))
+	{
+		VS_LOG_VERBOSE("Failed to map tiles");
+		return false;
+	}
+
+	m_iNumTilesMapped++;
+	return true;
+}
+
+HRESULT Texture3D::UnmapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel)
+{
+	return true;
 }
 

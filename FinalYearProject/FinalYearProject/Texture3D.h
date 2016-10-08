@@ -20,14 +20,21 @@ public:
 	ID3D11RenderTargetView* GetRenderTargetView();
 	ID3D11UnorderedAccessView* GetUAV();
 	ID3D11Texture3D*		GetTexture() { return m_pTexture; }
+
+	HRESULT MapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel);
+	HRESULT UnmapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel);
+
 private:
+
+	int m_iNumTilesMapped;
+	int m_iBufferSizeInTiles;
 
 	ID3D11ShaderResourceView* m_pShaderResourceView;
 	ID3D11RenderTargetView*   m_pRenderTargetView;
 	ID3D11UnorderedAccessView* m_pUAV;
 	ID3D11Texture3D*		  m_pTexture;
 	
-	ID3D11Buffer*				pTilePool;
+	ID3D11Buffer*			pTilePool;
 };
 
 #endif // !TEXTURE3D_H

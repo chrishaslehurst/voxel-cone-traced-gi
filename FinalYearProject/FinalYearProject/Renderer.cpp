@@ -220,7 +220,7 @@ bool Renderer::Update(HWND hwnd)
 
 bool Renderer::Render()
 {
-
+	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 	double dCPUFrameTime = (m_dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
 	m_dCPUFrameStartTime = Timer::Get()->GetCurrentTime();
 
@@ -257,7 +257,7 @@ bool Renderer::Render()
 	m_VoxelisedScene.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
 
-	m_VoxelisedScene.UpdateTiles(pContext);
+	m_VoxelisedScene.Update(pContext);
 
 	m_VoxelisedScene.RenderInjectRadiancePass(pContext);
 	m_VoxelisedScene.GenerateMips(pContext);
@@ -297,7 +297,7 @@ bool Renderer::Render()
 	//m_VoxelisePass.RenderDebugViewToTexture(pContext);
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
 	
-	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
+	
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
@@ -308,13 +308,14 @@ bool Renderer::Render()
 		m_VoxelisedScene.RenderDebugCubes(pContext, mWorld, mView, mProjection, m_pCamera);
 	}
 
+	
 	GPUProfiler::Get()->EndFrame(pContext);
 	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
 	DebugLog::Get()->PrintLogToScreen(pContext);
 	
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
-
+	
 	return true;
 }
 

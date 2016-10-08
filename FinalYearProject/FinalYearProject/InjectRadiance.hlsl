@@ -10,8 +10,6 @@ TextureCube ShadowMap[NUM_LIGHTS];
 //Output volume
 RWTexture3D<uint> RadianceVolume;
 
-SamplerState ShadowMapSampler;
-
 struct PointLight
 {
 	float4 colour;
@@ -35,15 +33,6 @@ cbuffer VoxeliseVertexShaderBuffer
 	matrix WorldInverseTranspose;
 	matrix mAxisProjections[3];
 };
-
-float CalculateShadowFactor(int lightIdx, float3 ToLight, float ReciprocalRange)
-{
-	float LightDistanceSq = dot(ToLight, ToLight);
-	float shadowFactor;
-	shadowFactor = ShadowMap[lightIdx].Sample(ShadowMapSampler, -ToLight);
-		
-	return shadowFactor;
-}
 
 //Functions..
 float4 convRGBA8ToVec4(uint val)

@@ -195,13 +195,20 @@ void PSMain(PSInput input)
 						   (((input.PosW.y * 0.5) + 0.5f) * texDimensions.x),
 						   (((input.PosW.z * 0.5) + 0.5f) * texDimensions.x));
 
-	VoxelOccupancy[uint3(floor(texCoord.x / 32), floor(texCoord.y / 32), floor(texCoord.z / 16))] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);;
-
+	uint3 tileCoord = uint3(texCoord.x / 32, texCoord.y / 32, texCoord.z / 16);
+	//VoxelOccupancy[uint3(floor(0 / 32), floor(0 / 32), floor(0 / 16))] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);
+	//VoxelOccupancy[uint3(floor(65 / 32), floor(0 / 32), floor(0 / 16))] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);
+	
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
 	
 	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) 
 	{
 		//VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
+		VoxelOccupancy[tileCoord] = convVec4ToRGBA8(float4(tileCoord.x, tileCoord.y, tileCoord.z, 1.f));
+	//	VoxelOccupancy[uint3(0, 0, 0)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
+	//	VoxelOccupancy[uint3(0, 1, 0)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
+	//	VoxelOccupancy[uint3(0, 2, 0)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
+	//	VoxelOccupancy[uint3(0, 0, 1)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
 
 		//Convert the normals so -ve can be stored in the 8bits.. this will have to be reversed in the radiance injection
 		float3 normal = input.Normal * 0.5f + 0.5f; //Normal now mapped to 0 - 1 instead of -1 to +1
