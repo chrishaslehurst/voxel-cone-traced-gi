@@ -38,6 +38,17 @@ VoxelisedScene::VoxelisedScene()
 			}
 		}
 	}
+
+	for (int i = 1; i < MIP_LEVELS; i++)
+	{
+		int mult = std::pow(2, i);
+		int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
+		m_bPreviousFrameOccupationMipLevels[i-1] = new bool[numTilesInMip];
+		for (int j = 0; j < numTilesInMip; j++)
+		{
+			m_bPreviousFrameOccupationMipLevels[i - 1][j] = false;
+		}
+	}
 #endif
 }
 
@@ -100,7 +111,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	UINT MiscFlags = 0;
 #if TILED_RESOURCES
 	MiscFlags = D3D11_RESOURCE_MISC_TILED;
-
+	//Need 3 of these for triple buffering to avoid gpu syncs flushing the pipeline and stalling everything
 	for (int i = 0; i < 3; i++)
 	{
 		m_pTileOccupation[i] = new Texture3D;
@@ -133,6 +144,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		m_pRadianceVolumeMips[i] = new Texture3D;
 		m_pRadianceVolumeMips[i]->Init(pDevice, pContext, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, MIP_LEVELS, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags);
 		mipScale *= 0.5f;
+		MiscFlags = 0; //TODO: NEED TO FIX SO WE CAN DO ALL THE MIPS WITHIN ONE TEXTURE, FOR NOW THIS MAKES THE MIP LEVELS NONE TILED FOR THE COPYING..
 	}
 
 	//Initialise Rasteriser state
@@ -157,7 +169,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	D3D11_SAMPLER_DESC sampDesc;
 	ZeroMemory(&sampDesc, sizeof(sampDesc));
 	sampDesc.Filter = D3D11_FILTER_ANISOTROPIC;
-	sampDesc.MaxAnisotropy = 4;
+	sampDesc.MaxAnisotropy = 16;
 	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -528,6 +540,13 @@ void VoxelisedScene::Shutdown()
 		m_pShadowMapSampleState->Release();
 		m_pShadowMapSampleState = nullptr;
 	}
+#if TILED_RESOURCES
+	for (int i = 0; i < MIP_LEVELS - 1; i++)
+	{
+		delete[] m_bPreviousFrameOccupationMipLevels[i];
+		m_bPreviousFrameOccupationMipLevels[i] = nullptr;
+	}
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -575,7 +594,6 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 			index = z * (pTexture.DepthPitch/4) + y * (pTexture.RowPitch/4);
 			for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
 			{
-				//TODO: Implement the gpu readback correctly so we can map only the correct tiles..
 				UINT* TexData = &pTexData[index];
 				if (pTexData[index] > 0)
 				{
@@ -584,6 +602,19 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 						m_pRadianceVolumeMips[0]->MapTile(pContext, x, y, z, 0);
 						m_pVoxelisedSceneColours->MapTile(pContext, x, y, z, 0);
 						m_pVoxelisedSceneNormals->MapTile(pContext, x, y, z, 0);
+						for (int i = 1; i < MIP_LEVELS; i++)
+						{
+							int mult = std::pow(2, i);
+							int mipZ = z / mult;
+							int mipY = y / mult;
+							int mipX = x / mult;
+							int mipIdx = (mipZ * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult)) + mipY * ((TEXTURE_DIMENSION / 32) / mult) + mipX;
+							if (!m_bPreviousFrameOccupationMipLevels[i-1][mipIdx])
+							{
+								m_pRadianceVolumeMips[0]->MapTile(pContext, mipX, mipY, mipZ, i);
+								m_bPreviousFrameOccupationMipLevels[i-1][mipIdx] = true;
+							}
+						}
 					}
 					m_bPreviousFrameOccupation[z][y][x] = true;
 				}

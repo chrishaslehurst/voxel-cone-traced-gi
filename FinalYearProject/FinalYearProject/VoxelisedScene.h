@@ -12,7 +12,7 @@
 #include "Texture2D.h"
 #include "Texture3D.h"
 
-#define TEXTURE_DIMENSION 512
+#define TEXTURE_DIMENSION 256
 #define MIP_LEVELS 4
 #define TILED_RESOURCES 1
 
@@ -148,6 +148,7 @@ private:
 
 	Texture3D* m_pVoxelisedSceneColours;
 	Texture3D* m_pVoxelisedSceneNormals;
+	//TODO: Generate mips without needing the array - do it directly to mip level in the shader
 	Texture3D* m_pRadianceVolumeMips[MIP_LEVELS];
 
 	XMMATRIX m_mViewProjMatrices[3];
@@ -175,6 +176,7 @@ private:
 	ID3D11Texture3D* m_pTileOccupationStaging;
 
 	bool m_bPreviousFrameOccupation[TEXTURE_DIMENSION / 16][TEXTURE_DIMENSION / 32][TEXTURE_DIMENSION / 32];
+	bool *m_bPreviousFrameOccupationMipLevels[MIP_LEVELS - 1];
 #endif
 
 };
