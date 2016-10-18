@@ -221,5 +221,8 @@
     <FxCompile Include="GenerateMips.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="GenerateOctree.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

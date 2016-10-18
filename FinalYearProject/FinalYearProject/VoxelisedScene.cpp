@@ -130,6 +130,10 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	}
 
 #endif
+
+#if SPARSE_VOXEL_OCTREES
+	InitialiseOctreeData();
+#endif
 	m_pVoxelisedSceneColours = new Texture3D;
 	m_pVoxelisedSceneColours->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags);
 
@@ -1140,4 +1144,53 @@ bool VoxelisedScene::InitialiseDebugBuffers(ID3D11Device* pDevice)
 	return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if SPARSE_VOXEL_OCTREES
+bool VoxelisedScene::InitialiseOctreeData(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext)
+{
+	m_pSparseVoxelOctreeBricks = new Texture3D;
+	m_pSparseVoxelOctreeBricks->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
+
+	D3D11_BUFFER_DESC descGPUBuffer;
+	ZeroMemory(&descGPUBuffer, sizeof(descGPUBuffer));
+	descGPUBuffer.BindFlags = D3D11_BIND_UNORDERED_ACCESS |	D3D11_BIND_SHADER_RESOURCE;
+	descGPUBuffer.ByteWidth = TEXTURE_DIMENSION * sizeof(OctreeNode);
+	descGPUBuffer.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	descGPUBuffer.StructureByteStride = 0; 
+
+	if (FAILED(pDevice->CreateBuffer(&descGPUBuffer, nullptr, &m_pSparseVoxelOctree)))
+	{
+		VS_LOG_VERBOSE("Failed to create structured buffer");
+		return false;
+	}
+
+	D3D11_UNORDERED_ACCESS_VIEW_DESC descView;
+	ZeroMemory(&descView, sizeof(descView));
+	descView.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	descView.Buffer.FirstElement = 0;
+	// Format must be must be DXGI_FORMAT_UNKNOWN, when creating 
+	// a View of a Structured Buffer
+	descView.Format = DXGI_FORMAT_UNKNOWN;
+	descView.Buffer.NumElements = TEXTURE_DIMENSION;
+	descView.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
+	if (FAILED(pDevice->CreateUnorderedAccessView(m_pSparseVoxelOctree, &descView, &m_pSVOUAV)))
+	{
+		VS_LOG_VERBOSE("Failed to create structured buffer uav");
+		return false;
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC descSRV;
+	ZeroMemory(&descView, sizeof(descView));
+	descSRV.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+	descSRV.BufferEx.FirstElement = 0;
+	descSRV.Format = DXGI_FORMAT_UNKNOWN;
+	descSRV.BufferEx.NumElements =TEXTURE_DIMENSION;
+
+	if (FAILED(pDevice->CreateShaderResourceView(m_pSparseVoxelOctree, &descSRV, &m_pSVOSRV)))
+	{
+		VS_LOG_VERBOSE("Failed to create structured buffer srv");
+		return false;
+	}
+}
+#endif
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

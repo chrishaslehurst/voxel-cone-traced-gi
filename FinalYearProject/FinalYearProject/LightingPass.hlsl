@@ -92,7 +92,7 @@ float3 CalculateLambertDiffuseBRDF(float3 DiffuseColour, float Metallic)
 {
 	// Lerp with metallic value to find the good diffuse and specular.
 	float3 RealDiffuse = DiffuseColour - DiffuseColour * Metallic;
-	return saturate(RealDiffuse * (1.f / PI));
+	return saturate(RealDiffuse * (1.f /PI ));
 }
 
 //GGX/Trowbridge Reitz Normal Distribution Function (Disney/Epic: https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf)
@@ -212,7 +212,7 @@ float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition,
 		return float4(0.f, 0.f, 0.f, 0.f);
 	}
 
-	int MipLevel = clamp(getMipLevelFromRadius(coneRadius), 0, 2);
+	int MipLevel = clamp(getMipLevelFromRadius(coneRadius), 0, 4);
 	
 	return RadianceVolume.SampleLevel(VoxelSampler, texCoord, MipLevel);;
 }
@@ -222,9 +222,11 @@ float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float
 	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
 	float3 SamplePos = StartPos.xyz + (Normal*voxelScale*1.5f); //offset to avoid self intersect..
 	
-	float distance = 1.f;
+	float distance = voxelScale * 1.5f;
 	for (int i = 0; i < distanceInVoxelsToTrace; i++)
 	{
+		SamplePos += Direction * voxelScale;
+		distance += voxelScale;
 		float currentRadius = RadiusRatio * distance;
 
 		bool outsideVolume = false;
@@ -253,12 +255,14 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 {
 	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
 	float3 SamplePos = StartPos.xyz + (Normal*voxelScale*1.5f); //offset to avoid self intersect..
-
-	float currentDistance = voxelScale;
-	float currentRadius = RadiusRatio * currentDistance;
+	float distance = voxelScale * 1.5f;
 	float AccumulatedOcclusion = 0.0f;
-	for (int i = 0; i < distanceInVoxelsToTrace; i++)
+	for (int i = 0; i < 8; i++)
 	{
+		SamplePos += Direction * voxelScale;
+		distance += voxelScale;
+
+		float currentRadius = RadiusRatio * distance;
 		bool outsideVolume = false;
 		float4 tempGI = sampleVoxelVolume(RadianceVolume[0], float4(SamplePos.xyz, 1.f), currentRadius, outsideVolume);
 		if (outsideVolume)
@@ -266,16 +270,10 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 			break;
 		}
 
-		float lastDistance = currentDistance;
-		currentDistance = currentDistance / (1.0f - RadiusRatio);
-
-		float currentRadius = RadiusRatio * currentDistance;
-		SamplePos = StartPos.xyz + (Direction * currentDistance);
-
 		GIColour.rgb = AccumulatedOcclusion * GIColour.rgb + (1.0f - tempGI.a) * tempGI.a * tempGI.rgb;
 		AccumulatedOcclusion = AccumulatedOcclusion + (1.0f - AccumulatedOcclusion) * tempGI.a;
 	
-		AOAccumulation += tempGI.a * (voxelScale / (currentDistance + 1));
+		AOAccumulation += tempGI.a * (voxelScale / (distance + 1.f));
 		//AOAccumulation = 0.f;
 		if (AccumulatedOcclusion >= 0.99f)
 		{
@@ -330,13 +328,13 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float4 SpecularGI = float4(0.f, 0.f, 0.f, 0.f);
 	float3 reflectVector = -((2 * (dot(Normal, -ToCamera) * Normal)) + ToCamera);
 	reflectVector = normalize(reflectVector);
-	
+
 	float radiusRatio = sin(calculateSpecularConeHalfAngle(Roughness * Roughness));
 	
 	float3 H = normalize(ToCamera + reflectVector);
 	float VdotH = saturate(dot(ToCamera, H));
 
-	SpecularGI = TraceSpecularCone(WorldPositionSample, Normal, reflectVector, radiusRatio, voxelScale, texDimensions.x);
+	SpecularGI = TraceSpecularCone(WorldPositionSample, Normal, reflectVector, radiusRatio, voxelScale, texDimensions.x/4.f);
 	SpecularGI = saturate(SchlickFresnel(1.f - Roughness, VdotH) * SpecularGI);
 
 	//---------------------
@@ -353,22 +351,25 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	for (int coneIndex = 0; coneIndex < 6; coneIndex++)
 	{
 		float3 coneDirection = Normal;
-		coneDirection = ConeSampleDirections[coneIndex].x * right + ConeSampleDirections[coneIndex].z * up + ConeSampleDirections[coneIndex].y * Normal;
+		coneDirection = ConeSampleDirections[coneIndex].x * right + ConeSampleDirections[coneIndex].z * up;
 		coneDirection = normalize(coneDirection);
 
 		float accumulatedAO = 0.f;
-		float4 accumulatedColour = TraceDiffuseCone(WorldPositionSample, Normal, coneDirection, diffuseRadiusRatio, voxelScale, 64, accumulatedAO);
+		float4 accumulatedColour = TraceDiffuseCone(WorldPositionSample, Normal, coneDirection, diffuseRadiusRatio, voxelScale, 8, accumulatedAO);
 
 		accumulatedDiffuse += accumulatedColour * ConeSampleWeights[coneIndex];
 		accumulatedDiffuseOcclusion += accumulatedAO * ConeSampleWeights[coneIndex];
 	}
 	accumulatedDiffuseOcclusion /= PI;
+
+	float4 DiffuseGI = accumulatedDiffuse * (1.f - accumulatedDiffuseOcclusion);
+	SpecularGI = SpecularGI * (1.f - accumulatedDiffuseOcclusion);
 //	if (accumulatedDiffuseOcclusion >= 0.f)
 //	{
+//		return SpecularGI;
+//		return DiffuseGI;
 //		return float4(1.f - accumulatedDiffuseOcclusion, 1.f - accumulatedDiffuseOcclusion, 1.f - accumulatedDiffuseOcclusion, 1.f);
 //	}
-	float4 DiffuseGI = accumulatedDiffuse * (1.f - accumulatedDiffuseOcclusion) * DiffuseColourSample;
-	
 	//---------------------
 
 	float4 FinalColour = float4(0.f, 0.f, 0.f, 1.f);
@@ -378,5 +379,5 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		float4 Light = CookTorranceBRDF(ToLight, ToCamera, Normal, Roughness, MetallicSample.r, DiffuseColourSample.rgb);
 		FinalColour += Light * CalculateAttenuation(ToLight, pointLights[i].range) * pointLights[i].colour * pointLights[i].colour.w * CalculateShadowFactor(i, ToLight, pointLights[i].range);
 	}
-	return ((FinalColour + SpecularGI + DiffuseGI));
+	return ((FinalColour + DiffuseGI + SpecularGI));
 }

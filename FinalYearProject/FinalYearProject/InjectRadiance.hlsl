@@ -94,7 +94,7 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 				colour += saturate(dot(ToLNorm, normal) * pointLights[j].colour * diffuseColour);
 			}
 			colour = saturate(colour);
-			RadianceVolume[texCoord] = convVec4ToRGBA8(colour * 255.f);
+			RadianceVolume[texCoord] = convVec4ToRGBA8(diffuseColour * 255.f);
 		}
 		index++;
 	}

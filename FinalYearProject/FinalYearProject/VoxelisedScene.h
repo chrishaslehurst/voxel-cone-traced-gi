@@ -14,7 +14,10 @@
 
 #define TEXTURE_DIMENSION 256
 #define MIP_LEVELS 4
+
+
 #define TILED_RESOURCES 1
+#define SPARSE_VOXEL_OCTREES 0
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -179,6 +182,21 @@ private:
 	bool *m_bPreviousFrameOccupationMipLevels[MIP_LEVELS - 1];
 #endif
 
+#if SPARSE_VOXEL_OCTREES
+	
+	struct OctreeNode
+	{
+		int childDataIndex[3]; //points to the 2x2x2 brick in the Texture.
+		int childNodeIndex; //points to the 2x2x2 nodes held later in the buffer
+	};
+
+	ID3D11Buffer* m_pSparseVoxelOctree; //Structured buffer to hold the octree nodes..
+	ID3D11UnorderedAccessView* m_pSVOUAV;
+	ID3D11ShaderResourceView* m_pSVOSRV;
+	Texture3D* m_pSparseVoxelOctreeBricks; //2x2x2 bricks to hold SVO data, indexed into by the octree
+
+	bool InitialiseOctreeData(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext);
+#endif 
 };
 
 #endif
