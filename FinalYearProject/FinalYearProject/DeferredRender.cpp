@@ -175,9 +175,9 @@ void DeferredRender::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool DeferredRender::RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene)
+bool DeferredRender::RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags)
 {
-	if (!SetShaderParameters(pContext, mWorld, mView, mProjection, vCamPos, pVoxelisedScene))
+	if (!SetShaderParameters(pContext, mWorld, mView, mProjection, vCamPos, pVoxelisedScene, eGIFlags))
 	{
 		return false;
 	}
@@ -366,7 +366,22 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 		return false;
 	}
 
-	
+	D3D11_BUFFER_DESC giRenderFlagBuffer;
+	//Setup the description of the dynamic matrix constant buffer that is in the shader..
+	giRenderFlagBuffer.Usage = D3D11_USAGE_DYNAMIC;
+	giRenderFlagBuffer.ByteWidth = sizeof(RenderFlags);
+	giRenderFlagBuffer.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	giRenderFlagBuffer.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	giRenderFlagBuffer.MiscFlags = 0;
+	giRenderFlagBuffer.StructureByteStride = 0;
+
+	//Create the buffer so we can access it
+	res = pDevice->CreateBuffer(&giRenderFlagBuffer, nullptr, &m_pGIRenderFlagBuffer);
+	if (FAILED(res))
+	{
+		VS_LOG_VERBOSE("Failed to create render flags buffer");
+		return false;
+	}
 
 	D3D11_BUFFER_DESC cameraBufferDesc;
 	cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -467,7 +482,7 @@ void DeferredRender::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwn
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene)
+bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags)
 {
 	HRESULT res;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -493,6 +508,25 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 	//Unlock the buffer
 	pContext->Unmap(m_pMatrixBuffer, 0);
 
+	res = pContext->Map(m_pGIRenderFlagBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(res))
+	{
+		VS_LOG_VERBOSE("Failed to lock the matrix buffer");
+		return false;
+	}
+	RenderFlags* pRenderFlagsData;
+	//Get pointer to the buffer data
+	pRenderFlagsData = (RenderFlags*)mappedResource.pData;
+
+	pRenderFlagsData->eRenderGlobalIllumination = eGIFlags;
+	pRenderFlagsData->padding[0] = 0;
+	pRenderFlagsData->padding[1] = 0;
+	pRenderFlagsData->padding[2] = 0;
+
+
+	//Unlock the buffer
+	pContext->Unmap(m_pGIRenderFlagBuffer, 0);
+
 	res = pContext->Map(m_pCameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(res))
 	{
@@ -516,8 +550,10 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 	pContext->PSSetConstantBuffers(u_iBufferNumber, 1, &pLightBuffer);
 
 	u_iBufferNumber++;
-
 	pContext->PSSetConstantBuffers(u_iBufferNumber, 1, &m_pCameraBuffer);
+	
+	u_iBufferNumber++;
+	pContext->PSSetConstantBuffers(u_iBufferNumber, 1, &m_pGIRenderFlagBuffer);
 
 	for (int i = 0; i < BufferType::btMax; i++)
 	{

@@ -20,6 +20,16 @@ enum BufferType
 	btMax
 };
 
+enum GIRenderFlag
+{
+	giNone,
+	giFull,
+	giDiff,
+	giSpec,
+	giAO,
+	giMax
+};
+
 class DeferredRender
 {
 public:
@@ -59,6 +69,12 @@ public:
 		float fVoxelScale;
 	};
 
+	struct RenderFlags
+	{
+		GIRenderFlag eRenderGlobalIllumination;
+		int padding[3];
+	};
+
 
 public:
 
@@ -74,7 +90,7 @@ public:
 	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear);
 	void Shutdown();
 
-	bool RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene);
+	bool RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags);
 
 private:
 
@@ -82,7 +98,7 @@ private:
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* pBlob, HWND hwnd, WCHAR* sShaderFilename);
 
-	bool SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCameraPos, VoxelisedScene* pVoxelisedScene);
+	bool SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCameraPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags);
 	void RenderShader(ID3D11DeviceContext* pContext, int iIndexCount);
 
 	int m_iTextureWidth;
@@ -101,7 +117,7 @@ private:
 	ID3D11SamplerState* m_pShadowMapSampleState;
 	ID3D11SamplerState* m_pVoxelSampler;
 	ID3D11Buffer* m_pMatrixBuffer;
-
+	ID3D11Buffer* m_pGIRenderFlagBuffer;
 	ID3D11Buffer* m_pCameraBuffer;
 
 };

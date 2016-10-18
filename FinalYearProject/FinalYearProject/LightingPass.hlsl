@@ -54,10 +54,22 @@ cbuffer LightBuffer
 
 cbuffer CameraBuffer
 {
-	
 	matrix mWorldToVoxelGrid;
 	float3 cameraPosition;
 	float voxelScale; //size of one voxel in world units..
+};
+
+//These defines are for comparing against the render flags, they are equivalent to the enum defined in the renderer.
+#define NO_GI 0
+#define FULL_GI 1
+#define DIFFUSE_ONLY 2
+#define SPECULAR_ONLY 3
+#define AO_ONLY 4
+
+cbuffer RenderFlags
+{
+	int eRenderGlobalIllumination;
+	int3 padding;
 };
 
 //Structs
@@ -379,5 +391,18 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		float4 Light = CookTorranceBRDF(ToLight, ToCamera, Normal, Roughness, MetallicSample.r, DiffuseColourSample.rgb);
 		FinalColour += Light * CalculateAttenuation(ToLight, pointLights[i].range) * pointLights[i].colour * pointLights[i].colour.w * CalculateShadowFactor(i, ToLight, pointLights[i].range);
 	}
-	return ((FinalColour + DiffuseGI + SpecularGI));
+	switch (eRenderGlobalIllumination)
+	{
+	case NO_GI:
+		return FinalColour;
+	case FULL_GI:
+		return (FinalColour + DiffuseGI + SpecularGI);
+	case DIFFUSE_ONLY:
+		return DiffuseGI;
+	case SPECULAR_ONLY:
+		return SpecularGI;
+	case AO_ONLY:
+		return float4(1.f - accumulatedDiffuseOcclusion, 1.f - accumulatedDiffuseOcclusion, 1.f - accumulatedDiffuseOcclusion, 1.f);
+	}
+	return float4(1.f, 0.f, 0.f, 1.f);
 }
