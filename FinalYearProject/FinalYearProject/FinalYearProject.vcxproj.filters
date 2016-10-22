@@ -209,9 +209,6 @@
     <FxCompile Include="RenderTexToScreen.hlsl">
       <Filter>Shaders\Debug</Filter>
     </FxCompile>
-    <FxCompile Include="VoxelDebugRaymarch.hlsl">
-      <Filter>Shaders\Debug</Filter>
-    </FxCompile>
     <FxCompile Include="VoxelRenderShader.hlsl">
       <Filter>Shaders\Debug</Filter>
     </FxCompile>

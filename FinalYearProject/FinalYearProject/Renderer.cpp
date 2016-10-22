@@ -15,7 +15,10 @@ Renderer::Renderer()
 	, m_bMinusPressed(false)
 	, m_bPlusPressed(false)
 	, m_bVPressed(false)
+	, m_bGPressed(false)
+	, m_eGITypeToRender(GIRenderFlag::giFull)
 {
+	SetGITypeString();
 	m_dCPUFrameStartTime = 0;
 }
 
@@ -79,12 +82,6 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 
-	m_pCube = new Mesh;
-	if (!m_pCube)
-	{
-		VS_LOG_VERBOSE("Could not create Mesh");
-		return false;
-	}
 
 	if (!m_pModel->InitialiseFromObj(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, "../Assets/Models/sponza_tri1.obj"))
 	{
@@ -134,20 +131,12 @@ void Renderer::Shutdown()
 		m_pModel = nullptr;
 	}
 
-	if (m_pCube)
-	{
-		delete m_pCube;
-		m_pCube = nullptr;
-	}
-
 	//deallocate the camera
 	if (m_pCamera)
 	{
 		delete m_pCamera;
 		m_pCamera = nullptr;
 	}
-
-	
 
 	if (m_pFullScreenWindow)
 	{
@@ -205,6 +194,17 @@ bool Renderer::Update(HWND hwnd)
 	{
 		m_bMinusPressed = false;
 	}
+	if (InputManager::Get()->IsKeyPressed(DIK_G) && !m_bGPressed)
+	{
+		m_eGITypeToRender = static_cast<GIRenderFlag>((static_cast<int>(m_eGITypeToRender) + 1) % static_cast<int>(GIRenderFlag::giMax));
+		SetGITypeString();
+		m_bGPressed = true;
+	}
+	else if (InputManager::Get()->IsKeyReleased(DIK_G))
+	{
+		m_bGPressed = false;
+	}
+
 	LightManager::Get()->Update(m_pD3D->GetDeviceContext());
 
 	//Render the scene
@@ -216,6 +216,29 @@ bool Renderer::Update(HWND hwnd)
 	return true;
 }
 
+void Renderer::SetGITypeString()
+{
+	m_sGITypeRendered = "Render Type: ";
+	switch (m_eGITypeToRender)
+	{
+	case giNone:
+		m_sGITypeRendered += "Direct Light Only";
+		break;
+	case giFull:
+		m_sGITypeRendered += "Full Global Illumination";
+		break;
+	case giDiff:
+		m_sGITypeRendered += "Diffuse Indirect Light Only";
+		break;
+	case giAO:
+		m_sGITypeRendered += "Ambient Occlusion Factor Only";
+		break;
+	case giSpec:
+		m_sGITypeRendered += "Specular Indirect Light Only";
+		break;
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Renderer::Render()
@@ -225,7 +248,7 @@ bool Renderer::Render()
 	m_dCPUFrameStartTime = Timer::Get()->GetCurrentTime();
 
 	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
-
+	
 	//Generate view matrix based on camera position
 	GPUProfiler::Get()->BeginFrame(pContext);
 	m_pCamera->Render();
@@ -286,19 +309,15 @@ bool Renderer::Render()
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
 
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
 	m_pD3D->SetRenderOutputToScreen();
 	m_pD3D->TurnZBufferOff();
-	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
 	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
-
-
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_DeferredRender.GetTexture(btNormals));
-	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), &m_VoxelisedScene, GIRenderFlag::giFull);
-	//m_VoxelisePass.RenderDebugViewToTexture(pContext);
-	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_VoxelisePass.GetDebugTexture());
-	
-	
+	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), &m_VoxelisedScene, m_eGITypeToRender);
+		
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
+	
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
 	m_pD3D->TurnOnAlphaBlending();
@@ -311,6 +330,8 @@ bool Renderer::Render()
 	
 	GPUProfiler::Get()->EndFrame(pContext);
 	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
+	
+	DebugLog::Get()->OutputString(m_sGITypeRendered);
 	DebugLog::Get()->PrintLogToScreen(pContext);
 	
 	//Present the rendered scene to the screen

@@ -37,10 +37,8 @@ private:
 	D3DWrapper* m_pD3D;
 	Camera*		m_pCamera;
 
-	//TODO: Model should probably go elsewhere long term!
 	Mesh*		m_pModel;
-	Mesh*		m_pCube;
-
+	
 	DeferredRender m_DeferredRender;
 	RenderTextureToScreen m_DebugRenderTexture;
 	VoxelisedScene   m_VoxelisedScene;
@@ -51,7 +49,11 @@ private:
 	bool m_bPlusPressed;
 	bool m_bMinusPressed;
 	bool m_bVPressed;
+	bool m_bGPressed;
 
+	GIRenderFlag m_eGITypeToRender;
+	std::string m_sGITypeRendered;
+	void SetGITypeString();
 	bool Render();
 
 	double m_dCPUFrameStartTime;

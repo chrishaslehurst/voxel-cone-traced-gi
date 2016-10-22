@@ -151,9 +151,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 	m_arrMeshesToRender.clear();
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
-	
 	//Opaque pass
-
 	//TODO: This needs to be tidier.. just a quick hack to only set the shader once..
 	m_arrSubMeshes[0]->m_pMaterial->SetShadersAndSamplers(pDeviceContext);
 	m_arrSubMeshes[0]->m_pMaterial->SetPerFrameShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix);
