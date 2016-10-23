@@ -81,25 +81,25 @@ public:
 	DeferredRender();
 	~DeferredRender();
 
-	void SetRenderTargets(ID3D11DeviceContext* pContext);
-	void ClearRenderTargets(ID3D11DeviceContext* pContext, float r, float g, float b, float a);
+	void SetRenderTargets(ID3D11DeviceContext3* pContext);
+	void ClearRenderTargets(ID3D11DeviceContext3* pContext, float r, float g, float b, float a);
 
 	ID3D11ShaderResourceView* GetShaderResourceView(BufferType index);
 	Texture2D* GetTexture(BufferType index) { return m_arrBufferTextures[index]; }
 
-	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear);
+	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear);
 	void Shutdown();
 
-	bool RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags);
+	bool RenderLightingPass(ID3D11DeviceContext3* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags);
 
 private:
 
-	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename);
+	bool InitialiseShader(ID3D11Device3* pDevice, HWND hwnd, WCHAR* sShaderFilename);
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* pBlob, HWND hwnd, WCHAR* sShaderFilename);
 
-	bool SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCameraPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags);
-	void RenderShader(ID3D11DeviceContext* pContext, int iIndexCount);
+	bool SetShaderParameters(ID3D11DeviceContext3* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCameraPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags);
+	void RenderShader(ID3D11DeviceContext3* pContext, int iIndexCount);
 
 	int m_iTextureWidth;
 	int m_iTextureHeight;
@@ -110,9 +110,8 @@ private:
 	ID3D11DepthStencilView* m_pDepthStencilView;
 	D3D11_VIEWPORT m_viewport;
 
-	ID3D11VertexShader* m_pVertexShader;
-	ID3D11PixelShader* m_pPixelShader;
-	ID3D11InputLayout* m_pLayout;
+	RenderPass* m_pLightingPass;
+
 	ID3D11SamplerState* m_pSampleState;
 	ID3D11SamplerState* m_pShadowMapSampleState;
 	ID3D11SamplerState* m_pVoxelSampler;

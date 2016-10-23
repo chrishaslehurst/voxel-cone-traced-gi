@@ -7,9 +7,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Material::Material()
-	: m_pVertexShader(nullptr)
-	, m_pPixelShader(nullptr)
-	, m_pLayout(nullptr)
+	: m_pRenderToBuffersPass(nullptr)
 	, m_pMatrixBuffer(nullptr)
 	, m_pDiffuseTexture(nullptr)
 	, m_pNormalMap(nullptr)
@@ -51,7 +49,7 @@ Material::~Material()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
+bool Material::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
 {
 	if (m_bHasRoughnessMap && m_bHasMetallicMap)
 	{
@@ -93,7 +91,7 @@ bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMA
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::ReloadShader(ID3D11Device* pDevice, HWND hwnd)
+void Material::ReloadShader(ID3D11Device3* pDevice, HWND hwnd)
 {
 	ShutdownShader();
 	InitialiseShader(pDevice, hwnd, L"DeferredShader.hlsl");
@@ -221,61 +219,10 @@ void Material::ReleaseTextures()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename)
+bool Material::InitialiseShader(ID3D11Device3* pDevice, HWND hwnd, WCHAR* sShaderFilename)
 {
 	HRESULT result;
-	ID3D10Blob* pErrorMessage( nullptr);
-	ID3D10Blob* pVertexShaderBuffer( nullptr);
-	ID3D10Blob* pPixelShaderBuffer( nullptr);
 	
-
-	//Compile the vertex shader code
-	result = D3DCompileFromFile(sShaderFilename, m_defines, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	//compile the pixel shader..
-	result = D3DCompileFromFile(sShaderFilename, m_defines, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreateVertexShader(pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the vertex shader.");
-		return false;
-	}
-
-	result = pDevice->CreatePixelShader(pPixelShaderBuffer->GetBufferPointer(), pPixelShaderBuffer->GetBufferSize(), nullptr, &m_pPixelShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the pixel shader.");
-		return false;
-	}
 
 	D3D11_INPUT_ELEMENT_DESC polyLayout[5];
 	//Setup data layout for the shader, needs to match the VertexType struct in the Mesh class and in the shader code.
@@ -323,21 +270,8 @@ bool Material::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShader
 	//Get the number of elements in the layout
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
 
-	//Create the vertex input layout..
-	result = pDevice->CreateInputLayout(polyLayout, iNumElements, pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), &m_pLayout);
-
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create input layout");
-		return false;
-	}
-
-	//Finished with shader buffers now so they can be released
-	pVertexShaderBuffer->Release();
-	pVertexShaderBuffer = nullptr;
-
-	pPixelShaderBuffer->Release();
-	pPixelShaderBuffer = nullptr;
+	m_pRenderToBuffersPass = new RenderPass;
+	m_pRenderToBuffersPass->Initialise(pDevice, hwnd, polyLayout, iNumElements, sShaderFilename, "VSMain", nullptr, "PSMain");
 
 	D3D11_BUFFER_DESC matrixBufferDesc;
 	//Setup the description of the dynamic matrix constant buffer that is in the shader..
@@ -403,20 +337,11 @@ void Material::ShutdownShader()
 		m_pMatrixBuffer->Release();
 		m_pMatrixBuffer = nullptr;
 	}
-	if (m_pLayout)
+	if (m_pRenderToBuffersPass)
 	{
-		m_pLayout->Release();
-		m_pLayout = nullptr;
-	}
-	if (m_pPixelShader)
-	{
-		m_pPixelShader->Release();
-		m_pPixelShader = nullptr;
-	}
-	if (m_pVertexShader)
-	{
-		m_pVertexShader->Release();
-		m_pVertexShader = nullptr;
+		m_pRenderToBuffersPass->Shutdown();
+		delete m_pRenderToBuffersPass;
+		m_pRenderToBuffersPass = nullptr;
 	}
 }
 
@@ -529,14 +454,9 @@ bool Material::SetPerFrameShaderParameters(ID3D11DeviceContext* pDeviceContext, 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Material::SetShadersAndSamplers(ID3D11DeviceContext* pDeviceContext)
+void Material::SetShadersAndSamplers(ID3D11DeviceContext3* pDeviceContext)
 {
-	//Set the vertex input layout
-	pDeviceContext->IASetInputLayout(m_pLayout);
-
-	//Set the shaders that are used to render the triangle..
-	pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
-	pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
+	m_pRenderToBuffersPass->SetActiveRenderPass(pDeviceContext);
 
 	//Set the sampler state
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSampleState);

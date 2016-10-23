@@ -52,11 +52,11 @@ public:
 	Material();
 	~Material();
 
-	bool Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
+	bool Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void Shutdown();
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
 
-	void ReloadShader(ID3D11Device* pDevice, HWND hwnd);
+	void ReloadShader(ID3D11Device3* pDevice, HWND hwnd);
 
 	void SetSpecularProperties(float r, float g, float b, float power);
 	void SetDiffuseTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* diffuseTexFilename);
@@ -87,22 +87,20 @@ public:
 	bool UsesMetallicMaps() { return m_bHasMetallicMap; }
 
 	bool SetPerFrameShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
-	void SetShadersAndSamplers(ID3D11DeviceContext* pDeviceContext);
+	void SetShadersAndSamplers(ID3D11DeviceContext3* pDeviceContext);
 private:
 
 	Texture2D* LoadTexture(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, WCHAR* filename);
 	void ReleaseTextures();
 
-	bool InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename);
+	bool InitialiseShader(ID3D11Device3* pDevice, HWND hwnd, WCHAR* sShaderFilename);
 	void ShutdownShader();
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
 	bool SetShaderParameters(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix);
 	void RenderShader(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 
-	ID3D11VertexShader* m_pVertexShader;
-	ID3D11PixelShader*  m_pPixelShader;
-	ID3D11InputLayout*  m_pLayout;
+	RenderPass*			m_pRenderToBuffersPass;
 	ID3D11Buffer*		m_pMatrixBuffer;
 
 	float				m_fSpecularPower;

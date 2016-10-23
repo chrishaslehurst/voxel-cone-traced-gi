@@ -41,7 +41,7 @@ void PointLight::SetPosition(float x, float y, float z)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PointLight::AddShadowMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, float fScreenNear, float fScreenDepth)
+void PointLight::AddShadowMap(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, float fScreenNear, float fScreenDepth)
 {
 	m_pShadowMap = new OmnidirectionalShadowMap(fScreenNear, fScreenDepth);
 	m_pShadowMap->Initialise(pDevice, pContext, hwnd);

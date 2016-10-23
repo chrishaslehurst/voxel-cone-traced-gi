@@ -24,7 +24,7 @@ Mesh::~Mesh()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::InitialiseFromObj(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename)
+bool Mesh::InitialiseFromObj(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, char* filename)
 {
 	//Load in the model data
 	if (!LoadModelFromObjFile(pDevice, pContext, hwnd, filename))
@@ -146,7 +146,7 @@ void Mesh::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera)
+void Mesh::RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera)
 {
 	m_arrMeshesToRender.clear();
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
@@ -205,7 +205,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldM
 }
 
 
-void Mesh::RenderShadows(ID3D11DeviceContext* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
+void Mesh::RenderShadows(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
 	//Shadowing Pass
 	for (int i = 0; i < NUM_LIGHTS; i++)
@@ -239,7 +239,7 @@ const int Mesh::GetIndexCount(int subMeshIndex) const
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mesh::ReloadShaders(ID3D11Device* pDevice, HWND hwnd)
+void Mesh::ReloadShaders(ID3D11Device3* pDevice, HWND hwnd)
 {
 	if (m_pMatLib)
 	{
@@ -308,7 +308,7 @@ bool Mesh::LoadCubeFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pCon
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Mesh::LoadModelFromObjFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, char* filename)
+bool Mesh::LoadModelFromObjFile(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, char* filename)
 {
 	m_pMatLib = new MaterialLibrary;
 	if (!m_pMatLib)

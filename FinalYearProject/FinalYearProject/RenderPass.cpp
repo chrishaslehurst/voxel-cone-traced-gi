@@ -14,7 +14,7 @@ RenderPass::RenderPass()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HRESULT RenderPass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, D3D11_INPUT_ELEMENT_DESC* pPolyLayout, int iNumLayoutElements, WCHAR* sShaderFilename, char* sVSEntry, char* sGSEntry, char* sPSEntry)
+HRESULT RenderPass::Initialise(ID3D11Device3* pDevice, HWND hwnd, D3D11_INPUT_ELEMENT_DESC* pPolyLayout, int iNumLayoutElements, WCHAR* sShaderFilename, char* sVSEntry, char* sGSEntry, char* sPSEntry)
 {
 	ID3D10Blob* pErrorMessage(nullptr);
 
@@ -22,79 +22,88 @@ HRESULT RenderPass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pCon
 	ID3D10Blob* pGeometryShaderBuffer(nullptr);
 	ID3D10Blob* pPixelShaderBuffer(nullptr);
 
+	HRESULT result;
+
 	//Compile the voxelisation pass vertex shader code
-	HRESULT result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, sVSEntry, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
+	if (sVSEntry != nullptr)
 	{
-		if (pErrorMessage)
+		result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, sVSEntry, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
+		if (FAILED(result))
 		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
+			if (pErrorMessage)
+			{
+				//If the shader failed to compile it should have written something to error message, so we output that here
+				OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
+			}
+			else
+			{
+				//if it hasn't, then it couldn't find the shader file..
+				MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
+			}
+			return false;
 		}
-		else
+
+
+
+		result = pDevice->CreateVertexShader(pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
+		if (FAILED(result))
 		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
+			VS_LOG_VERBOSE("Failed to create the vertex shader.");
+			return false;
 		}
-		return false;
 	}
-
-
-	result = pDevice->CreateVertexShader(pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
-	if (FAILED(result))
+	if (sGSEntry != nullptr)
 	{
-		VS_LOG_VERBOSE("Failed to create the vertex shader.");
-		return false;
-	}
-
-	//Compile the voxelisation pass geometry shader code
-	result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, sGSEntry, "gs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pGeometryShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
+		//Compile the voxelisation pass geometry shader code
+		result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, sGSEntry, "gs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pGeometryShaderBuffer, &pErrorMessage);
+		if (FAILED(result))
 		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
+			if (pErrorMessage)
+			{
+				//If the shader failed to compile it should have written something to error message, so we output that here
+				OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
+			}
+			else
+			{
+				//if it hasn't, then it couldn't find the shader file..
+				MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
+			}
+			return false;
 		}
-		else
+
+		result = pDevice->CreateGeometryShader(pGeometryShaderBuffer->GetBufferPointer(), pGeometryShaderBuffer->GetBufferSize(), nullptr, &m_pGeometryShader);
+		if (FAILED(result))
 		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
+			VS_LOG_VERBOSE("Failed to create the geometry shader.");
+			return false;
 		}
-		return false;
 	}
-
-	result = pDevice->CreateGeometryShader(pGeometryShaderBuffer->GetBufferPointer(), pGeometryShaderBuffer->GetBufferSize(), nullptr, &m_pGeometryShader);
-	if (FAILED(result))
+	if (sPSEntry != nullptr)
 	{
-		VS_LOG_VERBOSE("Failed to create the geometry shader.");
-		return false;
-	}
-
-	//Compile the voxelisation pass pixel shader code
-	result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, sPSEntry, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
+		//Compile the voxelisation pass pixel shader code
+		result = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, sPSEntry, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
+		if (FAILED(result))
 		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
+			if (pErrorMessage)
+			{
+				//If the shader failed to compile it should have written something to error message, so we output that here
+				OutputShaderErrorMessage(pErrorMessage, hwnd, sShaderFilename);
+			}
+			else
+			{
+				//if it hasn't, then it couldn't find the shader file..
+				MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
+			}
+			return false;
 		}
-		else
+
+		result = pDevice->CreatePixelShader(pPixelShaderBuffer->GetBufferPointer(), pPixelShaderBuffer->GetBufferSize(), nullptr, &m_pPixelShader);
+		if (FAILED(result))
 		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
+			VS_LOG_VERBOSE("Failed to create the pixel shader.");
+			return false;
 		}
-		return false;
 	}
-
-	result = pDevice->CreatePixelShader(pPixelShaderBuffer->GetBufferPointer(), pPixelShaderBuffer->GetBufferSize(), nullptr, &m_pPixelShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the pixel shader.");
-		return false;
-	}
-
 	//Create the vertex input layout..
 	result = pDevice->CreateInputLayout(pPolyLayout, iNumLayoutElements, pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), &m_pLayout);
 	if (FAILED(result))
@@ -102,18 +111,27 @@ HRESULT RenderPass::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pCon
 		VS_LOG_VERBOSE("Failed to create input layout");
 		return false;
 	}
-
-	pErrorMessage->Release();
-	pErrorMessage = nullptr;
-
-	pVertexShaderBuffer->Release();
-	pVertexShaderBuffer = nullptr;
-
-	pPixelShaderBuffer->Release();
-	pPixelShaderBuffer = nullptr;
-
-	pGeometryShaderBuffer->Release();
-	pGeometryShaderBuffer = nullptr;
+	if (pErrorMessage)
+	{
+		pErrorMessage->Release();
+		pErrorMessage = nullptr;
+	}
+	if (pVertexShaderBuffer)
+	{
+		pVertexShaderBuffer->Release();
+		pVertexShaderBuffer = nullptr;
+	}
+	if (pPixelShaderBuffer)
+	{
+		pPixelShaderBuffer->Release();
+		pPixelShaderBuffer = nullptr;
+	}
+	if (pGeometryShaderBuffer)
+	{
+		pGeometryShaderBuffer->Release();
+		pGeometryShaderBuffer = nullptr;
+	}
+	return result;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

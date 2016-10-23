@@ -6,9 +6,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 DeferredRender::DeferredRender()
-	: m_pVertexShader(nullptr)
-	, m_pPixelShader(nullptr)
-	, m_pLayout (nullptr)
+	: m_pLightingPass(nullptr)
 	, m_pSampleState (nullptr)
 	, m_pMatrixBuffer(nullptr)
 	, m_pCameraBuffer(nullptr)
@@ -30,7 +28,7 @@ DeferredRender::~DeferredRender()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DeferredRender::SetRenderTargets(ID3D11DeviceContext* pContext)
+void DeferredRender::SetRenderTargets(ID3D11DeviceContext3* pContext)
 {
 	ID3D11RenderTargetView* arrRenderTargets[BufferType::btMax];
 	for (int i = 0; i < BufferType::btMax; i++)
@@ -46,7 +44,7 @@ void DeferredRender::SetRenderTargets(ID3D11DeviceContext* pContext)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DeferredRender::ClearRenderTargets(ID3D11DeviceContext* pContext, float r, float g, float b, float a)
+void DeferredRender::ClearRenderTargets(ID3D11DeviceContext3* pContext, float r, float g, float b, float a)
 {
 	float colour[4];
 	colour[0] = r;
@@ -71,7 +69,7 @@ ID3D11ShaderResourceView* DeferredRender::GetShaderResourceView(BufferType index
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HRESULT DeferredRender::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear)
+HRESULT DeferredRender::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear)
 {
 	HRESULT res;
 
@@ -175,7 +173,7 @@ void DeferredRender::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool DeferredRender::RenderLightingPass(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags)
+bool DeferredRender::RenderLightingPass(ID3D11DeviceContext3* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags)
 {
 	if (!SetShaderParameters(pContext, mWorld, mView, mProjection, vCamPos, pVoxelisedScene, eGIFlags))
 	{
@@ -189,62 +187,12 @@ bool DeferredRender::RenderLightingPass(ID3D11DeviceContext* pContext, int iInde
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename)
+bool DeferredRender::InitialiseShader(ID3D11Device3* pDevice, HWND hwnd, WCHAR* sShaderFilename)
 {
 	HRESULT res;
-	ID3D10Blob* errorMessage(nullptr);
-	ID3D10Blob* vertexShaderBuffer(nullptr);
-	ID3D10Blob* pixelShaderBuffer(nullptr);
-
-	res = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &vertexShaderBuffer, &errorMessage);
-
-	if (FAILED(res))
-	{
-		if (errorMessage)
-		{
-			OutputShaderErrorMessage(errorMessage, hwnd, sShaderFilename);
-		}
-		else
-		{
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	res = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pixelShaderBuffer, &errorMessage);
-	
-	if (FAILED(res))
-	{
-		if (errorMessage)
-		{
-			OutputShaderErrorMessage(errorMessage, hwnd, sShaderFilename);
-		}
-		else
-		{
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	//Create vertex shader from buffer
-	res = pDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to create vertex shader");
-		return false;
-	}
-
-	//Create pixel shader from buffer
-	res = pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), nullptr, &m_pPixelShader);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to create pixel shader");
-		return false;
-	}
 
 	//Create vertex input layout description..
 	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
-	unsigned int numElements;
 
 	polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
@@ -262,21 +210,10 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 	polygonLayout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polygonLayout[1].InstanceDataStepRate = 0;
 
-	numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
+	unsigned int numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
 
-	//Create vertex input layout
-	res = pDevice->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), &m_pLayout);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to create input layout");
-		return false;
-	}
-
-	//Release the vertex shader buffer and pixel shader..
-	vertexShaderBuffer->Release();
-	vertexShaderBuffer = nullptr;
-	pixelShaderBuffer->Release();
-	pixelShaderBuffer = nullptr;
+	m_pLightingPass = new RenderPass;
+	m_pLightingPass->Initialise(pDevice, hwnd, polygonLayout, numElements, sShaderFilename, "VSMain", nullptr, "PSMain");
 
 	// Create a texture sampler state description.
 	D3D11_SAMPLER_DESC samplerDesc;
@@ -406,7 +343,12 @@ bool DeferredRender::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* s
 
 void DeferredRender::ShutdownShader()
 {
-	
+	if (m_pLightingPass)
+	{
+		m_pLightingPass->Shutdown();
+		delete m_pLightingPass;
+		m_pLightingPass = nullptr;
+	}
 
 	if (m_pCameraBuffer)
 	{
@@ -430,24 +372,6 @@ void DeferredRender::ShutdownShader()
 	{
 		m_pShadowMapSampleState->Release();
 		m_pShadowMapSampleState = nullptr;
-	}
-
-	if (m_pLayout)
-	{
-		m_pLayout->Release();
-		m_pLayout = nullptr;
-	}
-
-	if (m_pPixelShader)
-	{
-		m_pPixelShader->Release();
-		m_pPixelShader = nullptr;
-	}
-
-	if (m_pVertexShader)
-	{
-		m_pVertexShader->Release();
-		m_pVertexShader = nullptr;
 	}
 }
 
@@ -482,7 +406,7 @@ void DeferredRender::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwn
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags)
+bool DeferredRender::SetShaderParameters(ID3D11DeviceContext3* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, VoxelisedScene* pVoxelisedScene, GIRenderFlag eGIFlags)
 {
 	HRESULT res;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -584,14 +508,9 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DeferredRender::RenderShader(ID3D11DeviceContext* pContext, int iIndexCount)
+void DeferredRender::RenderShader(ID3D11DeviceContext3* pContext, int iIndexCount)
 {
-	// Set the vertex input layout.
-	pContext->IASetInputLayout(m_pLayout);
-
-	// Set the vertex and pixel shaders that will be used to render.
-	pContext->VSSetShader(m_pVertexShader, NULL, 0);
-	pContext->PSSetShader(m_pPixelShader, NULL, 0);
+	m_pLightingPass->SetActiveRenderPass(pContext);
 
 	// Set the sampler state in the pixel shader.
 	pContext->PSSetSamplers(0, 1, &m_pSampleState);

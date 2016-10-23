@@ -19,7 +19,7 @@ class RenderPass
 
 public:
 	RenderPass();
-	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, D3D11_INPUT_ELEMENT_DESC* pPolyLayout, int iNumLayoutElements, WCHAR* sShaderFilename, char* sVSEntry, char* sGSEntry, char* sPSEntry);
+	HRESULT Initialise(ID3D11Device3* pDevice, HWND hwnd, D3D11_INPUT_ELEMENT_DESC* pPolyLayout, int iNumLayoutElements, WCHAR* sShaderFilename, char* sVSEntry, char* sGSEntry, char* sPSEntry);
 	void SetActiveRenderPass(ID3D11DeviceContext3* pDeviceContext);
 	//void SetBuffersAndResources();
 	void Shutdown();

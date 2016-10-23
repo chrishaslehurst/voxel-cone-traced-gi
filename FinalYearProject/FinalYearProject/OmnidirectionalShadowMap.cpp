@@ -4,10 +4,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 OmnidirectionalShadowMap::OmnidirectionalShadowMap(float fScreenNear, float fScreenDepth)
-	: m_pLayout(nullptr)
-	, m_pGeometryShader(nullptr)
-	, m_pPixelShader(nullptr)
-	, m_pVertexShader(nullptr)
+	: m_pShadowMapRenderPass(nullptr)
 	, m_pShadowMapCubeShaderView(nullptr)
 	, m_pShadowMapCubeTexture(nullptr)
 	, m_pShadowMapCubeDepthView(nullptr)
@@ -22,7 +19,7 @@ OmnidirectionalShadowMap::~OmnidirectionalShadowMap()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
+HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd)
 {
 	//Create viewport
 	m_ShadowMapViewport.TopLeftX = 0.0f;
@@ -82,84 +79,7 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11Device
 		return result;
 	}
 
-	ID3D10Blob* pErrorMessage(nullptr);
-	ID3D10Blob* pVertexShaderBuffer(nullptr);
-	ID3D10Blob* pPixelShaderBuffer(nullptr);
-	ID3D10Blob* pGeometryShaderBuffer(nullptr);
-
-	//Compile the vertex shader code
-	result = D3DCompileFromFile(L"OmniShadowMap.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"OmniShadowMap.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"OmniShadowMap.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	//compile the pixel shader..
-	result = D3DCompileFromFile(L"OmniShadowMap.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"OmniShadowMap.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"OmniShadowMap.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	//compile the geometry shader..
-	result = D3DCompileFromFile(L"OmniShadowMap.hlsl", nullptr, nullptr, "GSMain", "gs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pGeometryShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"OmniShadowMap.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"OmniShadowMap.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreateVertexShader(pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the vertex shader.");
-		return false;
-	}
-
-	result = pDevice->CreatePixelShader(pPixelShaderBuffer->GetBufferPointer(), pPixelShaderBuffer->GetBufferSize(), nullptr, &m_pPixelShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the pixel shader.");
-		return false;
-	}
-
-	result = pDevice->CreateGeometryShader(pGeometryShaderBuffer->GetBufferPointer(), pGeometryShaderBuffer->GetBufferSize(), nullptr, &m_pGeometryShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the geometry shader.");
-		return false;
-	}
-
-	D3D11_INPUT_ELEMENT_DESC polyLayout[6];
+	D3D11_INPUT_ELEMENT_DESC polyLayout[5];
 	//Setup data layout for the shader, needs to match the VertexType struct in the Mesh class and in the shader code.
 	polyLayout[0].SemanticName = "POSITION";
 	polyLayout[0].SemanticIndex = 0;
@@ -186,16 +106,15 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11Device
 	polyLayout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[2].InstanceDataStepRate = 0;
 
-
-	polyLayout[3].SemanticName = "COLOR";
+	polyLayout[3].SemanticName = "TANGENT";
 	polyLayout[3].SemanticIndex = 0;
-	polyLayout[3].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	polyLayout[3].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polyLayout[3].InputSlot = 0;
 	polyLayout[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polyLayout[3].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[3].InstanceDataStepRate = 0;
 
-	polyLayout[4].SemanticName = "TANGENT";
+	polyLayout[4].SemanticName = "BINORMAL";
 	polyLayout[4].SemanticIndex = 0;
 	polyLayout[4].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polyLayout[4].InputSlot = 0;
@@ -203,35 +122,17 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device* pDevice, ID3D11Device
 	polyLayout[4].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polyLayout[4].InstanceDataStepRate = 0;
 
-	polyLayout[5].SemanticName = "BINORMAL";
-	polyLayout[5].SemanticIndex = 0;
-	polyLayout[5].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	polyLayout[5].InputSlot = 0;
-	polyLayout[5].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-	polyLayout[5].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	polyLayout[5].InstanceDataStepRate = 0;
-
 	//Get the number of elements in the layout
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
 
-	//Create the vertex input layout..
-	result = pDevice->CreateInputLayout(polyLayout, iNumElements, pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), &m_pLayout);
-
+	m_pShadowMapRenderPass = new RenderPass;
+	m_pShadowMapRenderPass->Initialise(pDevice, hwnd, polyLayout, iNumElements, L"OmniShadowMap.hlsl", "VSMain", "GSMain", "PSMain");
+	
 	if (FAILED(result))
 	{
 		VS_LOG_VERBOSE("Failed to create input layout");
 		return false;
 	}
-
-	//Finished with shader buffers now so they can be released
-	pVertexShaderBuffer->Release();
-	pVertexShaderBuffer = nullptr;
-
-	pPixelShaderBuffer->Release();
-	pPixelShaderBuffer = nullptr;
-
-	pGeometryShaderBuffer->Release();
-	pGeometryShaderBuffer = nullptr;
 
 	D3D11_BUFFER_DESC matrixBufferDesc;
 	//Setup the description of the dynamic matrix constant buffer that is in the shader..
@@ -310,14 +211,9 @@ void OmnidirectionalShadowMap::SetRenderOutputToShadowMap(ID3D11DeviceContext* p
 	pDeviceContext->RSSetViewports(1, &m_ShadowMapViewport);
 }
 
-void OmnidirectionalShadowMap::SetRenderStart(ID3D11DeviceContext* pDeviceContext)
+void OmnidirectionalShadowMap::SetRenderStart(ID3D11DeviceContext3* pDeviceContext)
 {
-	//Set the vertex input layout
-	pDeviceContext->IASetInputLayout(m_pLayout);
-
-	pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
-	pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
-	pDeviceContext->GSSetShader(m_pGeometryShader, nullptr, 0);
+	m_pShadowMapRenderPass->SetActiveRenderPass(pDeviceContext);
 }
 
 bool OmnidirectionalShadowMap::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount)
@@ -340,15 +236,12 @@ void OmnidirectionalShadowMap::SetRenderFinished(ID3D11DeviceContext* pDeviceCon
 void OmnidirectionalShadowMap::Shutdown()
 {
 
-	m_pLayout->Release();
-	m_pLayout = nullptr;
-
-	m_pVertexShader->Release();
-	m_pVertexShader = nullptr;
-	m_pPixelShader->Release();
-	m_pPixelShader = nullptr;
-	m_pGeometryShader->Release();
-	m_pGeometryShader = nullptr;
+	if (m_pShadowMapRenderPass)
+	{
+		m_pShadowMapRenderPass->Shutdown();
+		delete m_pShadowMapRenderPass;
+		m_pShadowMapRenderPass = nullptr;
+	}
 
 	m_pMatrixBuffer->Release();
 	m_pMatrixBuffer = nullptr;

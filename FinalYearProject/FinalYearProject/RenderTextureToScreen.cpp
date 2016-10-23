@@ -2,7 +2,7 @@
 #include "Debugging.h"
 
 
-HRESULT RenderTextureToScreen::Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear)
+HRESULT RenderTextureToScreen::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, int iTextureWidth, int iTextureHeight, float fScreenDepth, float fScreenNear)
 {
 	D3D11_BUFFER_DESC matrixBufferDesc;
 	//Setup the description of the dynamic matrix constant buffer that is in the shader..
@@ -69,26 +69,15 @@ void RenderTextureToScreen::Shutdown()
 		m_pSampleState->Release();
 		m_pSampleState = nullptr;
 	}
-	if (m_pLayout)
+	if (m_pRenderTexturePass)
 	{
-		m_pLayout->Release();
-		m_pLayout = nullptr;
-	}
-
-	if (m_pPixelShader)
-	{
-		m_pPixelShader->Release();
-		m_pPixelShader = nullptr;
-	}
-
-	if (m_pVertexShader)
-	{
-		m_pVertexShader->Release();
-		m_pVertexShader = nullptr;
+		m_pRenderTexturePass->Shutdown();
+		delete m_pRenderTexturePass;
+		m_pRenderTexturePass = nullptr;
 	}
 }
 
-bool RenderTextureToScreen::RenderTexture(ID3D11DeviceContext* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, Texture2D* pTexture)
+bool RenderTextureToScreen::RenderTexture(ID3D11DeviceContext3* pContext, int iIndexCount, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCamPos, Texture2D* pTexture)
 {
 	if (!SetShaderParameters(pContext, mWorld, mView, mProjection, vCamPos, pTexture))
 	{
@@ -100,63 +89,12 @@ bool RenderTextureToScreen::RenderTexture(ID3D11DeviceContext* pContext, int iIn
 	return true;
 }
 
-bool RenderTextureToScreen::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, WCHAR* sShaderFilename)
+bool RenderTextureToScreen::InitialiseShader(ID3D11Device3* pDevice, HWND hwnd, WCHAR* sShaderFilename)
 {
-	HRESULT res;
-	ID3D10Blob* errorMessage(nullptr);
-	ID3D10Blob* vertexShaderBuffer(nullptr);
-	ID3D10Blob* pixelShaderBuffer(nullptr);
-
-	res = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &vertexShaderBuffer, &errorMessage);
-
-	if (FAILED(res))
-	{
-		if (errorMessage)
-		{
-			OutputShaderErrorMessage(errorMessage, hwnd, sShaderFilename);
-		}
-		else
-		{
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	res = D3DCompileFromFile(sShaderFilename, nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pixelShaderBuffer, &errorMessage);
-
-	if (FAILED(res))
-	{
-		if (errorMessage)
-		{
-			OutputShaderErrorMessage(errorMessage, hwnd, sShaderFilename);
-		}
-		else
-		{
-			MessageBox(hwnd, sShaderFilename, L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	//Create vertex shader from buffer
-	res = pDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to create vertex shader");
-		return false;
-	}
-
-	//Create pixel shader from buffer
-	res = pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), nullptr, &m_pPixelShader);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to create pixel shader");
-		return false;
-	}
-
+	
 	//Create vertex input layout description..
 	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
-	unsigned int numElements;
-
+	
 	polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
 	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -173,22 +111,12 @@ bool RenderTextureToScreen::InitialiseShader(ID3D11Device* pDevice, HWND hwnd, W
 	polygonLayout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polygonLayout[1].InstanceDataStepRate = 0;
 
-	numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
+	unsigned int numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
 
-	//Create vertex input layout
-	res = pDevice->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), &m_pLayout);
-	if (FAILED(res))
-	{
-		VS_LOG_VERBOSE("Failed to create input layout");
-		return false;
-	}
+	m_pRenderTexturePass = new RenderPass;
+	m_pRenderTexturePass->Initialise(pDevice, hwnd, polygonLayout, numElements, sShaderFilename, "VSMain", nullptr, "PSMain");
 
-	//Release the vertex shader buffer and pixel shader..
-	vertexShaderBuffer->Release();
-	vertexShaderBuffer = nullptr;
-	pixelShaderBuffer->Release();
-	pixelShaderBuffer = nullptr;
-
+	return true;
 }
 
 bool RenderTextureToScreen::SetShaderParameters(ID3D11DeviceContext* pContext, XMMATRIX mWorld, XMMATRIX mView, XMMATRIX mProjection, const XMFLOAT3& vCameraPos, Texture2D* pTexture)
@@ -223,14 +151,9 @@ bool RenderTextureToScreen::SetShaderParameters(ID3D11DeviceContext* pContext, X
 	pContext->PSSetShaderResources(0, 1, &pResource);
 }
 
-void RenderTextureToScreen::RenderShader(ID3D11DeviceContext* pContext, int iIndexCount)
+void RenderTextureToScreen::RenderShader(ID3D11DeviceContext3* pContext, int iIndexCount)
 {
-	// Set the vertex input layout.
-	pContext->IASetInputLayout(m_pLayout);
-
-	// Set the vertex and pixel shaders that will be used to render.
-	pContext->VSSetShader(m_pVertexShader, NULL, 0);
-	pContext->PSSetShader(m_pPixelShader, NULL, 0);
+	m_pRenderTexturePass->SetActiveRenderPass(pContext);
 
 	// Set the sampler state in the pixel shader.
 	pContext->PSSetSamplers(0, 1, &m_pSampleState);

@@ -440,7 +440,14 @@ void VoxelisedScene::Shutdown()
 	if (m_pVoxeliseScenePass)
 	{
 		m_pVoxeliseScenePass->Shutdown();
+		delete m_pVoxeliseScenePass;
 		m_pVoxeliseScenePass = nullptr;
+	}
+	if (m_pDebugRenderPass)
+	{
+		m_pDebugRenderPass->Shutdown();
+		delete m_pDebugRenderPass;
+		m_pDebugRenderPass = nullptr;
 	}
 	if (m_pClearVoxelsComputeShader)
 	{
@@ -774,10 +781,10 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
 
 	m_pVoxeliseScenePass = new RenderPass;
-	m_pVoxeliseScenePass->Initialise(pDevice, pContext, hwnd, polyLayout, iNumElements, L"Voxelise_Populate.hlsl", "VSMain", "GSMain", "PSMain");
+	m_pVoxeliseScenePass->Initialise(pDevice, hwnd, polyLayout, iNumElements, L"Voxelise_Populate.hlsl", "VSMain", "GSMain", "PSMain");
 	
 	m_pDebugRenderPass = new RenderPass;
-	m_pDebugRenderPass->Initialise(pDevice, pContext, hwnd, polyLayout, 1, L"VoxelRenderShader.hlsl", "VSMain", "GSMain", "PSMain");
+	m_pDebugRenderPass->Initialise(pDevice, hwnd, polyLayout, 1, L"VoxelRenderShader.hlsl", "VSMain", "GSMain", "PSMain");
 
 	//Finished with shader buffers now so they can be released
 	pErrorMessage->Release();

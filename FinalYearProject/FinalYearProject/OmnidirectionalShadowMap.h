@@ -7,6 +7,7 @@
 #include <DirectXMath.h>
 #include <D3DCompiler.h>
 #include <fstream>
+#include "RenderPass.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,9 +95,9 @@ public:
 	OmnidirectionalShadowMap(float fScreenNear = 0.1f, float fScreenDepth = 5000.f);
 	~OmnidirectionalShadowMap();
 
-	HRESULT Initialise(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
+	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd);
 	void SetRenderOutputToShadowMap(ID3D11DeviceContext* pDeviceContext);
-	void SetRenderStart(ID3D11DeviceContext* pDeviceContext);
+	void SetRenderStart(ID3D11DeviceContext3* pDeviceContext);
 	bool Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount);
 	void SetRenderFinished(ID3D11DeviceContext* pDeviceContext);
 	bool SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld);
@@ -109,10 +110,7 @@ private:
 
 	D3D11_VIEWPORT			m_ShadowMapViewport;
 
-	ID3D11InputLayout*		m_pLayout;
-	ID3D11VertexShader*		m_pVertexShader;
-	ID3D11PixelShader*		m_pPixelShader;
-	ID3D11GeometryShader*	m_pGeometryShader;
+	RenderPass*				m_pShadowMapRenderPass;
 
 	ID3D11Buffer*			m_pMatrixBuffer;
 	ID3D11Buffer*			m_pLightBuffer;

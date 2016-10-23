@@ -33,7 +33,7 @@ public:
 	float GetRange() { return m_fRange; }
 	float GetReciprocalRange() { return 1.f/m_fRange; }
 
-	void AddShadowMap(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd, float fScreenNear, float fScreenDepth);
+	void AddShadowMap(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, float fScreenNear, float fScreenDepth);
 	OmnidirectionalShadowMap* GetShadowMap() { return m_pShadowMap; }
 private:
 
