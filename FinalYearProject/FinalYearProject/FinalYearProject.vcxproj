@@ -175,6 +175,7 @@
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="DebugLog.cpp" />
+    <ClCompile Include="RenderPass.cpp" />
     <ClCompile Include="RenderTextureToScreen.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="Texture3D.cpp" />
@@ -189,6 +190,7 @@
     <ClInclude Include="DeferredRender.h" />
     <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="GPUProfiler.h" />
+    <ClInclude Include="RenderPass.h" />
     <ClInclude Include="RenderTextureToScreen.h" />
     <ClInclude Include="Texture3D.h" />
     <ClInclude Include="VoxelisedScene.h" />

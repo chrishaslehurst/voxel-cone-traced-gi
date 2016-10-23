@@ -11,6 +11,7 @@
 #include "Mesh.h"
 #include "Texture2D.h"
 #include "Texture3D.h"
+#include "RenderPass.h"
 
 #define TEXTURE_DIMENSION 256
 #define MIP_LEVELS 4
@@ -99,7 +100,7 @@ public:
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderInjectRadiancePass(ID3D11DeviceContext* pContext);
 	void GenerateMips(ID3D11DeviceContext* pContext);
-	void RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera);
+	void RenderDebugCubes(ID3D11DeviceContext3* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera);
 	
 	void RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos, Mesh* pVoxelise);
 	bool SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos);
@@ -127,21 +128,15 @@ private:
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 	bool InitialiseDebugBuffers(ID3D11Device* pDevice);
 
-	ID3D11VertexShader*		m_pVertexShader;
-	ID3D11PixelShader*		m_pPixelShader;
-	ID3D11GeometryShader*	m_pGeometryShader;
+	
+	RenderPass*				m_pVoxeliseScenePass;
+	RenderPass*				m_pDebugRenderPass;
+
 	ID3D11ComputeShader*	m_pClearVoxelsComputeShader;
-
-	ID3D11VertexShader*		m_pDebugVertexShader;
-	ID3D11GeometryShader*	m_pDebugGeometryShader;
-	ID3D11PixelShader*		m_pDebugPixelShader;
-
 	ID3D11ComputeShader*	m_pInjectRadianceComputeShader;
-	ID3D11SamplerState*		m_pShadowMapSampleState;
-
 	ID3D11ComputeShader*	m_pGenerateMipsShader;
 
-	ID3D11InputLayout*		m_pLayout;
+	
 	ID3D11Buffer*			m_pVoxeliseVertexShaderBuffer;
 	ID3D11Buffer*			m_pMatrixBuffer;
 
@@ -167,7 +162,6 @@ private:
 	std::string m_sNumTexelsPerThread;
 	std::string m_sNumGroups;
 
-	ID3D11InputLayout*		m_pDebugCubesLayout;
 	ID3D11Buffer*			m_pDebugCubesVertexBuffer;
 	ID3D11Buffer*			m_pDebugCubesIndexBuffer;
 

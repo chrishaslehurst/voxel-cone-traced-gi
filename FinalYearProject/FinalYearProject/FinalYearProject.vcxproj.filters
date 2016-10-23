@@ -109,6 +109,9 @@
     <ClCompile Include="VoxelisedScene.cpp">
       <Filter>Source\Voxel Cone Tracing</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPass.cpp">
+      <Filter>Source\Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -182,6 +185,9 @@
     </ClInclude>
     <ClInclude Include="VoxelisedScene.h">
       <Filter>Source\Voxel Cone Tracing</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPass.h">
+      <Filter>Source\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

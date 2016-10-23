@@ -187,29 +187,6 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		return result;
 	}
 
-	//Create ShadowMap Sampler State
-	D3D11_SAMPLER_DESC shadowSamplerDesc;
-	shadowSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
-	shadowSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
-	shadowSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
-	shadowSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
-	shadowSamplerDesc.MipLODBias = 0;
-	shadowSamplerDesc.MaxAnisotropy = 4;
-	shadowSamplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
-	shadowSamplerDesc.BorderColor[0] = 0.0f;
-	shadowSamplerDesc.BorderColor[1] = 0.0f;
-	shadowSamplerDesc.BorderColor[2] = 0.0f;
-	shadowSamplerDesc.BorderColor[3] = 0.0f;
-	shadowSamplerDesc.MinLOD = 0.0f;
-	shadowSamplerDesc.MaxLOD = 0.0f;
-
-	result = pDevice->CreateSamplerState(&shadowSamplerDesc, &m_pShadowMapSampleState);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create shadow map sampler");
-		return result;
-	}
-	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -297,12 +274,9 @@ void VoxelisedScene::GenerateMips(ID3D11DeviceContext* pContext)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera)
+void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext3* pContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, Camera* pCamera)
 {
-	pContext->IASetInputLayout(m_pDebugCubesLayout);
-	pContext->VSSetShader(m_pDebugVertexShader, nullptr, 0);
-	pContext->PSSetShader(m_pDebugPixelShader, nullptr, 0);
-	pContext->GSSetShader(m_pDebugGeometryShader, nullptr, 0);
+	m_pDebugRenderPass->SetActiveRenderPass(pContext);
 
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 	ID3D11ShaderResourceView* srv;
@@ -369,11 +343,7 @@ void VoxelisedScene::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMA
 
 bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContext, const XMMATRIX& mWorld, const XMMATRIX& mView, const XMMATRIX& mProjection, const XMFLOAT3& eyePos)
 {
-
-	pDeviceContext->IASetInputLayout(m_pLayout);
-	pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
-	pDeviceContext->GSSetShader(m_pGeometryShader, nullptr, 0);
-	pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
+	m_pVoxeliseScenePass->SetActiveRenderPass(pDeviceContext);
 
 	pDeviceContext->RSSetState(m_pRasteriserState);
 	pDeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
@@ -467,41 +437,18 @@ void VoxelisedScene::PostRender(ID3D11DeviceContext* pContext)
 
 void VoxelisedScene::Shutdown()
 {
-	if (m_pVertexShader)
+	if (m_pVoxeliseScenePass)
 	{
-		m_pVertexShader->Release();
-		m_pVertexShader = nullptr;
-	}
-	if (m_pPixelShader)
-	{
-		m_pPixelShader->Release();
-		m_pPixelShader = nullptr;
-	}
-	if (m_pGeometryShader)
-	{
-		m_pGeometryShader->Release();
-		m_pGeometryShader = nullptr;
+		m_pVoxeliseScenePass->Shutdown();
+		m_pVoxeliseScenePass = nullptr;
 	}
 	if (m_pClearVoxelsComputeShader)
 	{
 		m_pClearVoxelsComputeShader->Release();
 		m_pClearVoxelsComputeShader = nullptr;
 	}
-	if (m_pDebugVertexShader)
-	{
-		m_pDebugVertexShader->Release();
-		m_pDebugVertexShader = nullptr;
-	}
-	if (m_pDebugPixelShader)
-	{
-		m_pDebugPixelShader->Release();
-		m_pDebugPixelShader = nullptr;
-	}
-	if (m_pLayout)
-	{
-		m_pLayout->Release();
-		m_pLayout = nullptr;
-	}
+	
+	
 	if (m_pVoxeliseVertexShaderBuffer)
 	{
 		m_pVoxeliseVertexShaderBuffer->Release();
@@ -539,11 +486,7 @@ void VoxelisedScene::Shutdown()
 		delete m_pRadianceVolumeMips[i];
 		m_pRadianceVolumeMips[i] = nullptr;
 	}
-	if (m_pShadowMapSampleState)
-	{
-		m_pShadowMapSampleState->Release();
-		m_pShadowMapSampleState = nullptr;
-	}
+	
 #if TILED_RESOURCES
 	for (int i = 0; i < MIP_LEVELS - 1; i++)
 	{
@@ -706,12 +649,7 @@ void VoxelisedScene::CreateWorldToVoxelGrid(const AABB& voxelGridAABB)
 HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
 {
 	ID3D10Blob* pErrorMessage(nullptr);
-	ID3D10Blob* pVertexShaderBuffer(nullptr);
-	ID3D10Blob* pPixelShaderBuffer(nullptr);
-	ID3D10Blob* pDebugVertexShaderBuffer(nullptr);
-	ID3D10Blob* pDebugGeometryShaderBuffer(nullptr);
-	ID3D10Blob* pDebugPixelShaderBuffer(nullptr);
-	ID3D10Blob* pGeometryShaderBuffer(nullptr);
+	
 	ID3D10Blob* pComputeShaderBuffer(nullptr);
 	ID3D10Blob* pRadianceComputeShaderBuffer(nullptr);
 	ID3D10Blob* pGenerateMipsShaderBuffer(nullptr);
@@ -788,155 +726,6 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 		return false;
 	}
 
-
-
-	//Compile the voxelisation pass vertex shader code
-	result = D3DCompileFromFile(L"Voxelise_Populate.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pVertexShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"Voxelise_Populate.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"Voxelise_Populate.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-
-	result = pDevice->CreateVertexShader(pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), nullptr, &m_pVertexShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the vertex shader.");
-		return false;
-	}
-
-	//Compile the debug render voxel vertex shader code
-	result = D3DCompileFromFile(L"VoxelRenderShader.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pDebugVertexShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"VoxelRenderShader.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"VoxelRenderShader.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreateVertexShader(pDebugVertexShaderBuffer->GetBufferPointer(), pDebugVertexShaderBuffer->GetBufferSize(), nullptr, &m_pDebugVertexShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the vertex shader.");
-		return false;
-	}
-
-
-
-	//Compile the voxelisation pass geometry shader code
-	result = D3DCompileFromFile(L"Voxelise_Populate.hlsl", nullptr, nullptr, "GSMain", "gs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pGeometryShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"Voxelise_Populate.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"Voxelise_Populate.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreateGeometryShader(pGeometryShaderBuffer->GetBufferPointer(), pGeometryShaderBuffer->GetBufferSize(), nullptr, &m_pGeometryShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the geometry shader.");
-		return false;
-	}
-
-	//Compile the voxel debug render geometry shader code
-	result = D3DCompileFromFile(L"VoxelRenderShader.hlsl", nullptr, nullptr, "GSMain", "gs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pDebugGeometryShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"VoxelRenderShader.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"VoxelRenderShader.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreateGeometryShader(pDebugGeometryShaderBuffer->GetBufferPointer(), pDebugGeometryShaderBuffer->GetBufferSize(), nullptr, &m_pDebugGeometryShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the geometry shader.");
-		return false;
-	}
-
-	//Compile the voxelisation pass pixel shader code
-	result = D3DCompileFromFile(L"Voxelise_Populate.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pPixelShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"Voxelise_Populate.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"Voxelise_Populate.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreatePixelShader(pPixelShaderBuffer->GetBufferPointer(), pPixelShaderBuffer->GetBufferSize(), nullptr, &m_pPixelShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the pixel shader.");
-		return false;
-	}
-
-	//Compile the debug voxel render pixel shader code
-	result = D3DCompileFromFile(L"VoxelRenderShader.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pDebugPixelShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"VoxelRenderShader.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"VoxelRenderShader.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreatePixelShader(pDebugPixelShaderBuffer->GetBufferPointer(), pDebugPixelShaderBuffer->GetBufferSize(), nullptr, &m_pDebugPixelShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the pixel shader.");
-		return false;
-	}
-
 	//Initialise the input layout
 
 	D3D11_INPUT_ELEMENT_DESC polyLayout[5];
@@ -984,40 +773,18 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	//Get the number of elements in the layout
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
 
-	//Create the vertex input layout..
-	result = pDevice->CreateInputLayout(polyLayout, iNumElements, pVertexShaderBuffer->GetBufferPointer(), pVertexShaderBuffer->GetBufferSize(), &m_pLayout);
-
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create input layout");
-		return false;
-	}
-
-	result = pDevice->CreateInputLayout(polyLayout, 1, pDebugVertexShaderBuffer->GetBufferPointer(), pDebugVertexShaderBuffer->GetBufferSize(), &m_pDebugCubesLayout);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create input layout");
-		return false;
-	}
+	m_pVoxeliseScenePass = new RenderPass;
+	m_pVoxeliseScenePass->Initialise(pDevice, pContext, hwnd, polyLayout, iNumElements, L"Voxelise_Populate.hlsl", "VSMain", "GSMain", "PSMain");
+	
+	m_pDebugRenderPass = new RenderPass;
+	m_pDebugRenderPass->Initialise(pDevice, pContext, hwnd, polyLayout, 1, L"VoxelRenderShader.hlsl", "VSMain", "GSMain", "PSMain");
 
 	//Finished with shader buffers now so they can be released
+	pErrorMessage->Release();
+	pErrorMessage = nullptr;
+
 	pComputeShaderBuffer->Release();
 	pComputeShaderBuffer = nullptr;
-
-	pVertexShaderBuffer->Release();
-	pVertexShaderBuffer = nullptr;
-
-	pPixelShaderBuffer->Release();
-	pPixelShaderBuffer = nullptr;
-
-	pGeometryShaderBuffer->Release();
-	pGeometryShaderBuffer = nullptr;
-
-	pDebugPixelShaderBuffer->Release();
-	pDebugPixelShaderBuffer = nullptr;
-
-	pDebugVertexShaderBuffer->Release();
-	pDebugVertexShaderBuffer = nullptr;
 
 	pRadianceComputeShaderBuffer->Release();
 	pRadianceComputeShaderBuffer = nullptr;
