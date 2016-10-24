@@ -57,7 +57,7 @@ void DebugLog::PrintLogToScreen(ID3D11DeviceContext* pContext)
 	for (int i = 0; i < m_iNumStrings; i++)
 	{
 		std::wstring wideString(m_arrLog[i].begin(), m_arrLog[i].end());
-		m_pFontWrapper->DrawString(pContext, wideString.c_str(), textSize, xPos, yPos - (i*textSize), TextColour, 0);
+		m_pFontWrapper->DrawString(pContext, wideString.c_str(), textSize, xPos, yPos - (i*textSize + 2), TextColour, 0);
 	}
 
 	m_iNumStrings = 0;

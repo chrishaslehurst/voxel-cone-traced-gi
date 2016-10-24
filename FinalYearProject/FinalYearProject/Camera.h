@@ -3,6 +3,7 @@
 
 #include <DirectXMath.h>
 #include "AABB.h"
+#include <vector>
 
 using namespace DirectX;
 
@@ -30,6 +31,7 @@ public:
 	XMFLOAT3 GetPosition();
 	XMFLOAT3 GetRotation();
 
+	void TraverseRoute();
 
 	void Update();
 	void Render();
@@ -40,7 +42,12 @@ public:
 	void CalculateViewFrustum(float fScreenDepth, XMMATRIX mProjectionMatrix);
 	bool CheckPointInsidePlane(int index, float x, float y, float z);
 	bool CheckBoundingBoxInsideViewFrustum(const AABB& boundingBox);
+
+	std::vector<XMFLOAT3> m_arrRoute;
 private:
+
+	int m_iCurrentRouteIndex;
+	bool m_bFollowingRoute;
 
 	int m_iPrevMouseX, m_iPrevMouseY;
 

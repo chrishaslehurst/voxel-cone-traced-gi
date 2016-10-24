@@ -137,7 +137,6 @@ void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime
 	{
 		//Get the timestamps..
 		UINT64 tsBegin, tsEnd;
-		
 
 		pContext->GetData(m_arrProfiledSectionStartTimesBuffer[m_iCurrentBufferIndex][i], &tsBegin, sizeof(UINT64), 0);
 		pContext->GetData(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][i], &tsEnd, sizeof(UINT64), 0);

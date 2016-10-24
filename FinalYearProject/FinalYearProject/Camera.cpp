@@ -8,8 +8,18 @@ Camera::Camera()
 	, m_vRotation(XMFLOAT3(0.f,0.f,0.f))
 	, m_vUpVector(XMFLOAT3(0.f, 1.f, 0.f))
 	, m_fCameraSpeed(5.f)
+	, m_bFollowingRoute(false)
 {
-	
+	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
+	m_arrRoute.push_back(XMFLOAT3( 1150, 200, 475));
+	m_arrRoute.push_back(XMFLOAT3( 1150, 200, -450));
+	m_arrRoute.push_back(XMFLOAT3(-1250, 200, -450));
+	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
+	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
+	m_arrRoute.push_back(XMFLOAT3(1150, 600, 475));
+	m_arrRoute.push_back(XMFLOAT3(1150, 600, -450));
+	m_arrRoute.push_back(XMFLOAT3(-1250, 600, -450));
+	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,62 +61,99 @@ DirectX::XMFLOAT3 Camera::GetRotation()
 	return m_vRotation;
 }
 
+void Camera::TraverseRoute()
+{
+	m_bFollowingRoute = true;
+	m_vPosition = m_arrRoute[0];
+	m_vRotation = XMFLOAT3(0.f, 0.f, 0.f);
+	m_iCurrentRouteIndex = 1;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Camera::Update()
 {
-	InputManager* pInput = InputManager::Get();
-	if (pInput)
+	if (!m_bFollowingRoute)
 	{
-		int iNewMouseX, iNewMouseY;
-		pInput->GetMouseLocation(iNewMouseX, iNewMouseY);
+		InputManager* pInput = InputManager::Get();
+		if (pInput)
+		{
+			int iNewMouseX, iNewMouseY;
+			pInput->GetMouseLocation(iNewMouseX, iNewMouseY);
 
-		//Reset the cursor to the centre..
-		int iWindowWidth(0), iWindowHeight(0);
-		Application::Get()->GetWidthAndHeight(iWindowWidth, iWindowHeight);
-		int iWindowCentreX = iWindowWidth / 2;
-		int iWindowCentreY = iWindowHeight / 2;
-		if (Application::Get()->AppInFocus())
-		{
-			SetCursorPos(iWindowCentreX, iWindowCentreY);
-		}
+			//Reset the cursor to the centre..
+			int iWindowWidth(0), iWindowHeight(0);
+			Application::Get()->GetWidthAndHeight(iWindowWidth, iWindowHeight);
+			int iWindowCentreX = iWindowWidth / 2;
+			int iWindowCentreY = iWindowHeight / 2;
+			if (Application::Get()->AppInFocus())
+			{
+				SetCursorPos(iWindowCentreX, iWindowCentreY);
+			}
 
-		//Rotate the camera based on the mouse position
-		SetRotation(m_vRotation.x + ((iNewMouseY - iWindowCentreY) * 0.1f), m_vRotation.y + ((iNewMouseX - iWindowCentreX) * 0.1f), m_vRotation.z);
-		//constrain x rotation to stop camera turning upside down..
-		if (m_vRotation.x > 89.f)
-		{
-			m_vRotation.x = 89.f;
+			//Rotate the camera based on the mouse position
+			SetRotation(m_vRotation.x + ((iNewMouseY - iWindowCentreY) * 0.1f), m_vRotation.y + ((iNewMouseX - iWindowCentreX) * 0.1f), m_vRotation.z);
+			//constrain x rotation to stop camera turning upside down..
+			if (m_vRotation.x > 89.f)
+			{
+				m_vRotation.x = 89.f;
+			}
+			else if (m_vRotation.x < -89.f)
+			{
+				m_vRotation.x = -89.f;
+			}
+
+			//Move the camera..
+			if (pInput->IsKeyPressed(DIK_W))
+			{
+				m_vPosition.x += (m_vForward.x * m_fCameraSpeed);
+				m_vPosition.y += (m_vForward.y * m_fCameraSpeed);
+				m_vPosition.z += (m_vForward.z * m_fCameraSpeed);
+			}
+			if (pInput->IsKeyPressed(DIK_S))
+			{
+				m_vPosition.x -= (m_vForward.x * m_fCameraSpeed);
+				m_vPosition.y -= (m_vForward.y * m_fCameraSpeed);
+				m_vPosition.z -= (m_vForward.z * m_fCameraSpeed);
+			}
+			if (pInput->IsKeyPressed(DIK_A))
+			{
+				m_vPosition.x += (m_vLeftVector.x * m_fCameraSpeed);
+				m_vPosition.y += (m_vLeftVector.y * m_fCameraSpeed);
+				m_vPosition.z += (m_vLeftVector.z * m_fCameraSpeed);
+			}
+			if (pInput->IsKeyPressed(DIK_D))
+			{
+				m_vPosition.x -= (m_vLeftVector.x * m_fCameraSpeed);
+				m_vPosition.y -= (m_vLeftVector.y * m_fCameraSpeed);
+				m_vPosition.z -= (m_vLeftVector.z * m_fCameraSpeed);
+			}
 		}
-		else if (m_vRotation.x < -89.f)
+	}
+	else
+	{
+		if (m_iCurrentRouteIndex < m_arrRoute.size())
 		{
-			m_vRotation.x = -89.f;
-		}
-		
-		//Move the camera..
-		if (pInput->IsKeyPressed(DIK_W))
-		{
-			m_vPosition.x += (m_vForward.x * m_fCameraSpeed);
-			m_vPosition.y += (m_vForward.y * m_fCameraSpeed);
-			m_vPosition.z += (m_vForward.z * m_fCameraSpeed);
-		}
-		if (pInput->IsKeyPressed(DIK_S))
-		{
-			m_vPosition.x -= (m_vForward.x * m_fCameraSpeed);
-			m_vPosition.y -= (m_vForward.y * m_fCameraSpeed);
-			m_vPosition.z -= (m_vForward.z * m_fCameraSpeed);
-		}
-		if (pInput->IsKeyPressed(DIK_A))
-		{
-			m_vPosition.x += (m_vLeftVector.x * m_fCameraSpeed);
-			m_vPosition.y += (m_vLeftVector.y * m_fCameraSpeed);
-			m_vPosition.z += (m_vLeftVector.z * m_fCameraSpeed);
-		}
-		if (pInput->IsKeyPressed(DIK_D))
-		{
-			m_vPosition.x -= (m_vLeftVector.x * m_fCameraSpeed);
-			m_vPosition.y -= (m_vLeftVector.y * m_fCameraSpeed);
-			m_vPosition.z -= (m_vLeftVector.z * m_fCameraSpeed);
+			XMVECTOR vOrigin, vDestination, vCurrentPos;
+			vDestination = XMLoadFloat3(&m_arrRoute[m_iCurrentRouteIndex]);
+			vOrigin = XMLoadFloat3(&m_arrRoute[m_iCurrentRouteIndex-1]);
+			vCurrentPos = XMLoadFloat3(&m_vPosition);
+			//if we are very close to destination..
+			if (XMVector3LengthSq(vDestination - vCurrentPos).m128_f32[0] < 5 * 5)
+			{
+				m_iCurrentRouteIndex++; //go on to the next position
+				if (m_iCurrentRouteIndex >= m_arrRoute.size())
+				{
+					//gone past the end of the route, stop!
+					m_bFollowingRoute = false;
+				}
+			}
+			else
+			{
+				XMVECTOR vDir = vDestination - vOrigin;
+				XMStoreFloat3(&m_vPosition, vCurrentPos + vDir * 0.001f);
+				m_vRotation = XMFLOAT3(0.f, m_vRotation.y + 1.f, 0.f);
+			}
 		}
 	}
 	RenderBaseViewMatrix();
