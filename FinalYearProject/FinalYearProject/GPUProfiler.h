@@ -19,6 +19,9 @@ public:
 		psLightingPass,
 		psVoxeliseClear,
 		psVoxelisePass,
+		psInjectRadiance,
+		psTileUpdate,
+		psGenerateMips,
 		psMax
 	};
 
@@ -38,7 +41,7 @@ public:
 	void StartTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID);
 	void EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID);
 
-	void DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime);
+	void DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime);
 
 	void Shutdown();
 private:

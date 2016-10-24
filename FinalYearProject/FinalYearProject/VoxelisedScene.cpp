@@ -92,17 +92,17 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		return false;
 	}
 
-	D3D11_BUFFER_DESC matrixBufferDesc;
+	D3D11_BUFFER_DESC debugBufferDesc;
 	//Setup the description of the dynamic matrix constant buffer that is in the shader..
-	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	matrixBufferDesc.ByteWidth = sizeof(MatrixBuffer);
-	matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	matrixBufferDesc.MiscFlags = 0;
-	matrixBufferDesc.StructureByteStride = 0;
+	debugBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	debugBufferDesc.ByteWidth = sizeof(DebugRenderBuffer);
+	debugBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	debugBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	debugBufferDesc.MiscFlags = 0;
+	debugBufferDesc.StructureByteStride = 0;
 
 	//Create the buffer so we can access it from within this class
-	result = pDevice->CreateBuffer(&matrixBufferDesc, NULL, &m_pMatrixBuffer);
+	result = pDevice->CreateBuffer(&debugBufferDesc, NULL, &m_pMatrixBuffer);
 	if (FAILED(result))
 	{
 		VS_LOG_VERBOSE("Failed to create matrix buffer");
@@ -394,7 +394,7 @@ bool VoxelisedScene::SetDebugShaderParams(ID3D11DeviceContext* pDeviceContext, c
 	HRESULT result = pDeviceContext->Map(m_pMatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (SUCCEEDED(result))
 	{
-		MatrixBuffer* pBuffer = static_cast<MatrixBuffer*>(mappedResource.pData);
+		DebugRenderBuffer* pBuffer = static_cast<DebugRenderBuffer*>(mappedResource.pData);
 		pBuffer->world = mWorld;
 		pBuffer->view = mView;
 		pBuffer->projection = mProjection;
@@ -454,7 +454,6 @@ void VoxelisedScene::Shutdown()
 		m_pClearVoxelsComputeShader->Release();
 		m_pClearVoxelsComputeShader = nullptr;
 	}
-	
 	
 	if (m_pVoxeliseVertexShaderBuffer)
 	{
@@ -526,7 +525,6 @@ void VoxelisedScene::Update(ID3D11DeviceContext3* pDeviceContext)
 #if TILED_RESOURCES
 void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 {
-
 	int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % 3;
 	pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation[iFrameMinus2TileOccupation]->GetTexture(), 0, nullptr);
 	
@@ -581,7 +579,6 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 			}
 		}
 	}
-
 	pContext->Unmap(m_pTileOccupationStaging, 0);
 }
 

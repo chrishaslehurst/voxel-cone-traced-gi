@@ -162,6 +162,7 @@ bool Renderer::Update(HWND hwnd)
 {
 
 	m_pCamera->Update();
+	
 
 	if (InputManager::Get()->IsKeyPressed(DIK_R))
 	{
@@ -259,41 +260,45 @@ bool Renderer::Render()
 	m_pD3D->GetWorldMatrix(mWorld);
 	m_pD3D->GetProjectionMatrix(mProjection);
 	m_pCamera->CalculateViewFrustum(SCREEN_DEPTH, mProjection);
-
 	
 	//Prep for 2D rendering..	
 	m_pD3D->GetOrthoMatrix(mOrtho);
-	m_pCamera->RenderBaseViewMatrix();
 	m_pCamera->GetBaseViewMatrix(mBaseView);
-	
-
-	m_pD3D->TurnZBufferOff();
 	m_pD3D->TurnOffAlphaBlending();
+	
+	double dTileUpdateTime = 0;
+	if (m_eGITypeToRender != GIRenderFlag::giNone)
+	{
+		m_pD3D->TurnZBufferOff();
+		//Clear the voxel volume..
+		GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
+		m_VoxelisedScene.RenderClearVoxelsPass(pContext);
+		GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
 
-	//Clear the voxel volume..
-	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
-	m_VoxelisedScene.RenderClearVoxelsPass(pContext);
-	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
+		//Render the scene to the volume..
+		GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxelisePass);
+		m_VoxelisedScene.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+		GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
 
-	//Render the scene to the volume..
-	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxelisePass);
-	m_VoxelisedScene.RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
-	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
+		dTileUpdateTime = Timer::Get()->GetCurrentTime();
+		GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psTileUpdate);
+		m_VoxelisedScene.Update(pContext);
+		GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psTileUpdate);
+		dTileUpdateTime = (Timer::Get()->GetCurrentTime() - dTileUpdateTime) * 1000;
 
-	m_VoxelisedScene.Update(pContext);
-
-	m_VoxelisedScene.RenderInjectRadiancePass(pContext);
-	m_VoxelisedScene.GenerateMips(pContext);
-
-
+		GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psInjectRadiance);
+		m_VoxelisedScene.RenderInjectRadiancePass(pContext);
+		GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psInjectRadiance);
+		
+		GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psGenerateMips);
+		m_VoxelisedScene.GenerateMips(pContext);
+		GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psGenerateMips);
+	}
 	m_pD3D->TurnZBufferOn();
-
-	m_DeferredRender.SetRenderTargets(pContext);
-	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
-
 	//Render the model to the deferred buffers
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
-	
+	m_DeferredRender.SetRenderTargets(pContext);
+	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
 	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection, m_pCamera);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
 
@@ -329,7 +334,7 @@ bool Renderer::Render()
 
 	
 	GPUProfiler::Get()->EndFrame(pContext);
-	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime));
+	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime), static_cast<float>(dTileUpdateTime));
 	
 	DebugLog::Get()->OutputString(m_sGITypeRendered);
 	DebugLog::Get()->PrintLogToScreen(pContext);

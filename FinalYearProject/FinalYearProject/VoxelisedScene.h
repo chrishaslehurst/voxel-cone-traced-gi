@@ -59,7 +59,7 @@ public:
 		}
 	};
 
-	__declspec(align(16)) struct MatrixBuffer
+	__declspec(align(16)) struct DebugRenderBuffer
 	{
 		XMMATRIX world;
 		XMMATRIX view;

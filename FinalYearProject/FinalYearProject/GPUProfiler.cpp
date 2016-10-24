@@ -53,6 +53,9 @@ bool GPUProfiler::Initialise(ID3D11Device* pDevice)
 	m_arrProfiledSectionNames[ProfiledSections::psLightingPass] =	"Lighting Pass:      ";
 	m_arrProfiledSectionNames[ProfiledSections::psVoxeliseClear] =	"Voxelise Clear:     ";
 	m_arrProfiledSectionNames[ProfiledSections::psVoxelisePass] =	"Voxelise Pass:      ";
+	m_arrProfiledSectionNames[ProfiledSections::psInjectRadiance] =	"Inject Radiance:    ";
+	m_arrProfiledSectionNames[ProfiledSections::psTileUpdate] =		"GPU Tile Update:    ";
+	m_arrProfiledSectionNames[ProfiledSections::psGenerateMips] =	"Generate Mips:      ";
 	m_arrProfiledSectionNames[ProfiledSections::psWholeFrame] =		"GPU Frame Time:     ";
 
 	for (int i = 0; i < 2; i++)
@@ -94,7 +97,7 @@ void GPUProfiler::EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections e
 	pContext->End(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][eSectionID]);
 }
 
-void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime)
+void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime)
 {
 	while (pContext->GetData(m_pDisjointQuery[m_iCurrentBufferIndex], nullptr, 0, 0) == S_FALSE)
 	{
@@ -114,12 +117,20 @@ void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime
 	float textSize = 20.f;
 	UINT32 TextColour = 0xffffffff;
 	
-	stringstream CPUss; //clear the stringstream
+	stringstream CPUss; 
 	CPUss << std::fixed << std::setprecision(2) << "CPU Frame Time:     " << CPUFrameTime << "ms";
 	string sCPUString = CPUss.str();
 	std::wstring wideCPUFrameString(sCPUString.begin(), sCPUString.end());
 
 	m_pFontWrapper->DrawString(pContext, wideCPUFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
+	yPos += textSize;
+
+	stringstream TileUpdateSs;
+	TileUpdateSs << std::fixed << std::setprecision(2) << "CPU Tile Update Time:" << CPUTileUpdateTime << "ms";
+	string sTileUpdateString = TileUpdateSs.str();
+	std::wstring wideTileUpdateFrameString(sTileUpdateString.begin(), sTileUpdateString.end());
+	m_pFontWrapper->DrawString(pContext, wideTileUpdateFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
+
 	yPos += textSize;
 
 	for (int i = 0; i < ProfiledSections::psMax; i++)
