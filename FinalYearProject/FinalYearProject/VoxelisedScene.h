@@ -119,10 +119,12 @@ public:
 	float GetVoxelScale() { return m_vVoxelGridSize.x / TEXTURE_DIMENSION; } //size of one voxel
 
 	void Update(ID3D11DeviceContext3* pDeviceContext);
+
+	void UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext);
 private:
-#if TILED_RESOURCES
 	void UpdateTiles(ID3D11DeviceContext3* pDeviceContext);
-#endif
+	
+
 	void CreateWorldToVoxelGrid(const AABB& voxelGridAABB);
 	HRESULT InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);

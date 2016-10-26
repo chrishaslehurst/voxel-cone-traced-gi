@@ -23,7 +23,7 @@ public:
 
 	HRESULT MapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel);
 	HRESULT UnmapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel);
-
+	HRESULT UnmapAllTiles(ID3D11DeviceContext3* pContext);
 private:
 
 	int m_iNumTilesMapped;

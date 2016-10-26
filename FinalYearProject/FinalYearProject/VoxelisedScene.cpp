@@ -522,9 +522,10 @@ void VoxelisedScene::Update(ID3D11DeviceContext3* pDeviceContext)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if TILED_RESOURCES
+
 void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 {
+	int iNumTilesMappedThisFrame = 0;
 	int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % 3;
 	pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation[iFrameMinus2TileOccupation]->GetTexture(), 0, nullptr);
 	
@@ -567,6 +568,12 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 								m_bPreviousFrameOccupationMipLevels[i-1][mipIdx] = true;
 							}
 						}
+						//Limit number of tiles which can be mapped per frame to stop frame rate spikes..
+						iNumTilesMappedThisFrame++;
+						if (iNumTilesMappedThisFrame >= 5)
+						{
+							break;
+						}
 					}
 					m_bPreviousFrameOccupation[z][y][x] = true;
 				}
@@ -582,8 +589,36 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 	pContext->Unmap(m_pTileOccupationStaging, 0);
 }
 
+void VoxelisedScene::UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext)
+{
+	m_pRadianceVolumeMips[0]->UnmapAllTiles(pDeviceContext);
+	m_pVoxelisedSceneColours->UnmapAllTiles(pDeviceContext);
+	m_pVoxelisedSceneNormals->UnmapAllTiles(pDeviceContext);
+	for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+	{
+		for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+		{
+			for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+			{
+				m_bPreviousFrameOccupation[z][y][x] = false;
+			}
+		}
+	}
+
+	for (int i = 1; i < MIP_LEVELS; i++)
+	{
+		int mult = std::pow(2, i);
+		int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
+		m_bPreviousFrameOccupationMipLevels[i - 1] = new bool[numTilesInMip];
+		for (int j = 0; j < numTilesInMip; j++)
+		{
+			m_bPreviousFrameOccupationMipLevels[i - 1][j] = false;
+		}
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#endif
+
 void VoxelisedScene::CreateWorldToVoxelGrid(const AABB& voxelGridAABB)
 {
 	//Initialise Matrices..

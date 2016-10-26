@@ -16,7 +16,6 @@ DebugLog::~DebugLog()
 
 bool DebugLog::Initialise(ID3D11Device* pDevice)
 {
-
 	HRESULT res = FW1CreateFactory(FW1_VERSION, &m_pFW1Factory);
 	if (FAILED(res))
 	{
@@ -29,7 +28,6 @@ bool DebugLog::Initialise(ID3D11Device* pDevice)
 		VS_LOG_VERBOSE("Failed to create font wrapper for FW1");
 		return false;
 	}
-
 	return true;
 }
 
@@ -48,7 +46,6 @@ void DebugLog::OutputString(std::string sOutput)
 
 void DebugLog::PrintLogToScreen(ID3D11DeviceContext* pContext)
 {
-
 	float xPos = 100.f;
 	float yPos = 500.f;
 	float textSize = 18.f;
@@ -59,7 +56,6 @@ void DebugLog::PrintLogToScreen(ID3D11DeviceContext* pContext)
 		std::wstring wideString(m_arrLog[i].begin(), m_arrLog[i].end());
 		m_pFontWrapper->DrawString(pContext, wideString.c_str(), textSize, xPos, yPos - (i*textSize + 2), TextColour, 0);
 	}
-
 	m_iNumStrings = 0;
 
 	pContext->GSSetShader(nullptr, nullptr, 0);

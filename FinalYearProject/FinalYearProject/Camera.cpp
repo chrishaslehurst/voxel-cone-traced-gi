@@ -9,17 +9,18 @@ Camera::Camera()
 	, m_vUpVector(XMFLOAT3(0.f, 1.f, 0.f))
 	, m_fCameraSpeed(5.f)
 	, m_bFollowingRoute(false)
+	, m_bFinishedRouteThisFrame(false)
 {
 	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
 	m_arrRoute.push_back(XMFLOAT3( 1150, 200, 475));
-	m_arrRoute.push_back(XMFLOAT3( 1150, 200, -450));
-	m_arrRoute.push_back(XMFLOAT3(-1250, 200, -450));
-	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
-	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
-	m_arrRoute.push_back(XMFLOAT3(1150, 600, 475));
-	m_arrRoute.push_back(XMFLOAT3(1150, 600, -450));
-	m_arrRoute.push_back(XMFLOAT3(-1250, 600, -450));
-	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
+//	m_arrRoute.push_back(XMFLOAT3( 1150, 200, -450));
+//	m_arrRoute.push_back(XMFLOAT3(-1250, 200, -450));
+//	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
+//	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
+//	m_arrRoute.push_back(XMFLOAT3(1150, 600, 475));
+//	m_arrRoute.push_back(XMFLOAT3(1150, 600, -450));
+//	m_arrRoute.push_back(XMFLOAT3(-1250, 600, -450));
+//	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +76,7 @@ void Camera::Update()
 {
 	if (!m_bFollowingRoute)
 	{
+		m_bFinishedRouteThisFrame = false;
 		InputManager* pInput = InputManager::Get();
 		if (pInput)
 		{
@@ -146,6 +148,7 @@ void Camera::Update()
 				{
 					//gone past the end of the route, stop!
 					m_bFollowingRoute = false;
+					m_bFinishedRouteThisFrame = true;
 				}
 			}
 			else

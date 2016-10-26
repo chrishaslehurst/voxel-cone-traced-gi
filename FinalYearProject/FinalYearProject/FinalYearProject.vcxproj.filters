@@ -209,9 +209,6 @@
     <FxCompile Include="Voxelise_Populate.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="VoxelGICommon.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="RenderTexToScreen.hlsl">
       <Filter>Shaders\Debug</Filter>
     </FxCompile>

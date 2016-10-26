@@ -174,3 +174,29 @@ HRESULT Texture3D::UnmapTile(ID3D11DeviceContext3* pContext, int x, int y, int z
 	return true;
 }
 
+HRESULT Texture3D::UnmapAllTiles(ID3D11DeviceContext3* pContext)
+{
+	m_iNumTilesMapped = 0;
+	D3D11_TILED_RESOURCE_COORDINATE coord;
+	coord.X = 0;
+	coord.Y = 0;
+	coord.Z = 0;
+	coord.Subresource = 0;
+
+	D3D11_TILE_REGION_SIZE TRS;
+	TRS.bUseBox = true;
+	TRS.NumTiles = 8*8*16;
+	TRS.Width = 8;
+	TRS.Depth = 16;
+	TRS.Height = 8;
+
+	UINT RangeFlags = D3D11_TILE_RANGE_NULL;
+	UINT startOffset = 0;
+	HRESULT hr = pContext->UpdateTileMappings(m_pTexture, 1, &coord, &TRS, pTilePool, 1, &RangeFlags, &startOffset, nullptr, 0);
+	if (FAILED(hr))
+	{
+		VS_LOG_VERBOSE("Failed to map tiles");
+		return false;
+	}
+}
+

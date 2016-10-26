@@ -1,12 +1,23 @@
 #include "GPUProfiler.h"
 #include "Debugging.h"
 #include <iomanip>
+#include <iostream>
+#include <fstream>
 
 GPUProfiler* GPUProfiler::s_pTheInstance = nullptr;
 
 GPUProfiler::GPUProfiler()
+	: m_iNumFramesProfiled(0)
+	, m_fStoredCPUAverageTime(0)
+	, m_fStoredCPUMaxTime(0)
+	, m_fStoredCPUMinTime(FLT_MAX)
 {
-	
+	for (int i = 0; i < ProfiledSections::psMax; i++)
+	{
+		m_arrStoredGPUAverageTimes[i] = 0;
+		m_arrStoredGPUMaxTimes[i] = 0;
+		m_arrStoredGPUMinTimes[i] = FLT_MAX;
+	}
 }
 
 GPUProfiler::~GPUProfiler()
@@ -97,7 +108,7 @@ void GPUProfiler::EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections e
 	pContext->End(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][eSectionID]);
 }
 
-void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime)
+void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, bool bProfilingRun)
 {
 	while (pContext->GetData(m_pDisjointQuery[m_iCurrentBufferIndex], nullptr, 0, 0) == S_FALSE)
 	{
@@ -121,7 +132,19 @@ void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime
 	CPUss << std::fixed << std::setprecision(2) << "CPU Frame Time:     " << CPUFrameTime << "ms";
 	string sCPUString = CPUss.str();
 	std::wstring wideCPUFrameString(sCPUString.begin(), sCPUString.end());
-
+	if (bProfilingRun)
+	{
+		m_fStoredCPUAverageTime += CPUFrameTime;
+		if (CPUFrameTime > m_fStoredCPUMaxTime)
+		{
+			m_fStoredCPUMaxTime = CPUFrameTime;
+		}
+		if (CPUFrameTime < m_fStoredCPUMinTime)
+		{
+			m_fStoredCPUMinTime = CPUFrameTime;
+		}
+		m_iNumFramesProfiled++;
+	}
 	m_pFontWrapper->DrawString(pContext, wideCPUFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
 	yPos += textSize;
 
@@ -146,12 +169,53 @@ void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime
 		GPUss << std::fixed << std::setprecision(2) << m_arrProfiledSectionNames[i] << fFrameTime << "ms";
 		string outputString = GPUss.str();
 		std::wstring outputWideString(outputString.begin(), outputString.end());
-
+		if (bProfilingRun)
+		{
+			m_arrStoredGPUAverageTimes[i] += fFrameTime;
+			if (fFrameTime > m_arrStoredGPUMaxTimes[i])
+			{
+				m_arrStoredGPUMaxTimes[i] = fFrameTime;
+			}
+			if (fFrameTime < m_arrStoredGPUMinTimes[i])
+			{
+				m_arrStoredGPUMinTimes[i] = fFrameTime;
+			}
+		}
 		m_pFontWrapper->DrawString(pContext, outputWideString.c_str(), textSize, xPos, yPos + (i * textSize), TextColour, 0);
 	}
 	
 	pContext->GSSetShader(nullptr, nullptr, 0);
 
+}
+
+void GPUProfiler::OutputStoredTimesToFile()
+{
+	//Get the averages as up to now just accumulated values..
+	m_fStoredCPUAverageTime /= static_cast<float>(m_iNumFramesProfiled);
+	
+	std::ofstream outfile;
+	outfile.open("results.csv");
+	outfile << "Profiled Section, Average, Minimum, Maximum\n";
+	outfile << "CPU Frame Time," << m_fStoredCPUAverageTime << "," << m_fStoredCPUMinTime << "," << m_fStoredCPUMaxTime << "\n";
+	for (int i = 0; i < ProfiledSections::psMax; i++)
+	{
+		m_arrStoredGPUAverageTimes[i] /= m_iNumFramesProfiled;
+		outfile << m_arrProfiledSectionNames[i] << "," << m_arrStoredGPUAverageTimes[i] << "," << m_arrStoredGPUMinTimes[i] << "," << m_arrStoredGPUMaxTimes[i] << "\n";
+	}
+
+	outfile.close();
+	//Reset Times Stored
+	m_fStoredCPUAverageTime = 0;
+	m_fStoredCPUMaxTime = 0;
+	m_fStoredCPUMinTime = FLT_MAX;
+
+	for (int i = 0; i < ProfiledSections::psMax; i++)
+	{
+		m_arrStoredGPUMinTimes[i] = FLT_MAX;
+		m_arrStoredGPUMaxTimes[i] = 0;
+		m_arrStoredGPUAverageTimes[i] = 0;
+	}
+	m_iNumFramesProfiled = 0;
 }
 
 void GPUProfiler::Shutdown()

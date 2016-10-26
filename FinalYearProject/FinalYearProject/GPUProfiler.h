@@ -4,6 +4,7 @@
 #include <d3d11_3.h>
 #include <string>
 #include "../FW1FontWrapper/FW1FontWrapper.h"
+#include <vector>
 
 using namespace std;
 
@@ -41,7 +42,8 @@ public:
 	void StartTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID);
 	void EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID);
 
-	void DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime);
+	void DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, bool bProfilingRun);
+	void OutputStoredTimesToFile();
 
 	void Shutdown();
 private:
@@ -53,6 +55,14 @@ private:
 	string m_arrProfiledSectionNames[ProfiledSections::psMax];
 	ID3D11Query* m_arrProfiledSectionStartTimesBuffer[2][ProfiledSections::psMax];
 	ID3D11Query* m_arrProfiledSectionEndTimesBuffer[2][ProfiledSections::psMax];
+
+	int m_iNumFramesProfiled;
+	float m_arrStoredGPUAverageTimes[ProfiledSections::psMax];
+	float m_arrStoredGPUMaxTimes[ProfiledSections::psMax];
+	float m_arrStoredGPUMinTimes[ProfiledSections::psMax];
+	float m_fStoredCPUAverageTime;
+	float m_fStoredCPUMaxTime;
+	float m_fStoredCPUMinTime;
 
 	ID3D11Query* m_pBeginFrame[2];
 	ID3D11Query* m_pDisjointQuery[2];

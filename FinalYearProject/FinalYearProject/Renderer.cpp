@@ -160,10 +160,6 @@ void Renderer::Shutdown()
 
 bool Renderer::Update(HWND hwnd)
 {
-
-	
-	
-
 	if (InputManager::Get()->IsKeyPressed(DIK_R))
 	{
 		m_pModel->ReloadShaders(m_pD3D->GetDevice(), hwnd);
@@ -209,6 +205,11 @@ bool Renderer::Update(HWND hwnd)
 	if (InputManager::Get()->IsKeyPressed(DIK_P))
 	{
 		m_pCamera->TraverseRoute();
+	}
+
+	if (InputManager::Get()->IsKeyPressed(DIK_U))
+	{
+		m_VoxelisedScene.UnmapAllTiles(m_pD3D->GetDeviceContext());
 	}
 
 	m_pCamera->Update();
@@ -276,9 +277,8 @@ bool Renderer::Render()
 	double dTileUpdateTime = 0;
 	bool bUpdateVoxelVolume(m_eGITypeToRender != GIRenderFlag::giNone);
 	m_pD3D->TurnZBufferOff();
+	
 	//Clear the voxel volume..
-
-
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
 	if (bUpdateVoxelVolume)
 	{
@@ -361,8 +361,13 @@ bool Renderer::Render()
 	DebugLog::Get()->OutputString(ssCameraPosition.str());
 	
 	GPUProfiler::Get()->EndFrame(pContext);
-	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime), static_cast<float>(dTileUpdateTime));
+	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime), static_cast<float>(dTileUpdateTime), m_pCamera->IsFollowingDebugRoute());
 	
+	if (m_pCamera->FinishedRouteThisFrame())
+	{
+		GPUProfiler::Get()->OutputStoredTimesToFile();
+	}
+
 	DebugLog::Get()->OutputString(m_sGITypeRendered);
 	DebugLog::Get()->PrintLogToScreen(pContext);
 	

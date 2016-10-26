@@ -42,12 +42,15 @@ public:
 	void CalculateViewFrustum(float fScreenDepth, XMMATRIX mProjectionMatrix);
 	bool CheckPointInsidePlane(int index, float x, float y, float z);
 	bool CheckBoundingBoxInsideViewFrustum(const AABB& boundingBox);
+	bool IsFollowingDebugRoute() { return m_bFollowingRoute; }
+	bool FinishedRouteThisFrame() { return m_bFinishedRouteThisFrame; }
 
 	std::vector<XMFLOAT3> m_arrRoute;
 private:
 
 	int m_iCurrentRouteIndex;
 	bool m_bFollowingRoute;
+	bool m_bFinishedRouteThisFrame;
 
 	int m_iPrevMouseX, m_iPrevMouseY;
 

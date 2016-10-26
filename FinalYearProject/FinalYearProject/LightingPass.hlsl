@@ -237,8 +237,8 @@ float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float
 	float distance = voxelScale * 1.5f;
 	for (int i = 0; i < distanceInVoxelsToTrace; i++)
 	{
-		SamplePos += Direction * voxelScale;
-		distance += voxelScale;
+		SamplePos += Direction * voxelScale * 0.5f;
+		distance += voxelScale * 0.5f;
 		float currentRadius = RadiusRatio * distance;
 
 		bool outsideVolume = false;
@@ -269,10 +269,10 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 	float3 SamplePos = StartPos.xyz + (Normal*voxelScale*1.5f); //offset to avoid self intersect..
 	float distance = voxelScale * 1.5f;
 	float AccumulatedOcclusion = 0.0f;
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
-		SamplePos += Direction * voxelScale;
-		distance += voxelScale;
+		SamplePos += Direction * voxelScale * 0.25f;
+		distance += voxelScale * 0.25f;
 
 		float currentRadius = RadiusRatio * distance;
 		bool outsideVolume = false;
@@ -282,8 +282,8 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 			break;
 		}
 
-		GIColour.rgb = AccumulatedOcclusion * GIColour.rgb + (1.0f - tempGI.a) * tempGI.a * tempGI.rgb;
-		AccumulatedOcclusion = AccumulatedOcclusion + (1.0f - AccumulatedOcclusion) * tempGI.a;
+		GIColour.rgb += tempGI.a * tempGI.rgb;
+		AccumulatedOcclusion = AccumulatedOcclusion + tempGI.a;
 	
 		AOAccumulation += tempGI.a * (voxelScale / (distance + 1.f));
 		//AOAccumulation = 0.f;
@@ -346,7 +346,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 	float3 H = normalize(ToCamera + reflectVector);
 	float VdotH = saturate(dot(ToCamera, H));
 
-	SpecularGI = TraceSpecularCone(WorldPositionSample, Normal, reflectVector, radiusRatio, voxelScale, texDimensions.x/4.f);
+	SpecularGI = TraceSpecularCone(WorldPositionSample, Normal, reflectVector, radiusRatio, voxelScale, texDimensions.x);
 	SpecularGI = saturate(SchlickFresnel(1.f - Roughness, VdotH) * SpecularGI);
 
 	//---------------------
@@ -372,8 +372,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		accumulatedDiffuse += accumulatedColour * ConeSampleWeights[coneIndex];
 		accumulatedDiffuseOcclusion += accumulatedAO * ConeSampleWeights[coneIndex];
 	}
-	accumulatedDiffuseOcclusion /= PI;
-
+	accumulatedDiffuseOcclusion = saturate(accumulatedDiffuseOcclusion);
 	float4 DiffuseGI = accumulatedDiffuse * (1.f - accumulatedDiffuseOcclusion);
 	SpecularGI = SpecularGI * (1.f - accumulatedDiffuseOcclusion);
 //	if (accumulatedDiffuseOcclusion >= 0.f)
