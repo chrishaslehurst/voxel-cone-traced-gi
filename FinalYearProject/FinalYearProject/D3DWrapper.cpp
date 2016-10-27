@@ -160,7 +160,6 @@ void D3DWrapper::TurnOnAlphaBlending()
 {
 	float blendFactor[4];
 
-
 	// Setup the blend factor.
 	blendFactor[0] = 0.0f;
 	blendFactor[1] = 0.0f;
@@ -210,6 +209,12 @@ void D3DWrapper::SetRenderOutputToScreen()
 	m_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_pDepthStencilView);
 
 	//Create the viewport
+	m_pDeviceContext->RSSetViewports(1, &m_viewport);
+}
+
+void D3DWrapper::SetRenderOutputToTexture(ID3D11RenderTargetView* pTexture)
+{
+	m_pDeviceContext->OMSetRenderTargets(1, &pTexture, m_pDepthStencilView);
 	m_pDeviceContext->RSSetViewports(1, &m_viewport);
 }
 

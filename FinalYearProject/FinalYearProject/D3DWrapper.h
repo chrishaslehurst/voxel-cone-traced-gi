@@ -39,6 +39,7 @@ public:
 	void TurnOffAlphaBlending();
 
 	void SetRenderOutputToScreen();
+	void SetRenderOutputToTexture(ID3D11RenderTargetView* pTexture);
 
 	void TurnZBufferOn();
 	void TurnZBufferOff();

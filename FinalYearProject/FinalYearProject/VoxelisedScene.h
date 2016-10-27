@@ -16,8 +16,6 @@
 #define TEXTURE_DIMENSION 256
 #define MIP_LEVELS 4
 
-
-#define TILED_RESOURCES 1
 #define SPARSE_VOXEL_OCTREES 0
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +94,7 @@ public:
 	VoxelisedScene();
 	~VoxelisedScene();
 
-	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB);
+	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB, bool bUseTiledResources = false);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderInjectRadiancePass(ID3D11DeviceContext* pContext);
 	void GenerateMips(ID3D11DeviceContext* pContext);
@@ -169,14 +167,16 @@ private:
 
 	int m_iDebugMipLevel;
 
-#if TILED_RESOURCES
+	bool m_bUseTiledResources;
+
+
 	int m_iCurrentOccupationTexture;
 	Texture3D* m_pTileOccupation[3];
 	ID3D11Texture3D* m_pTileOccupationStaging;
 
 	bool m_bPreviousFrameOccupation[TEXTURE_DIMENSION / 16][TEXTURE_DIMENSION / 32][TEXTURE_DIMENSION / 32];
 	bool *m_bPreviousFrameOccupationMipLevels[MIP_LEVELS - 1];
-#endif
+
 
 #if SPARSE_VOXEL_OCTREES
 	

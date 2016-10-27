@@ -10,9 +10,8 @@
 
 VoxelisedScene::VoxelisedScene()
 	:m_iDebugMipLevel(0)
-#if TILED_RESOURCES
 	, m_iCurrentOccupationTexture(0)
-#endif
+
 {
 	m_sNumThreads = std::to_string(NUM_THREADS);
 
@@ -27,29 +26,7 @@ VoxelisedScene::VoxelisedScene()
 	m_ComputeShaderDefines[csdNumGroups].Definition = m_sNumGroups.c_str();
 	m_ComputeShaderDefines[csdNulls].Name = nullptr;
 	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
-#if TILED_RESOURCES
-	for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
-	{
-		for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
-		{
-			for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
-			{
-				m_bPreviousFrameOccupation[z][y][x] = false;
-			}
-		}
-	}
-
-	for (int i = 1; i < MIP_LEVELS; i++)
-	{
-		int mult = std::pow(2, i);
-		int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
-		m_bPreviousFrameOccupationMipLevels[i-1] = new bool[numTilesInMip];
-		for (int j = 0; j < numTilesInMip; j++)
-		{
-			m_bPreviousFrameOccupationMipLevels[i - 1][j] = false;
-		}
-	}
-#endif
+	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,8 +38,34 @@ VoxelisedScene::~VoxelisedScene()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB)
+HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB, bool bUseTiledResources)
 {
+	m_bUseTiledResources = bUseTiledResources;
+	if (m_bUseTiledResources)
+	{
+		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+		{
+			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+			{
+				for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+				{
+					m_bPreviousFrameOccupation[z][y][x] = false;
+				}
+			}
+		}
+
+		for (int i = 1; i < MIP_LEVELS; i++)
+		{
+			int mult = std::pow(2, i);
+			int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
+			m_bPreviousFrameOccupationMipLevels[i - 1] = new bool[numTilesInMip];
+			for (int j = 0; j < numTilesInMip; j++)
+			{
+				m_bPreviousFrameOccupationMipLevels[i - 1][j] = false;
+			}
+		}
+
+	}
 	CreateWorldToVoxelGrid(voxelGridAABB);
 	
 	InitialiseDebugBuffers(pDevice);
@@ -109,27 +112,28 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		return false;
 	}
 	UINT MiscFlags = 0;
-#if TILED_RESOURCES
-	MiscFlags = D3D11_RESOURCE_MISC_TILED;
-	//Need 3 of these for triple buffering to avoid gpu syncs flushing the pipeline and stalling everything
-	for (int i = 0; i < 3; i++)
+	if (m_bUseTiledResources)
 	{
-		m_pTileOccupation[i] = new Texture3D;
-		m_pTileOccupation[i]->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
-	}
-	D3D11_TEXTURE3D_DESC textureDesc;
-	m_pTileOccupation[0]->GetTexture()->GetDesc(&textureDesc);
-	textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-	textureDesc.Usage = D3D11_USAGE_STAGING;
-	textureDesc.BindFlags = 0;
-	result = pDevice->CreateTexture3D(&textureDesc, nullptr, &m_pTileOccupationStaging);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create tile occupation staging texture")
-		return false;
+		MiscFlags = D3D11_RESOURCE_MISC_TILED;
+		//Need 3 of these for triple buffering to avoid gpu syncs flushing the pipeline and stalling everything
+		for (int i = 0; i < 3; i++)
+		{
+			m_pTileOccupation[i] = new Texture3D;
+			m_pTileOccupation[i]->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
+		}
+		D3D11_TEXTURE3D_DESC textureDesc;
+		m_pTileOccupation[0]->GetTexture()->GetDesc(&textureDesc);
+		textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		textureDesc.Usage = D3D11_USAGE_STAGING;
+		textureDesc.BindFlags = 0;
+		result = pDevice->CreateTexture3D(&textureDesc, nullptr, &m_pTileOccupationStaging);
+		if (FAILED(result))
+		{
+			VS_LOG_VERBOSE("Failed to create tile occupation staging texture")
+				return false;
+		}
 	}
 
-#endif
 
 #if SPARSE_VOXEL_OCTREES
 	InitialiseOctreeData();
@@ -373,15 +377,19 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 
 	pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerState);
 
-#if TILED_RESOURCES
-	//Necessary for triple buffering to avoid gpu syncs
-	m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
-	ID3D11UnorderedAccessView* uavs[3] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
-	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 3, uavs, 0);
-#else
-	ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
-	pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
-#endif
+	if (m_bUseTiledResources)
+	{
+		//Necessary for triple buffering to avoid gpu syncs
+		m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
+		ID3D11UnorderedAccessView* uavs[3] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
+		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 3, uavs, 0);
+
+	}
+	else
+	{
+		ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
+		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
+	}
 
 	return true;
 }
@@ -493,13 +501,15 @@ void VoxelisedScene::Shutdown()
 		m_pRadianceVolumeMips[i] = nullptr;
 	}
 	
-#if TILED_RESOURCES
-	for (int i = 0; i < MIP_LEVELS - 1; i++)
+	if (m_bUseTiledResources)
 	{
-		delete[] m_bPreviousFrameOccupationMipLevels[i];
-		m_bPreviousFrameOccupationMipLevels[i] = nullptr;
+		for (int i = 0; i < MIP_LEVELS - 1; i++)
+		{
+			delete[] m_bPreviousFrameOccupationMipLevels[i];
+			m_bPreviousFrameOccupationMipLevels[i] = nullptr;
+		}
 	}
-#endif
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -516,103 +526,110 @@ void VoxelisedScene::GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LE
 
 void VoxelisedScene::Update(ID3D11DeviceContext3* pDeviceContext)
 {
-#if TILED_RESOURCES
-	UpdateTiles(pDeviceContext);
-#endif
+	if (m_bUseTiledResources)
+	{
+		UpdateTiles(pDeviceContext);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 {
-	int iNumTilesMappedThisFrame = 0;
-	int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % 3;
-	pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation[iFrameMinus2TileOccupation]->GetTexture(), 0, nullptr);
-	
-	D3D11_MAPPED_SUBRESOURCE pTexture;
-	HRESULT res = pContext->Map(m_pTileOccupationStaging, 0, D3D11_MAP_READ, 0, &pTexture);
-	if (FAILED(res))
+	if (m_bUseTiledResources)
 	{
-		VS_LOG_VERBOSE("Couldn't map resource..")
-		return;
-	}
-	UINT* pTexData = static_cast<UINT*>(pTexture.pData);
+		int iNumTilesMappedThisFrame = 0;
+		int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % 3;
+		pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation[iFrameMinus2TileOccupation]->GetTexture(), 0, nullptr);
 
-	UINT num = pTexData[0];
-	int index = 0;
-	for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
-	{
-		for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+		D3D11_MAPPED_SUBRESOURCE pTexture;
+		HRESULT res = pContext->Map(m_pTileOccupationStaging, 0, D3D11_MAP_READ, 0, &pTexture);
+		if (FAILED(res))
 		{
-			index = z * (pTexture.DepthPitch/4) + y * (pTexture.RowPitch/4);
-			for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+			VS_LOG_VERBOSE("Couldn't map resource..")
+				return;
+		}
+		UINT* pTexData = static_cast<UINT*>(pTexture.pData);
+
+		UINT num = pTexData[0];
+		int index = 0;
+		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+		{
+			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
 			{
-				UINT* TexData = &pTexData[index];
-				if (pTexData[index] > 0)
+				index = z * (pTexture.DepthPitch / 4) + y * (pTexture.RowPitch / 4);
+				for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
 				{
-					if (!m_bPreviousFrameOccupation[z][y][x])
+					UINT* TexData = &pTexData[index];
+					if (pTexData[index] > 0)
 					{
-						m_pRadianceVolumeMips[0]->MapTile(pContext, x, y, z, 0);
-						m_pVoxelisedSceneColours->MapTile(pContext, x, y, z, 0);
-						m_pVoxelisedSceneNormals->MapTile(pContext, x, y, z, 0);
-						for (int i = 1; i < MIP_LEVELS; i++)
+						if (!m_bPreviousFrameOccupation[z][y][x])
 						{
-							int mult = std::pow(2, i);
-							int mipZ = z / mult;
-							int mipY = y / mult;
-							int mipX = x / mult;
-							int mipIdx = (mipZ * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult)) + mipY * ((TEXTURE_DIMENSION / 32) / mult) + mipX;
-							if (!m_bPreviousFrameOccupationMipLevels[i-1][mipIdx])
+							m_pRadianceVolumeMips[0]->MapTile(pContext, x, y, z, 0);
+							m_pVoxelisedSceneColours->MapTile(pContext, x, y, z, 0);
+							m_pVoxelisedSceneNormals->MapTile(pContext, x, y, z, 0);
+							for (int i = 1; i < MIP_LEVELS; i++)
 							{
-								m_pRadianceVolumeMips[0]->MapTile(pContext, mipX, mipY, mipZ, i);
-								m_bPreviousFrameOccupationMipLevels[i-1][mipIdx] = true;
+								int mult = std::pow(2, i);
+								int mipZ = z / mult;
+								int mipY = y / mult;
+								int mipX = x / mult;
+								int mipIdx = (mipZ * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult)) + mipY * ((TEXTURE_DIMENSION / 32) / mult) + mipX;
+								if (!m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx])
+								{
+									m_pRadianceVolumeMips[0]->MapTile(pContext, mipX, mipY, mipZ, i);
+									m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx] = true;
+								}
+							}
+							//Limit number of tiles which can be mapped per frame to stop frame rate spikes..
+							iNumTilesMappedThisFrame++;
+							if (iNumTilesMappedThisFrame >= 5)
+							{
+								break;
 							}
 						}
-						//Limit number of tiles which can be mapped per frame to stop frame rate spikes..
-						iNumTilesMappedThisFrame++;
-						if (iNumTilesMappedThisFrame >= 5)
-						{
-							break;
-						}
+						m_bPreviousFrameOccupation[z][y][x] = true;
 					}
-					m_bPreviousFrameOccupation[z][y][x] = true;
+					else
+					{
+						//TODO: and unmap the tile..
+						m_bPreviousFrameOccupation[z][y][x] = false;
+					}
+					index++;
 				}
-				else
-				{
-					//TODO: and unmap the tile..
-					m_bPreviousFrameOccupation[z][y][x] = false;
-				}
-				index++;
 			}
 		}
+		pContext->Unmap(m_pTileOccupationStaging, 0);
 	}
-	pContext->Unmap(m_pTileOccupationStaging, 0);
 }
 
 void VoxelisedScene::UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext)
 {
-	m_pRadianceVolumeMips[0]->UnmapAllTiles(pDeviceContext);
-	m_pVoxelisedSceneColours->UnmapAllTiles(pDeviceContext);
-	m_pVoxelisedSceneNormals->UnmapAllTiles(pDeviceContext);
-	for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+	if (m_bUseTiledResources)
 	{
-		for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+		m_pRadianceVolumeMips[0]->UnmapAllTiles(pDeviceContext);
+		m_pVoxelisedSceneColours->UnmapAllTiles(pDeviceContext);
+		m_pVoxelisedSceneNormals->UnmapAllTiles(pDeviceContext);
+		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
 		{
-			for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
 			{
-				m_bPreviousFrameOccupation[z][y][x] = false;
+				for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+				{
+					m_bPreviousFrameOccupation[z][y][x] = false;
+				}
 			}
 		}
-	}
 
-	for (int i = 1; i < MIP_LEVELS; i++)
-	{
-		int mult = std::pow(2, i);
-		int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
-		m_bPreviousFrameOccupationMipLevels[i - 1] = new bool[numTilesInMip];
-		for (int j = 0; j < numTilesInMip; j++)
+		for (int i = 1; i < MIP_LEVELS; i++)
 		{
-			m_bPreviousFrameOccupationMipLevels[i - 1][j] = false;
+			int mult = std::pow(2, i);
+			int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
+			m_bPreviousFrameOccupationMipLevels[i - 1] = new bool[numTilesInMip];
+			for (int j = 0; j < numTilesInMip; j++)
+			{
+				m_bPreviousFrameOccupationMipLevels[i - 1][j] = false;
+			}
 		}
 	}
 }

@@ -23,6 +23,22 @@ const float SCREEN_NEAR = 0.1f;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+enum ComparisonTextures
+{
+	ctRegularTexture,
+	ctTiled,
+	ctMax
+};
+
+//which mode are we rendering in? Comparison mode renders both the tiled and regular texture in order to do a comparison subtraction..
+enum RenderMode
+{
+	rmRegularTexture,
+	rmTiledTexture,
+	rmComparison,
+	rmMax
+};
+
 class Renderer
 {
 public:
@@ -41,9 +57,11 @@ private:
 	
 	DeferredRender m_DeferredRender;
 	RenderTextureToScreen m_DebugRenderTexture;
-	VoxelisedScene   m_VoxelisedScene;
+	VoxelisedScene*   m_pRegularVoxelisedScene;
+	VoxelisedScene*	  m_pTiledVoxelisedScene;
 	OrthoWindow* m_pFullScreenWindow;
 
+	Texture2D* m_arrComparisonTextures[ComparisonTextures::ctMax];
 	bool m_bDebugRenderVoxels;
 
 	bool m_bPlusPressed;
@@ -51,10 +69,16 @@ private:
 	bool m_bVPressed;
 	bool m_bGPressed;
 
+	RenderMode m_eRenderMode;
+
 	GIRenderFlag m_eGITypeToRender;
 	std::string m_sGITypeRendered;
 	void SetGITypeString();
 	bool Render();
+	bool RenderRegular();
+	bool RenderTiled();
+	bool RenderComparison();
+
 
 	double m_dCPUFrameStartTime;
 	double m_dCPUFrameEndTime;
