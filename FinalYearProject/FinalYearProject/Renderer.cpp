@@ -18,7 +18,7 @@ Renderer::Renderer()
 	, m_bGPressed(false)
 	, m_bMPressed(false)
 	, m_eGITypeToRender(GIRenderFlag::giFull)
-	, m_eRenderMode(RenderMode::rmComparison)
+	, m_eRenderMode(RenderMode::rmRegularTexture)
 	, m_iAlternateRender(0)
 {
 	SetGITypeString();
