@@ -266,8 +266,8 @@ float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float
 float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float RadiusRatio, float voxelScale, int distanceInVoxelsToTrace, inout float AOAccumulation)
 {
 	float4 GIColour = float4(0.f, 0.f, 0.f, 0.f);
-	float3 SamplePos = StartPos.xyz + (Normal*voxelScale*1.5f); //offset to avoid self intersect..
-	float distance = voxelScale * 1.5f;
+	float3 SamplePos = StartPos.xyz + (Normal*voxelScale*2.1f); //offset to avoid self intersect..
+	float distance = voxelScale * 2.1f;
 	float AccumulatedOcclusion = 0.0f;
 	for (int i = 0; i < 16; i++)
 	{
@@ -277,6 +277,7 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 		float currentRadius = RadiusRatio * distance;
 		bool outsideVolume = false;
 		float4 tempGI = sampleVoxelVolume(RadianceVolume[0], float4(SamplePos.xyz, 1.f), currentRadius, outsideVolume);
+		tempGI *= 1.f / PI;
 		if (outsideVolume)
 		{
 			break;
@@ -291,8 +292,6 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 		{
 			break;
 		}
-		
-		
 	}
 	return float4(GIColour.rgb, 1.f);
 }

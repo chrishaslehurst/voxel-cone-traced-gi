@@ -16,7 +16,7 @@
 
 //Global consts..
 
-const bool FULL_SCREEN = false;
+const bool FULL_SCREEN = true;
 const bool VSYNC_ENABLED = true;
 const float SCREEN_DEPTH = 3000.f;
 const float SCREEN_NEAR = 0.1f;
@@ -68,6 +68,7 @@ private:
 	bool m_bMinusPressed;
 	bool m_bVPressed;
 	bool m_bGPressed;
+	bool m_bMPressed;
 
 	RenderMode m_eRenderMode;
 
@@ -79,6 +80,7 @@ private:
 	bool RenderTiled();
 	bool RenderComparison();
 
+	int m_iAlternateRender;
 
 	double m_dCPUFrameStartTime;
 	double m_dCPUFrameEndTime;

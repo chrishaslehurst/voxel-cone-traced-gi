@@ -16,8 +16,10 @@ Renderer::Renderer()
 	, m_bPlusPressed(false)
 	, m_bVPressed(false)
 	, m_bGPressed(false)
+	, m_bMPressed(false)
 	, m_eGITypeToRender(GIRenderFlag::giFull)
-	, m_eRenderMode(RenderMode::rmTiledTexture)
+	, m_eRenderMode(RenderMode::rmComparison)
+	, m_iAlternateRender(0)
 {
 	SetGITypeString();
 	m_dCPUFrameStartTime = 0;
@@ -233,6 +235,15 @@ bool Renderer::Update(HWND hwnd)
 		m_pCamera->TraverseRoute();
 	}
 
+	if (InputManager::Get()->IsKeyPressed(DIK_M) && !m_bMPressed)
+	{
+		m_eRenderMode = static_cast<RenderMode>((static_cast<int>(m_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
+	}
+	else if (InputManager::Get()->IsKeyReleased(DIK_G))
+	{
+		m_bMPressed = false;
+	}
+
 	if (InputManager::Get()->IsKeyPressed(DIK_U))
 	{
 		m_pTiledVoxelisedScene->UnmapAllTiles(m_pD3D->GetDeviceContext());
@@ -340,10 +351,6 @@ bool Renderer::RenderRegular()
 
 	dTileUpdateTime = Timer::Get()->GetCurrentTime();
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psTileUpdate);
-	if (bUpdateVoxelVolume)
-	{
-		m_pRegularVoxelisedScene->Update(pContext);
-	}
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psTileUpdate);
 	dTileUpdateTime = (Timer::Get()->GetCurrentTime() - dTileUpdateTime) * 1000;
 
@@ -382,19 +389,14 @@ bool Renderer::RenderRegular()
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
 
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
-	//m_pD3D->SetRenderOutputToScreen();
-	m_pD3D->SetRenderOutputToTexture(m_arrComparisonTextures[ComparisonTextures::ctTiled]->GetRenderTargetView());
+	m_pD3D->SetRenderOutputToScreen();
 	m_pD3D->TurnZBufferOff();
 	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
 	//m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_DeferredRender.GetTexture(btNormals));
 	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_pRegularVoxelisedScene, m_eGITypeToRender);
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
 
-	//TODO: JUST TO TEST THIS IS WORKING
-	m_pD3D->SetRenderOutputToScreen();
-	m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonTextures[ComparisonTextures::ctTiled]);
-	//TODO
-
+	
 
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
@@ -558,6 +560,149 @@ bool Renderer::RenderTiled()
 
 bool Renderer::RenderComparison()
 {
+	m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
+	double dCPUFrameTime = (m_dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
+	m_dCPUFrameStartTime = Timer::Get()->GetCurrentTime();
+
+	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
+
+	//Generate view matrix based on camera position
+	GPUProfiler::Get()->BeginFrame(pContext);
+	m_pCamera->Render();
+
+	XMMATRIX mView, mProjection, mWorld, mOrtho, mBaseView;
+	//Get the world, view and proj matrix from the camera and d3d objects..
+	m_pCamera->GetViewMatrix(mView);
+	m_pD3D->GetWorldMatrix(mWorld);
+	m_pD3D->GetProjectionMatrix(mProjection);
+	m_pCamera->CalculateViewFrustum(SCREEN_DEPTH, mProjection);
+
+	//Prep for 2D rendering..	
+	m_pD3D->GetOrthoMatrix(mOrtho);
+	m_pCamera->GetBaseViewMatrix(mBaseView);
+	m_pD3D->TurnOffAlphaBlending();
+
+	double dTileUpdateTime = 0;
+	bool bUpdateVoxelVolume(m_eGITypeToRender != GIRenderFlag::giNone);
+	m_pD3D->TurnZBufferOff();
+
+	//Clear the voxel volume..
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
+	if (bUpdateVoxelVolume)
+	{
+		m_pTiledVoxelisedScene->RenderClearVoxelsPass(pContext);
+		m_pRegularVoxelisedScene->RenderClearVoxelsPass(pContext);
+	}
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxeliseClear);
+
+	//Render the scene to the volume..
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psVoxelisePass);
+	if (bUpdateVoxelVolume)
+	{
+		m_pTiledVoxelisedScene->RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+		m_pRegularVoxelisedScene->RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_pModel);
+	}
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psVoxelisePass);
+
+	dTileUpdateTime = Timer::Get()->GetCurrentTime();
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psTileUpdate);
+	if (bUpdateVoxelVolume)
+	{
+		m_pTiledVoxelisedScene->Update(pContext);
+	}
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psTileUpdate);
+	dTileUpdateTime = (Timer::Get()->GetCurrentTime() - dTileUpdateTime) * 1000;
+
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psInjectRadiance);
+	if (bUpdateVoxelVolume)
+	{
+		m_pTiledVoxelisedScene->RenderInjectRadiancePass(pContext);
+		m_pRegularVoxelisedScene->RenderInjectRadiancePass(pContext);
+	}
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psInjectRadiance);
+
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psGenerateMips);
+	if (bUpdateVoxelVolume)
+	{
+		m_pTiledVoxelisedScene->GenerateMips(pContext);
+		m_pRegularVoxelisedScene->GenerateMips(pContext);
+	}
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psGenerateMips);
+
+	m_pD3D->TurnZBufferOn();
+	//Render the model to the deferred buffers
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
+	m_DeferredRender.SetRenderTargets(pContext);
+	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
+	m_pModel->RenderToBuffers(pContext, mWorld, mView, mProjection, m_pCamera);
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
+
+
+
+	//Render the model to the shadow maps
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psShadowRender);
+	m_pD3D->RenderBackFacesOn();
+	m_pModel->RenderShadows(pContext, mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
+	m_pD3D->RenderBackFacesOff();
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psShadowRender);
+
+	//Clear buffers to begin the scene
+	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
+
+	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
+	
+	//Render tiled to Tiled texture..
+	m_pD3D->SetRenderOutputToTexture(m_arrComparisonTextures[ComparisonTextures::ctTiled]->GetRenderTargetView());
+	m_pD3D->TurnZBufferOff();
+	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
+	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_pTiledVoxelisedScene, m_eGITypeToRender);
+
+	//Render regular to regular texture
+	m_pD3D->SetRenderOutputToTexture(m_arrComparisonTextures[ComparisonTextures::ctRegularTexture]->GetRenderTargetView());
+	m_pFullScreenWindow->Render(m_pD3D->GetDeviceContext());
+	m_DeferredRender.RenderLightingPass(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_pRegularVoxelisedScene, m_eGITypeToRender);
+
+	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
+	m_pD3D->SetRenderOutputToScreen();
+	m_iAlternateRender++;
+	if (m_iAlternateRender % 2 == 0)
+	{
+		m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonTextures[ComparisonTextures::ctRegularTexture]);
+	}
+	else
+	{
+		m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonTextures[ComparisonTextures::ctTiled]);
+	}
+
+	//Go back to 3D rendering
+	m_pD3D->TurnZBufferOn();
+	m_pD3D->TurnOnAlphaBlending();
+
+	if (m_bDebugRenderVoxels)
+	{
+		m_pTiledVoxelisedScene->RenderDebugCubes(pContext, mWorld, mView, mProjection, m_pCamera);
+	}
+
+	stringstream ssCameraPosition;
+	XMFLOAT3 vCamPos = m_pCamera->GetPosition();
+	ssCameraPosition << "Camera Position: X: " << vCamPos.x << " Y: " << vCamPos.y << " Z: " << vCamPos.z;
+
+	DebugLog::Get()->OutputString(ssCameraPosition.str());
+
+	GPUProfiler::Get()->EndFrame(pContext);
+	GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime), static_cast<float>(dTileUpdateTime), m_pCamera->IsFollowingDebugRoute());
+
+	if (m_pCamera->FinishedRouteThisFrame())
+	{
+		GPUProfiler::Get()->OutputStoredTimesToFile();
+	}
+
+	DebugLog::Get()->OutputString(m_sGITypeRendered);
+	DebugLog::Get()->PrintLogToScreen(pContext);
+
+	//Present the rendered scene to the screen
+	m_pD3D->EndScene();
+
 	return true;
 }
 
