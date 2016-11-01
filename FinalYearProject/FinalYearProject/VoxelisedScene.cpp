@@ -361,11 +361,10 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 	{
 		VoxeliseVertexShaderBuffer* pBuffer = static_cast<VoxeliseVertexShaderBuffer*>(mappedResource.pData);
 		
-		pBuffer->mWorld = mWorld;
+		pBuffer->mWorld = XMMatrixTranspose(mWorld);
 		pBuffer->mWorldToVoxelGrid = m_mWorldToVoxelGrid;
 
 		pBuffer->mWorldToVoxelGridProj = m_mWorldToVoxelGrid * XMMatrixTranspose(XMMatrixOrthographicLH(2.f, 2.f, 1.f, -1.f));
-		pBuffer->mWorldInverseTranspose = XMMatrixTranspose(XMMatrixInverse(&XMMatrixDeterminant(mWorld), mWorld));
 		pBuffer->mAxisProjections[0] = m_mViewProjMatrices[0];
 		pBuffer->mAxisProjections[1] = m_mViewProjMatrices[1];
 		pBuffer->mAxisProjections[2] = m_mViewProjMatrices[2];

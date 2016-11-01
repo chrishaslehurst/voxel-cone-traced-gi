@@ -16,7 +16,6 @@ cbuffer VoxeliseVertexShaderBuffer
 	matrix World;
 	matrix mWorldToVoxelGrid;
 	matrix WorldViewProj;
-	matrix WorldInverseTranspose;
 	matrix mAxisProjections[3];
 };
 
@@ -109,11 +108,8 @@ GSInput VSMain(VertexInput input)
 {
 	GSInput output;
 
-	output.PosL = input.PosL;
-
-	//output.Normal = mul(input.Normal, (float3x3)WorldInverseTranspose);
+	output.PosL = mul(input.PosL, World);
 	output.Normal = normalize(input.Normal);
-
 	output.Tex = input.Tex;
 
 	return output;
@@ -153,7 +149,6 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 	[unroll]
 	for (i = 0; i < 3; i++)
 	{	
-
 		//This will enlarge the tri slightly, conservative rasterisation
 		float3 toCentre = normalize(input[i].PosL.xyz - triCentre);
 		toCentre = toCentre * halfVoxelSize;

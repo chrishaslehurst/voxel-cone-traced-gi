@@ -132,6 +132,13 @@ public:
 	const AABB& GetWholeModelAABB() const { return m_WholeModelBounds; }
 
 	const std::vector<SubMesh*>& GetMeshArray() { return m_arrSubMeshes; }
+
+	void GetWorldMatrix(XMMATRIX& mWorldMat) { mWorldMat = m_mWorldMat; }
+
+	void SetMeshScale(float fScaleFactor);
+	void SetMeshPosition(XMFLOAT3 vTranslation);
+
+	void UpdateMatrices();
 private:
 
 	bool LoadCubeFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
@@ -149,6 +156,9 @@ private:
 	std::vector<SubMesh*> m_arrMeshesToRender;
 	MaterialLibrary* m_pMatLib;
 	
+	XMMATRIX m_mWorldMat;
+	XMMATRIX m_mScaleMat;
+	XMMATRIX m_mTranslationMat;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

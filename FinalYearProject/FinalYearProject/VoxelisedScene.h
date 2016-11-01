@@ -43,7 +43,6 @@ public:
 		XMMATRIX mWorld;
 		XMMATRIX mWorldToVoxelGrid;
 		XMMATRIX mWorldToVoxelGridProj;
-		XMMATRIX mWorldInverseTranspose;
 		XMMATRIX mAxisProjections[3];
 		
 		void* operator new(size_t i)

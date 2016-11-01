@@ -237,8 +237,8 @@ float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float
 	float distance = voxelScale * 1.5f;
 	for (int i = 0; i < distanceInVoxelsToTrace; i++)
 	{
-		SamplePos += Direction * voxelScale * 0.5f;
-		distance += voxelScale * 0.5f;
+		SamplePos += Direction * voxelScale * 0.25f;
+		distance += voxelScale * 0.25f;
 		float currentRadius = RadiusRatio * distance;
 
 		bool outsideVolume = false;
@@ -269,10 +269,10 @@ float4 TraceDiffuseCone(float4 StartPos, float3 Normal, float3 Direction, float 
 	float3 SamplePos = StartPos.xyz + (Normal*voxelScale*2.1f); //offset to avoid self intersect..
 	float distance = voxelScale * 2.1f;
 	float AccumulatedOcclusion = 0.0f;
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < 32; i++)
 	{
-		SamplePos += Direction * voxelScale * 0.25f;
-		distance += voxelScale * 0.25f;
+		SamplePos += Direction * voxelScale * 0.5f;
+		distance += voxelScale * 0.5f;
 
 		float currentRadius = RadiusRatio * distance;
 		bool outsideVolume = false;

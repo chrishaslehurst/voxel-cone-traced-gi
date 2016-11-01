@@ -5,7 +5,6 @@ static const float DepthBias = 0.001f;
 //input textures
 Texture3D<float4> VoxelTex_Colour;
 Texture3D<float4> VoxelTex_Normals;
-TextureCube ShadowMap[NUM_LIGHTS];
 
 //Output volume
 RWTexture3D<uint> RadianceVolume;
@@ -64,11 +63,11 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 	{
 		lightPosVoxelGrid[k] = mul(float4(pointLights[k].position.xyz, 1.f), mWorldToVoxelGrid).xyz;
 		
-		lightPosVoxelGrid[k] = ((((lightPosVoxelGrid[k].x * 0.5) + 0.5f) * size.x),
+		lightPosVoxelGrid[k] = float3((((lightPosVoxelGrid[k].x * 0.5) + 0.5f) * size.x),
 			(((lightPosVoxelGrid[k].y * 0.5) + 0.5f) * size.x),
 			(((lightPosVoxelGrid[k].z * 0.5) + 0.5f) * size.x));
 	}
-
+	
 	
 
 	for (int i = 0; i < NUM_TEXELS_PER_THREAD; i++)
@@ -80,12 +79,12 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 		if (diffuseColour.a > 0)
 		{
 			float4 colour = float4(0.f, 0.f, 0.f, 1.f);
-
+			
 			for (int j = 0; j < NUM_LIGHTS; j++)
 			{
 				float3 ToLight = lightPosVoxelGrid[j] - texCoord;
 				float3 ToLNorm = normalize(ToLight);
-				
+				float4 tempCol = float4(0.f, 0.f, 0.f, 0.f);
 				//shadow test
 				int iShadowFactor = 1;
 				int voxelsToLight = length(ToLight);
@@ -99,8 +98,9 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 						break;
 					}
 				}
-				colour = float4((diffuseColour.rgb * iShadowFactor), 1.f);
+				colour += saturate(float4((diffuseColour.rgb * pointLights[j].colour * iShadowFactor), 0.f));
 			}
+			colour = saturate(colour);
 			RadianceVolume[texCoord] = convVec4ToRGBA8(colour * 255.f);
 		}
 		index++;

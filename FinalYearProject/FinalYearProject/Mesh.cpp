@@ -12,7 +12,9 @@ bool SortByDistanceToCameraAscending(const SubMesh* lhs, const SubMesh* rhs) { r
 Mesh::Mesh()
 	: m_pMatLib(nullptr)
 {
-
+	m_mWorldMat = XMMatrixIdentity();
+	m_mScaleMat = XMMatrixIdentity();
+	m_mTranslationMat = XMMatrixIdentity();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,6 +247,43 @@ void Mesh::ReloadShaders(ID3D11Device3* pDevice, HWND hwnd)
 	{
 		m_pMatLib->ReloadShaders(pDevice, hwnd);
 	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::SetMeshScale(float fScaleFactor)
+{
+	m_mScaleMat *= XMMatrixScaling(fScaleFactor, fScaleFactor, fScaleFactor);
+	
+	//Also need to scale the bounding boxes..
+	m_WholeModelBounds.Max.x *= fScaleFactor;
+	m_WholeModelBounds.Max.y *= fScaleFactor;
+	m_WholeModelBounds.Max.z *= fScaleFactor;
+	m_WholeModelBounds.Min.x *= fScaleFactor;
+	m_WholeModelBounds.Min.y *= fScaleFactor;
+	m_WholeModelBounds.Min.z *= fScaleFactor;
+	for (int i = 0; i < m_arrSubMeshes.size(); i++)
+	{
+		m_arrSubMeshes[i]->m_BoundingBox.Max.x *= fScaleFactor;
+		m_arrSubMeshes[i]->m_BoundingBox.Max.y *= fScaleFactor;
+		m_arrSubMeshes[i]->m_BoundingBox.Max.z *= fScaleFactor;
+		m_arrSubMeshes[i]->m_BoundingBox.Min.x *= fScaleFactor;
+		m_arrSubMeshes[i]->m_BoundingBox.Min.y *= fScaleFactor;
+		m_arrSubMeshes[i]->m_BoundingBox.Min.z *= fScaleFactor;
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::SetMeshPosition(XMFLOAT3 vTranslation)
+{
+	m_mTranslationMat = XMMatrixTranslation(vTranslation.x, vTranslation.y, vTranslation.z);
+}
+
+void Mesh::UpdateMatrices()
+{
+	m_mWorldMat = XMMatrixIdentity() * m_mScaleMat;
+	m_mWorldMat = m_mWorldMat * m_mTranslationMat;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
