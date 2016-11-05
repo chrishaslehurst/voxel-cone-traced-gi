@@ -11,10 +11,12 @@ bool SortByDistanceToCameraAscending(const SubMesh* lhs, const SubMesh* rhs) { r
 
 Mesh::Mesh()
 	: m_pMatLib(nullptr)
+	, m_bIsPatrolling(false)
+	, m_iCurrentPatrolIndex(0)
 {
 	m_mWorldMat = XMMatrixIdentity();
 	m_mScaleMat = XMMatrixIdentity();
-	m_mTranslationMat = XMMatrixIdentity();
+	m_vWorldPos = XMFLOAT3(0.f, 0.f, 0.f);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +163,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorld
 	int iNumPolysRenderedInGBufferPass = 0;
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
-		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps() && pCamera->CheckBoundingBoxInsideViewFrustum(m_arrSubMeshes[i]->m_BoundingBox))
+		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps() && pCamera->CheckBoundingBoxInsideViewFrustum(m_vWorldPos, m_arrSubMeshes[i]->m_BoundingBox))
 		{
 			iModelsRenderedInGBufferPass++;
 			iNumPolysRenderedInGBufferPass += m_arrSubMeshes[i]->GetNumPolys();
@@ -277,13 +279,52 @@ void Mesh::SetMeshScale(float fScaleFactor)
 
 void Mesh::SetMeshPosition(XMFLOAT3 vTranslation)
 {
-	m_mTranslationMat = XMMatrixTranslation(vTranslation.x, vTranslation.y, vTranslation.z);
+	m_vWorldPos = vTranslation;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::StartPatrol()
+{
+	m_bIsPatrolling = true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::AddPatrolPoint(const XMFLOAT3& vPos)
+{
+	m_arrPatrolRoute.push_back(vPos);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Mesh::Update()
+{
+	if (m_bIsPatrolling)
+	{
+		XMVECTOR vDest, vOrigin, vDir, vCurrentPos;
+		vCurrentPos = XMLoadFloat3(&m_vWorldPos);
+		vDest = XMLoadFloat3(&m_arrPatrolRoute[((m_iCurrentPatrolIndex + 1) % m_arrPatrolRoute.size())]);
+		vOrigin = XMLoadFloat3(&m_arrPatrolRoute[m_iCurrentPatrolIndex]);
+
+		vDir = vDest - vOrigin;
+		vDir = XMVector3Normalize(vDir);
+		vCurrentPos += vDir * 5;
+		if (XMVector3LengthSq(vDest - vCurrentPos).m128_f32[0] < 5.f)
+		{
+			m_iCurrentPatrolIndex = (m_iCurrentPatrolIndex + 1) % m_arrPatrolRoute.size();
+		}
+		XMStoreFloat3(&m_vWorldPos, vCurrentPos);
+	}
+	UpdateMatrices();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Mesh::UpdateMatrices()
 {
 	m_mWorldMat = XMMatrixIdentity() * m_mScaleMat;
-	m_mWorldMat = m_mWorldMat * m_mTranslationMat;
+	m_mWorldMat = m_mWorldMat * XMMatrixTranslation(m_vWorldPos.x, m_vWorldPos.y, m_vWorldPos.z);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

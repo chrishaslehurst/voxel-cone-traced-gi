@@ -69,7 +69,6 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 	}
 	
 	
-
 	for (int i = 0; i < NUM_TEXELS_PER_THREAD; i++)
 	{
 		texCoord.x = index / (size * size);
@@ -79,26 +78,29 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 		if (diffuseColour.a > 0)
 		{
 			float4 colour = float4(0.f, 0.f, 0.f, 1.f);
-			
+			[unroll]
 			for (int j = 0; j < NUM_LIGHTS; j++)
 			{
-				float3 ToLight = lightPosVoxelGrid[j] - texCoord;
-				float3 ToLNorm = normalize(ToLight);
-				float4 tempCol = float4(0.f, 0.f, 0.f, 0.f);
-				//shadow test
-				int iShadowFactor = 1;
-				int voxelsToLight = length(ToLight);
-				//Start a few voxels away from surface to stop self intersection..
-				for (int i = 4; i < voxelsToLight; i++)
+				if (pointLights[j].colour.a > 0)
 				{
-					float4 sampleCol = VoxelTex_Colour.Load(int4(texCoord + (i*ToLNorm), 0));
-					if (sampleCol.a > 0)
+					float3 ToLight = lightPosVoxelGrid[j] - texCoord;
+					float3 ToLNorm = normalize(ToLight);
+					float4 tempCol = float4(0.f, 0.f, 0.f, 0.f);
+					//shadow test
+					int iShadowFactor = 1;
+					int voxelsToLight = length(ToLight);
+					//Start a few voxels away from surface to stop self intersection..
+					for (int i = 4; i < voxelsToLight; i++)
 					{
-						iShadowFactor = 0;
-						break;
+						float4 sampleCol = VoxelTex_Colour.Load(int4(texCoord + (i*ToLNorm), 0));
+						if (sampleCol.a > 0)
+						{
+							iShadowFactor = 0;
+							break;
+						}
 					}
+					colour += saturate(float4((diffuseColour.rgb * pointLights[j].colour * iShadowFactor), 0.f));
 				}
-				colour += saturate(float4((diffuseColour.rgb * pointLights[j].colour * iShadowFactor), 0.f));
 			}
 			colour = saturate(colour);
 			RadianceVolume[texCoord] = convVec4ToRGBA8(colour * 255.f);

@@ -53,7 +53,7 @@ struct PSInput
 RWTexture3D<uint> VoxelTex_Colour : register(u0); //This is where we will write the voxel colours to..
 RWTexture3D<uint> VoxelTex_Normals : register(u1);
 
-RWTexture3D<uint> VoxelOccupancy : register(u2);
+RWTexture3D<bool> VoxelOccupancy : register(u2);
 
 Texture2D diffuseTexture; 
 
@@ -64,41 +64,30 @@ SamplerState SampleState;
 //Functions
 
 //Averages the color stored in a texel atomically
-void imageAtomicRGBA8Avg(RWTexture3D<uint> img, RWTexture3D<uint> normals, uint3 coords, float4 val, float4 normalVal)
+void imageAtomicRGBA8Avg(RWTexture3D<uint> img, uint3 coords, float4 val)
 {
 	val *= 255.0f;
-	normalVal *= 255.0f;
 	uint newVal = convVec4ToRGBA8(val);
-	uint newNormalVal = convVec4ToRGBA8(normalVal);
+	
 	uint prevStoredVal = 0;
 	uint curStoredVal = 0;
-	uint prevStoredNormalVal = 0;
-	uint curStoredNormalVal = 0;
 
 	InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
-	InterlockedCompareExchange(normals[coords], prevStoredNormalVal, newNormalVal, curStoredNormalVal);
 	// Loop as long as destination value gets changed by other threads
 	[allow_uav_condition] do 
 	{
 		prevStoredVal = curStoredVal;
-		prevStoredNormalVal = curStoredNormalVal;
 
 		float4 rval = convRGBA8ToVec4(curStoredVal); //Convert to float4s to compute average, will overflow rgba8's
 		float4 curValF = rval + val;	 // Add new value
-		curValF.xyz *= 0.5f;			 //average the values
+		float a = rval.w / 255.f;
+		curValF.xyz /= (1 + a);			 //average the values
 		curValF.w = 255.f;
+
 		newVal = convVec4ToRGBA8(curValF); //convert back to rgba8 for comparison/storage
-
-		float4 nval = convRGBA8ToVec4(curStoredNormalVal);
-		float4 curNormValF = nval + normalVal;
-		curNormValF.xyz *= 0.5f;
-		curNormValF.w = 255.f;
-		newNormalVal = convVec4ToRGBA8(curNormValF);
-		
-		InterlockedCompareExchange(normals[coords], prevStoredNormalVal, newNormalVal, curStoredNormalVal);
+	
 		InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
-
-	} while (prevStoredVal != curStoredVal && prevStoredNormalVal != curStoredNormalVal);
+	} while (prevStoredVal != curStoredVal);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +113,7 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 	
 	float3 normal = cross(normalize(input[1].PosL - input[0].PosL), normalize(input[2].PosL - input[0].PosL)); //Get face normal
 
-	const float halfVoxelSize = (1.f / 256.f) * 0.5f;
+	
 	float3 triCentre = ((input[0].PosL + input[1].PosL + input[2].PosL) / 3.f);
 
 	//First we find the dominant axis of the triangles normal, in order to maximise the number of fragments that will be generated (Conservative rasterisation)
@@ -151,7 +140,8 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 	{	
 		//This will enlarge the tri slightly, conservative rasterisation
 		float3 toCentre = normalize(input[i].PosL.xyz - triCentre);
-		toCentre = toCentre * halfVoxelSize;
+		toCentre = normalize(toCentre);
+		toCentre = toCentre * 15.f;
 		//toCentre = float3(0, 0, 0);
 		float4 inputPosL = float4(input[i].PosL + toCentre,1.f);
 
@@ -191,26 +181,14 @@ void PSMain(PSInput input)
 						   (((input.PosW.z * 0.5) + 0.5f) * texDimensions.x));
 
 	uint3 tileCoord = uint3(texCoord.x / 32, texCoord.y / 32, texCoord.z / 16);
-	//VoxelOccupancy[uint3(floor(0 / 32), floor(0 / 32), floor(0 / 16))] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);
-	//VoxelOccupancy[uint3(floor(65 / 32), floor(0 / 32), floor(0 / 16))] = convVec4ToRGBA8(float4(1.f, 1.f, 1.f, 1.f) * 255.f);
 	
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
-	
+	VoxelOccupancy[uint3(0,0,0)] = true;
 	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) 
 	{
-		//VoxelTex_Colour[texCoord] = convVec4ToRGBA8(Colour * 255.f);
-		VoxelOccupancy[tileCoord] = convVec4ToRGBA8(float4(tileCoord.x, tileCoord.y, tileCoord.z, 1.f));
-	//	VoxelOccupancy[uint3(0, 0, 0)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
-	//	VoxelOccupancy[uint3(0, 1, 0)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
-	//	VoxelOccupancy[uint3(0, 2, 0)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
-	//	VoxelOccupancy[uint3(0, 0, 1)] = convVec4ToRGBA8(float4(254, 254, 254, 254));
+		VoxelOccupancy[tileCoord] = true;
 
-		//Convert the normals so -ve can be stored in the 8bits.. this will have to be reversed in the radiance injection
-		float3 normal = input.Normal * 0.5f + 0.5f; //Normal now mapped to 0 - 1 instead of -1 to +1
-
-		imageAtomicRGBA8Avg(VoxelTex_Colour, VoxelTex_Normals, texCoord.xyz, Colour, float4(normal.xyz, 1.f));
-
-		//VoxelTex_Normals[texCoord] = convVec4ToRGBA8((float4(normal.xyz, 1.f)) * 255.f);
+		imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
 	}	
 }
 

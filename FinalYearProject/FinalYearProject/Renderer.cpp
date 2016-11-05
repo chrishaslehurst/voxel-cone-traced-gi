@@ -17,7 +17,7 @@ Renderer::Renderer()
 	, m_bGPressed(false)
 	, m_bMPressed(false)
 	, m_eGITypeToRender(GIRenderFlag::giFull)
-	, m_eRenderMode(RenderMode::rmRegularTexture)
+	, m_eRenderMode(RenderMode::rmTiledTexture)
 	, m_iAlternateRender(0)
 {
 	SetGITypeString();
@@ -107,7 +107,10 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 		return false;
 	}
 	m_arrModels[1]->SetMeshScale(50.f);
-	m_arrModels[1]->SetMeshPosition(XMFLOAT3(0.f, 100.f, 0.f));
+	m_arrModels[1]->SetMeshPosition(XMFLOAT3(-1250.f, 200.f, 0.f));
+	m_arrModels[1]->AddPatrolPoint(XMFLOAT3(-1250.f, 200.f, 0.f));
+	m_arrModels[1]->AddPatrolPoint(XMFLOAT3(1150.f, 200.f, 0.f));
+	m_arrModels[1]->StartPatrol();
 	
 
 	LightManager* pLightManager = LightManager::Get();
@@ -260,7 +263,7 @@ bool Renderer::Update(HWND hwnd)
 	m_pCamera->Update();
 	for (int i = 0; i < m_arrModels.size(); i++)
 	{
-		m_arrModels[i]->UpdateMatrices();
+		m_arrModels[i]->Update();
 	}
 	LightManager::Get()->Update(m_pD3D->GetDeviceContext());
 
@@ -272,6 +275,8 @@ bool Renderer::Update(HWND hwnd)
 	}
 	return true;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Renderer::SetGITypeString()
 {
@@ -315,6 +320,8 @@ bool Renderer::Render()
 
 	return true;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Renderer::RenderRegular()
 {
@@ -400,6 +407,7 @@ bool Renderer::RenderRegular()
 	//Render the model to the shadow maps
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psShadowRender);
 	m_pD3D->RenderBackFacesOn();
+	LightManager::Get()->ClearShadowMaps(pContext);
 	for (int i = 0; i < m_arrModels.size(); i++)
 	{
 		m_arrModels[i]->GetWorldMatrix(mWorld);
@@ -497,6 +505,7 @@ bool Renderer::RenderTiled()
 	{
 		for (int i = 0; i < m_arrModels.size(); i++)
 		{
+			m_arrModels[i]->GetWorldMatrix(mWorld);
 			m_pTiledVoxelisedScene->RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_arrModels[i]);
 		}
 	}
@@ -532,6 +541,7 @@ bool Renderer::RenderTiled()
 	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
 	for (int i = 0; i < m_arrModels.size(); i++)
 	{
+		m_arrModels[i]->GetWorldMatrix(mWorld);
 		m_arrModels[i]->RenderToBuffers(pContext, mWorld, mView, mProjection, m_pCamera);
 	}
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
@@ -541,8 +551,10 @@ bool Renderer::RenderTiled()
 	//Render the model to the shadow maps
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psShadowRender);
 	m_pD3D->RenderBackFacesOn();
+	LightManager::Get()->ClearShadowMaps(pContext);
 	for (int i = 0; i < m_arrModels.size(); i++)
 	{
+		m_arrModels[i]->GetWorldMatrix(mWorld);
 		m_arrModels[i]->RenderShadows(pContext, mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
 	}
 	m_pD3D->RenderBackFacesOff();
@@ -550,6 +562,7 @@ bool Renderer::RenderTiled()
 
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
+	m_pD3D->GetWorldMatrix(mWorld);
 
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
 	m_pD3D->SetRenderOutputToScreen();
@@ -635,6 +648,7 @@ bool Renderer::RenderComparison()
 	{
 		for (int i = 0; i < m_arrModels.size(); i++)
 		{
+			m_arrModels[i]->GetWorldMatrix(mWorld);
 			m_pTiledVoxelisedScene->RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_arrModels[i]);
 			m_pRegularVoxelisedScene->RenderMesh(pContext, mWorld, mBaseView, mProjection, m_pCamera->GetPosition(), m_arrModels[i]);
 		}
@@ -673,6 +687,7 @@ bool Renderer::RenderComparison()
 	m_DeferredRender.ClearRenderTargets(pContext, 0.f, 0.f, 0.f, 1.f);
 	for (int i = 0; i < m_arrModels.size(); i++)
 	{
+		m_arrModels[i]->GetWorldMatrix(mWorld);
 		m_arrModels[i]->RenderToBuffers(pContext, mWorld, mView, mProjection, m_pCamera);
 	}
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psRenderToBuffer);
@@ -682,8 +697,10 @@ bool Renderer::RenderComparison()
 	//Render the model to the shadow maps
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psShadowRender);
 	m_pD3D->RenderBackFacesOn();
+	LightManager::Get()->ClearShadowMaps(pContext);
 	for (int i = 0; i < m_arrModels.size(); i++)
 	{
+		m_arrModels[i]->GetWorldMatrix(mWorld);
 		m_arrModels[i]->RenderShadows(pContext, mWorld, mView, mProjection, LightManager::Get()->GetDirectionalLightDirection(), LightManager::Get()->GetDirectionalLightColour(), XMFLOAT4(0.1f, 0.1f, 0.1f, 1.f), m_pCamera->GetPosition());
 	}
 	m_pD3D->RenderBackFacesOff();
@@ -691,6 +708,7 @@ bool Renderer::RenderComparison()
 
 	//Clear buffers to begin the scene
 	m_pD3D->BeginScene(0.5f, 0.5f, 0.5f, 1.f);
+	m_pD3D->GetWorldMatrix(mWorld);
 
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psLightingPass);
 	

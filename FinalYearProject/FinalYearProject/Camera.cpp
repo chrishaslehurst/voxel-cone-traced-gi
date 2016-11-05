@@ -316,40 +316,41 @@ bool Camera::CheckPointInsidePlane(int index, float x, float y, float z)
 	return (XMPlaneDotCoord(plane, point).m128_f32[0] >= 0.f);
 }
 
-bool Camera::CheckBoundingBoxInsideViewFrustum(const AABB& boundingBox)
+bool Camera::CheckBoundingBoxInsideViewFrustum(const XMFLOAT3& vPos, const AABB& boundingBox)
 {
+
 	for (int i = 0; i < 6; i++)
 	{
 		//Check all the corners of the box to see if any are inside the frustum..
-		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Min.y, boundingBox.Min.z))
+		if (CheckPointInsidePlane(i, boundingBox.Min.x + vPos.x, boundingBox.Min.y + vPos.y, boundingBox.Min.z + vPos.z))
 		{
 			continue;
 		}
-		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Max.y, boundingBox.Min.z))
+		if (CheckPointInsidePlane(i, boundingBox.Min.x + vPos.x, boundingBox.Max.y + vPos.y, boundingBox.Min.z + vPos.z))
 		{
 			continue;
 		}
-		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Min.y, boundingBox.Max.z))
+		if (CheckPointInsidePlane(i, boundingBox.Min.x + vPos.x, boundingBox.Min.y + vPos.y, boundingBox.Max.z + vPos.z))
 		{
 			continue;
 		}
-		if (CheckPointInsidePlane(i, boundingBox.Min.x, boundingBox.Max.y, boundingBox.Max.z))
+		if (CheckPointInsidePlane(i, boundingBox.Min.x + vPos.x, boundingBox.Max.y + vPos.y, boundingBox.Max.z + vPos.z))
 		{
 			continue;
 		}
-		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z))
+		if (CheckPointInsidePlane(i, boundingBox.Max.x + vPos.x, boundingBox.Min.y + vPos.y, boundingBox.Min.z + vPos.z))
 		{
 			continue;
 		}
-		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Max.y, boundingBox.Min.z))
+		if (CheckPointInsidePlane(i, boundingBox.Max.x + vPos.x, boundingBox.Max.y + vPos.y, boundingBox.Min.z + vPos.z))
 		{
 			continue;
 		}
-		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Min.y, boundingBox.Max.z))
+		if (CheckPointInsidePlane(i, boundingBox.Max.x + vPos.x, boundingBox.Min.y + vPos.y, boundingBox.Max.z + vPos.z))
 		{
 			continue;
 		}
-		if (CheckPointInsidePlane(i, boundingBox.Max.x, boundingBox.Max.y, boundingBox.Max.z))
+		if (CheckPointInsidePlane(i, boundingBox.Max.x + vPos.x, boundingBox.Max.y + vPos.y, boundingBox.Max.z + vPos.z))
 		{
 			continue;
 		}

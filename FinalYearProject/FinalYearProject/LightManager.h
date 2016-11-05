@@ -84,6 +84,8 @@ public:
 	void Shutdown();
 
 	ID3D11Buffer* GetLightBuffer() { return m_pLightingBuffer; };
+
+	void ClearShadowMaps(ID3D11DeviceContext3* pContext);
 	
 private:
 	LightManager();

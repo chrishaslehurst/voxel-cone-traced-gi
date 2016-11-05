@@ -174,6 +174,18 @@ void LightManager::Shutdown()
 	s_pTheInstance = nullptr;
 }
 
+void LightManager::ClearShadowMaps(ID3D11DeviceContext3* pContext)
+{
+	for (int i = 0; i < NUM_LIGHTS; i++)
+	{
+		OmnidirectionalShadowMap* pShadowMap = m_arrPointLights[i].GetShadowMap();
+		if (pShadowMap)
+		{
+			pShadowMap->ClearShadowMap(pContext);
+		}
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 LightManager::LightManager()

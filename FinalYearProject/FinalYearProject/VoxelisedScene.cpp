@@ -119,7 +119,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		for (int i = 0; i < 3; i++)
 		{
 			m_pTileOccupation[i] = new Texture3D;
-			m_pTileOccupation[i]->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
+			m_pTileOccupation[i]->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
 		}
 		D3D11_TEXTURE3D_DESC textureDesc;
 		m_pTileOccupation[0]->GetTexture()->GetDesc(&textureDesc);
@@ -197,15 +197,26 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 
 void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 {
-	ID3D11UnorderedAccessView* ppUAViewNULL[2] = { nullptr, nullptr };
-
-	pContext->CSSetShader(m_pClearVoxelsComputeShader, nullptr, 0);
-
-	ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
-	pContext->CSSetUnorderedAccessViews(0, 2, uavs, nullptr);
-	pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
-	pContext->CSSetShader(nullptr, nullptr, 0);
-	pContext->CSSetUnorderedAccessViews(0, 2, ppUAViewNULL, nullptr);
+	//ID3D11UnorderedAccessView* ppUAViewNULL[2] = { nullptr, nullptr };
+	//
+	//pContext->CSSetShader(m_pClearVoxelsComputeShader, nullptr, 0);
+	//
+	//ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
+	//pContext->CSSetUnorderedAccessViews(0, 2, uavs, nullptr);
+	//pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
+	//pContext->CSSetShader(nullptr, nullptr, 0);
+	//pContext->CSSetUnorderedAccessViews(0, 2, ppUAViewNULL, nullptr);
+	UINT colour[4];
+	colour[0] = 0;
+	colour[1] = 0;
+	colour[2] = 0;
+	colour[3] = 0;
+	pContext->ClearUnorderedAccessViewUint(m_pVoxelisedSceneColours->GetUAV(), colour);
+	pContext->ClearUnorderedAccessViewUint(m_pVoxelisedSceneNormals->GetUAV(), colour);
+	for (int i = 0; i < MIP_LEVELS; i++)
+	{
+		pContext->ClearUnorderedAccessViewUint(m_pRadianceVolumeMips[i]->GetUAV(), colour);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +559,7 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 			VS_LOG_VERBOSE("Couldn't map resource..")
 				return;
 		}
-		UINT* pTexData = static_cast<UINT*>(pTexture.pData);
+		char* pTexData = static_cast<char*>(pTexture.pData);
 
 		UINT num = pTexData[0];
 		int index = 0;
@@ -556,11 +567,11 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 		{
 			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
 			{
-				index = z * (pTexture.DepthPitch / 4) + y * (pTexture.RowPitch / 4);
+				index = z * (pTexture.DepthPitch ) + y * (pTexture.RowPitch );
 				for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
 				{
-					UINT* TexData = &pTexData[index];
-					if (pTexData[index] > 0)
+					char* TexData = &pTexData[index];
+					if (pTexData[index] != 0)
 					{
 						if (!m_bPreviousFrameOccupation[z][y][x])
 						{

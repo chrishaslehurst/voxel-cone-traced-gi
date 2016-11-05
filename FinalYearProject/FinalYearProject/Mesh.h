@@ -138,7 +138,12 @@ public:
 	void SetMeshScale(float fScaleFactor);
 	void SetMeshPosition(XMFLOAT3 vTranslation);
 
+	void StartPatrol();
+	void AddPatrolPoint(const XMFLOAT3& vPos);
+
+	void Update();
 	void UpdateMatrices();
+
 private:
 
 	bool LoadCubeFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
@@ -158,7 +163,11 @@ private:
 	
 	XMMATRIX m_mWorldMat;
 	XMMATRIX m_mScaleMat;
-	XMMATRIX m_mTranslationMat;
+	XMFLOAT3 m_vWorldPos;
+
+	std::vector<XMFLOAT3> m_arrPatrolRoute;
+	int m_iCurrentPatrolIndex;
+	bool m_bIsPatrolling;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

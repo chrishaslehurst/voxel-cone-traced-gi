@@ -103,6 +103,7 @@ public:
 	bool SetShaderParams(ID3D11DeviceContext* pDeviceContext, const XMFLOAT4& lightPosition, float lightRange, const XMMATRIX& mWorld);
 	ID3D11ShaderResourceView* GetShadowMapShaderResource() { return m_pShadowMapCubeShaderView; }
 
+	void ClearShadowMap(ID3D11DeviceContext* pDeviceContext);
 	void Shutdown();
 private:
 

@@ -206,7 +206,7 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device3* pDevice, ID3D11Devic
 
 void OmnidirectionalShadowMap::SetRenderOutputToShadowMap(ID3D11DeviceContext* pDeviceContext)
 {
-	pDeviceContext->ClearDepthStencilView(m_pShadowMapCubeDepthView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	
 	pDeviceContext->OMSetRenderTargets(0, NULL, m_pShadowMapCubeDepthView);
 	pDeviceContext->RSSetViewports(1, &m_ShadowMapViewport);
 }
@@ -229,6 +229,13 @@ void OmnidirectionalShadowMap::SetRenderFinished(ID3D11DeviceContext* pDeviceCon
 	pDeviceContext->GSSetShader(nullptr, nullptr, 0);
 	pDeviceContext->VSSetShader(nullptr, nullptr, 0);
 	pDeviceContext->PSSetShader(nullptr, nullptr, 0);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void OmnidirectionalShadowMap::ClearShadowMap(ID3D11DeviceContext* pDeviceContext)
+{
+	pDeviceContext->ClearDepthStencilView(m_pShadowMapCubeDepthView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

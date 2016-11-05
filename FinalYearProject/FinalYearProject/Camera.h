@@ -41,7 +41,7 @@ public:
 
 	void CalculateViewFrustum(float fScreenDepth, XMMATRIX mProjectionMatrix);
 	bool CheckPointInsidePlane(int index, float x, float y, float z);
-	bool CheckBoundingBoxInsideViewFrustum(const AABB& boundingBox);
+	bool CheckBoundingBoxInsideViewFrustum(const XMFLOAT3& vPos, const AABB& boundingBox);
 	bool IsFollowingDebugRoute() { return m_bFollowingRoute; }
 	bool FinishedRouteThisFrame() { return m_bFinishedRouteThisFrame; }
 
