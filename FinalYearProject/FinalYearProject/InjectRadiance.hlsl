@@ -1,12 +1,6 @@
 #define NUM_LIGHTS 4
 
-static const float DepthBias = 0.001f;
-
-//input textures
-Texture3D<float4> VoxelTex_Colour;
-Texture3D<float4> VoxelTex_Normals;
-
-//Output volume
+//Input/Output volume
 RWTexture3D<uint> RadianceVolume;
 
 struct PointLight
@@ -49,7 +43,7 @@ uint convVec4ToRGBA8(float4 val)
 void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 {
 	uint3 size = 0;
-	VoxelTex_Colour.GetDimensions(size.x, size.y, size.z);
+	RadianceVolume.GetDimensions(size.x, size.y, size.z);
 
 	uint threadNumber = id.x + (id.y * NUM_THREADS * NUM_GROUPS) + (id.z * NUM_THREADS * NUM_THREADS * NUM_GROUPS);
 
@@ -74,7 +68,8 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 		texCoord.x = index / (size * size);
 		texCoord.y = (index / size.x) % size.x;
 		texCoord.z = index % size.x;
-		float4 diffuseColour = VoxelTex_Colour.Load(int4(texCoord, 0));
+		float4 diffuseColour = convRGBA8ToVec4(RadianceVolume.Load(int4(texCoord, 0)));
+		diffuseColour /= 255.f;
 		if (diffuseColour.a > 0)
 		{
 			float4 colour = float4(0.f, 0.f, 0.f, 1.f);
@@ -92,7 +87,7 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 					//Start a few voxels away from surface to stop self intersection..
 					for (int i = 4; i < voxelsToLight; i++)
 					{
-						float4 sampleCol = VoxelTex_Colour.Load(int4(texCoord + (i*ToLNorm), 0));
+						float4 sampleCol = RadianceVolume.Load(int4(texCoord + (i*ToLNorm), 0));
 						if (sampleCol.a > 0)
 						{
 							iShadowFactor = 0;

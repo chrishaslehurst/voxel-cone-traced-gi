@@ -249,8 +249,10 @@ bool Renderer::Update(HWND hwnd)
 	if (InputManager::Get()->IsKeyPressed(DIK_M) && !m_bMPressed)
 	{
 		m_eRenderMode = static_cast<RenderMode>((static_cast<int>(m_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
+		SetGITypeString();
+		m_bMPressed = true;
 	}
-	else if (InputManager::Get()->IsKeyReleased(DIK_G))
+	else if (InputManager::Get()->IsKeyReleased(DIK_M))
 	{
 		m_bMPressed = false;
 	}
@@ -281,6 +283,7 @@ bool Renderer::Update(HWND hwnd)
 void Renderer::SetGITypeString()
 {
 	m_sGITypeRendered = "Render Type: ";
+	m_sGIStorageMode = "Storage Mode: ";
 	switch (m_eGITypeToRender)
 	{
 	case giNone:
@@ -297,6 +300,19 @@ void Renderer::SetGITypeString()
 		break;
 	case giSpec:
 		m_sGITypeRendered += "Specular Indirect Light Only";
+		break;
+	}
+
+	switch (m_eRenderMode)
+	{
+	case rmRegularTexture:
+		m_sGIStorageMode += "Regular Texture";
+		break;
+	case rmTiledTexture:
+		m_sGIStorageMode += "Tiled Texture";
+		break;
+	case rmComparison:
+		m_sGIStorageMode += "Comparison Mode";
 		break;
 	}
 }

@@ -51,9 +51,8 @@ struct PSInput
 //Resources
 
 RWTexture3D<uint> VoxelTex_Colour : register(u0); //This is where we will write the voxel colours to..
-RWTexture3D<uint> VoxelTex_Normals : register(u1);
 
-RWTexture3D<bool> VoxelOccupancy : register(u2);
+RWTexture3D<bool> VoxelOccupancy : register(u1);
 
 Texture2D diffuseTexture; 
 
@@ -66,28 +65,26 @@ SamplerState SampleState;
 //Averages the color stored in a texel atomically
 void imageAtomicRGBA8Avg(RWTexture3D<uint> img, uint3 coords, float4 val)
 {
-	val *= 255.0f;
+	val.rgb *= 255.0f;
 	uint newVal = convVec4ToRGBA8(val);
 	
 	uint prevStoredVal = 0;
-	uint curStoredVal = 0;
+	uint curStoredVal;
 
 	InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
-	// Loop as long as destination value gets changed by other threads
-	[allow_uav_condition] do 
+	// Loop as long as the dest value gets changed by other threads
+	[allow_uav_condition] while (prevStoredVal != curStoredVal)
 	{
 		prevStoredVal = curStoredVal;
 
-		float4 rval = convRGBA8ToVec4(curStoredVal); //Convert to float4s to compute average, will overflow rgba8's
-		float4 curValF = rval + val;	 // Add new value
-		float a = rval.w / 255.f;
-		curValF.xyz /= (1 + a);			 //average the values
-		curValF.w = 255.f;
-
+		float4 rval = convRGBA8ToVec4(curStoredVal);
+		rval.rgb = (rval.rgb * rval.w);
+		float4 curValF = rval + val; // Add new value
+		curValF.rgb /= (curValF.a); //Average..
 		newVal = convVec4ToRGBA8(curValF); //convert back to rgba8 for comparison/storage
-	
+
 		InterlockedCompareExchange(img[coords], prevStoredVal, newVal, curStoredVal);
-	} while (prevStoredVal != curStoredVal);
+	} 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +139,6 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 		float3 toCentre = normalize(input[i].PosL.xyz - triCentre);
 		toCentre = normalize(toCentre);
 		toCentre = toCentre * 15.f;
-		//toCentre = float3(0, 0, 0);
 		float4 inputPosL = float4(input[i].PosL + toCentre,1.f);
 
 		[flatten]
@@ -183,13 +179,9 @@ void PSMain(PSInput input)
 	uint3 tileCoord = uint3(texCoord.x / 32, texCoord.y / 32, texCoord.z / 16);
 	
 	float4 Colour =  diffuseTexture.Sample(SampleState, input.Tex);
-	VoxelOccupancy[uint3(0,0,0)] = true;
-	if (all(texCoord < texDimensions.xyz) && all(texCoord >= 0)) 
-	{
-		VoxelOccupancy[tileCoord] = true;
-
-		imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
-	}	
+	VoxelOccupancy[tileCoord] = true;
+	imageAtomicRGBA8Avg(VoxelTex_Colour, texCoord.xyz, Colour);
+	
 }
 
 ////////////////////////////////////////////////////////////////////////////////

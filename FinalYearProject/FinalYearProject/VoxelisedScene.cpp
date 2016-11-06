@@ -138,14 +138,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 #if SPARSE_VOXEL_OCTREES
 	InitialiseOctreeData();
 #endif
-	m_pVoxelisedSceneColours = new Texture3D;
-	m_pVoxelisedSceneColours->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags);
-
-	m_pVoxelisedSceneNormals = new Texture3D;
-	m_pVoxelisedSceneNormals->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags);
-
-
-
+	
 	float mipScale = 1;
 	for (int i = 0; i < MIP_LEVELS; i++)
 	{
@@ -211,8 +204,6 @@ void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 	colour[1] = 0;
 	colour[2] = 0;
 	colour[3] = 0;
-	pContext->ClearUnorderedAccessViewUint(m_pVoxelisedSceneColours->GetUAV(), colour);
-	pContext->ClearUnorderedAccessViewUint(m_pVoxelisedSceneNormals->GetUAV(), colour);
 	for (int i = 0; i < MIP_LEVELS; i++)
 	{
 		pContext->ClearUnorderedAccessViewUint(m_pRadianceVolumeMips[i]->GetUAV(), colour);
@@ -224,29 +215,13 @@ void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 {
 	ID3D11UnorderedAccessView* ppUAViewNULL[1] = { nullptr };
-	ID3D11ShaderResourceView* ppSRVNull[2] = { nullptr, nullptr };
+	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 
 	pContext->CSSetShader(m_pInjectRadianceComputeShader, nullptr, 0);
 	ID3D11UnorderedAccessView* uav = m_pRadianceVolumeMips[0]->GetUAV();
-	ID3D11ShaderResourceView* srvs[2] = { m_pVoxelisedSceneColours->GetShaderResourceView(), m_pVoxelisedSceneNormals->GetShaderResourceView() };
+	//ID3D11ShaderResourceView* srvs[1] = { m_pRadianceVolumeMips[0]->GetShaderResourceView()};
 	pContext->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
-	
-	ID3D11ShaderResourceView* pShadowCubeArray[NUM_LIGHTS];
-	ID3D11ShaderResourceView* nullSRV = nullptr;
-	for (int i = 0; i < NUM_LIGHTS; i++)
-	{
-		OmnidirectionalShadowMap* pShadowMap = LightManager::Get()->GetPointLight(i)->GetShadowMap();
-		if (pShadowMap)
-		{
-			pShadowCubeArray[i] = pShadowMap->GetShadowMapShaderResource();
-		}
-		else
-		{
-			pShadowCubeArray[i] = nullSRV;
-		}
-	}
-	pContext->CSSetShaderResources(0, 2, srvs);
-	pContext->CSGetShaderResources(2, NUM_LIGHTS, pShadowCubeArray);
+//	pContext->CSSetShaderResources(0, 1, srvs);
 	
 	ID3D11Buffer* pLightBuffer = LightManager::Get()->GetLightBuffer();
 	pContext->CSSetConstantBuffers(0, 1, &pLightBuffer);
@@ -257,7 +232,7 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 	//Reset
 	pContext->CSSetShader(nullptr, nullptr, 0);
 	pContext->CSSetUnorderedAccessViews(0, 1, ppUAViewNULL, nullptr);
-	pContext->CSSetShaderResources(0, 2, ppSRVNull);
+//	pContext->CSSetShaderResources(0, 1, ppSRVNull);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -391,14 +366,14 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 	{
 		//Necessary for triple buffering to avoid gpu syncs
 		m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
-		ID3D11UnorderedAccessView* uavs[3] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
-		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 3, uavs, 0);
+		ID3D11UnorderedAccessView* uavs[2] = { m_pRadianceVolumeMips[0]->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
+		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
 
 	}
 	else
 	{
-		ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
-		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
+		ID3D11UnorderedAccessView* uavs[1] = { m_pRadianceVolumeMips[0]->GetUAV() };
+		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 1, uavs, 0);
 	}
 
 	return true;
@@ -494,17 +469,7 @@ void VoxelisedScene::Shutdown()
 		m_pSamplerState->Release();
 		m_pSamplerState = nullptr;
 	}
-
-	if (m_pVoxelisedSceneColours)
-	{
-		delete m_pVoxelisedSceneColours;
-		m_pVoxelisedSceneColours = nullptr;
-	}
-	if (m_pVoxelisedSceneNormals)
-	{
-		delete m_pVoxelisedSceneNormals;
-		m_pVoxelisedSceneNormals = nullptr;
-	}
+	
 	for (int i = 0; i < MIP_LEVELS; i++)
 	{
 		delete m_pRadianceVolumeMips[i];
@@ -576,8 +541,6 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 						if (!m_bPreviousFrameOccupation[z][y][x])
 						{
 							m_pRadianceVolumeMips[0]->MapTile(pContext, x, y, z, 0);
-							m_pVoxelisedSceneColours->MapTile(pContext, x, y, z, 0);
-							m_pVoxelisedSceneNormals->MapTile(pContext, x, y, z, 0);
 							for (int i = 1; i < MIP_LEVELS; i++)
 							{
 								int mult = std::pow(2, i);
@@ -618,8 +581,6 @@ void VoxelisedScene::UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext)
 	if (m_bUseTiledResources)
 	{
 		m_pRadianceVolumeMips[0]->UnmapAllTiles(pDeviceContext);
-		m_pVoxelisedSceneColours->UnmapAllTiles(pDeviceContext);
-		m_pVoxelisedSceneNormals->UnmapAllTiles(pDeviceContext);
 		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
 		{
 			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)

@@ -74,6 +74,7 @@ private:
 
 	GIRenderFlag m_eGITypeToRender;
 	std::string m_sGITypeRendered;
+	std::string m_sGIStorageMode;
 	void SetGITypeString();
 	bool Render();
 	bool RenderRegular();
