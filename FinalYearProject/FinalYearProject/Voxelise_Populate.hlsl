@@ -138,7 +138,6 @@ void GSMain(triangle GSInput input[3], inout TriangleStream<PSInput> outputStrea
 		//This will enlarge the tri slightly, conservative rasterisation
 		float3 toCentre = normalize(input[i].PosL.xyz - triCentre);
 		toCentre = normalize(toCentre);
-		toCentre = toCentre * 15.f;
 		float4 inputPosL = float4(input[i].PosL + toCentre,1.f);
 
 		[flatten]
