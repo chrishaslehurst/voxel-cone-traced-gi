@@ -224,9 +224,9 @@ float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition,
 		return float4(0.f, 0.f, 0.f, 0.f);
 	}
 
-	int MipLevel = clamp(getMipLevelFromRadius(coneRadius), 0, 4);
+	int MipLevel = getMipLevelFromRadius(coneRadius);
 	
-	return RadianceVolume.SampleLevel(VoxelSampler, texCoord, MipLevel);;
+	return RadianceVolume.SampleLevel(VoxelSampler, texCoord, MipLevel);
 }
 
 float4 TraceSpecularCone(float4 StartPos, float3 Normal, float3 Direction, float RadiusRatio, float voxelScale, int distanceInVoxelsToTrace)

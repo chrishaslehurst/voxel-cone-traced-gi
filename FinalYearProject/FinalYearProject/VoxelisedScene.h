@@ -110,7 +110,7 @@ public:
 	void IncreaseDebugMipLevel() { if (m_iDebugMipLevel < MIP_LEVELS-1) { m_iDebugMipLevel++; } }
 	void DecreaseDebugMipLevel() { if (m_iDebugMipLevel > 0) { m_iDebugMipLevel--; } }
 
-	void GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LEVELS]);
+	ID3D11ShaderResourceView* GetRadianceVolume();
 	const XMMATRIX& GetWorldToVoxelMatrix() { return m_mWorldToVoxelGrid; }
 
 	float GetVoxelScale() { return m_vVoxelGridSize.x / TEXTURE_DIMENSION; } //size of one voxel
@@ -143,10 +143,8 @@ private:
 	D3D11_VIEWPORT m_pVoxeliseViewport;
 	ID3D11SamplerState* m_pSamplerState;
 
-	Texture3D* m_pVoxelisedSceneColours;
-	Texture3D* m_pVoxelisedSceneNormals;
 	//TODO: Generate mips without needing the array - do it directly to mip level in the shader
-	Texture3D* m_pRadianceVolumeMips[MIP_LEVELS];
+	Texture3D* m_pRadianceVolume;
 
 	XMMATRIX m_mViewProjMatrices[3];
 	XMFLOAT3 m_vVoxelGridSize;

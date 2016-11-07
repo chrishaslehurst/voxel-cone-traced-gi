@@ -215,6 +215,7 @@ bool Renderer::Update(HWND hwnd)
 	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS) && !m_bPlusPressed)
 	{
 		m_pRegularVoxelisedScene->IncreaseDebugMipLevel();
+		m_pTiledVoxelisedScene->IncreaseDebugMipLevel();
 		m_bPlusPressed = true;
 	}
 	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADPLUS))
@@ -224,6 +225,7 @@ bool Renderer::Update(HWND hwnd)
 	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADMINUS) && !m_bMinusPressed)
 	{
 		m_pRegularVoxelisedScene->DecreaseDebugMipLevel();
+		m_pTiledVoxelisedScene->DecreaseDebugMipLevel();
 		m_bMinusPressed = true;
 	}
 	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADMINUS))

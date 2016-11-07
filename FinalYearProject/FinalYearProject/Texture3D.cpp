@@ -44,7 +44,7 @@ HRESULT Texture3D::Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, 
 		return false;
 	}
 
-	if (MiscFlags == D3D11_RESOURCE_MISC_TILED)
+	if (MiscFlags & D3D11_RESOURCE_MISC_TILED)
 	{
 		D3D11_BUFFER_DESC tilePoolDesc;
 		ZeroMemory(&tilePoolDesc, sizeof(tilePoolDesc));

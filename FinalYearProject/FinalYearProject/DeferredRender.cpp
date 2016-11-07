@@ -500,9 +500,8 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext3* pContext, XMMATRI
 	}
 	pContext->PSSetShaderResources(BufferType::btMax, NUM_LIGHTS, pShadowCubeArray);
 
-	ID3D11ShaderResourceView* pVoxelRadianceVolumes[MIP_LEVELS];
-	pVoxelisedScene->GetRadianceVolumes(pVoxelRadianceVolumes);
-	pContext->PSSetShaderResources(BufferType::btMax + NUM_LIGHTS, MIP_LEVELS, pVoxelRadianceVolumes);
+	ID3D11ShaderResourceView* pVoxelRadianceVolumes = pVoxelisedScene->GetRadianceVolume();
+	pContext->PSSetShaderResources(BufferType::btMax + NUM_LIGHTS, 1, &pVoxelRadianceVolumes);
 	return true;
 }
 

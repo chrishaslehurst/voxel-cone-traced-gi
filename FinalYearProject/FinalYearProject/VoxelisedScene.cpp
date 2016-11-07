@@ -139,14 +139,11 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	InitialiseOctreeData();
 #endif
 	
-	float mipScale = 1;
-	for (int i = 0; i < MIP_LEVELS; i++)
-	{
-		m_pRadianceVolumeMips[i] = new Texture3D;
-		m_pRadianceVolumeMips[i]->Init(pDevice, pContext, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, TEXTURE_DIMENSION*mipScale, MIP_LEVELS, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags);
-		mipScale *= 0.5f;
-		MiscFlags = 0; //TODO: NEED TO FIX SO WE CAN DO ALL THE MIPS WITHIN ONE TEXTURE, FOR NOW THIS MAKES THE MIP LEVELS NONE TILED FOR THE COPYING..
-	}
+	
+	
+	m_pRadianceVolume = new Texture3D;
+	m_pRadianceVolume->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, MIP_LEVELS, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags | D3D11_RESOURCE_MISC_GENERATE_MIPS);
+		
 
 	//Initialise Rasteriser state
 	D3D11_RASTERIZER_DESC2 rasterDesc;
@@ -206,7 +203,7 @@ void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 	colour[3] = 0;
 	for (int i = 0; i < MIP_LEVELS; i++)
 	{
-		pContext->ClearUnorderedAccessViewUint(m_pRadianceVolumeMips[i]->GetUAV(), colour);
+		pContext->ClearUnorderedAccessViewUint(m_pRadianceVolume->GetUAV(), colour);
 	}
 }
 
@@ -218,7 +215,7 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 
 	pContext->CSSetShader(m_pInjectRadianceComputeShader, nullptr, 0);
-	ID3D11UnorderedAccessView* uav = m_pRadianceVolumeMips[0]->GetUAV();
+	ID3D11UnorderedAccessView* uav = m_pRadianceVolume->GetUAV();
 	//ID3D11ShaderResourceView* srvs[1] = { m_pRadianceVolumeMips[0]->GetShaderResourceView()};
 	pContext->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
 //	pContext->CSSetShaderResources(0, 1, srvs);
@@ -239,27 +236,7 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 
 void VoxelisedScene::GenerateMips(ID3D11DeviceContext* pContext)
 {
-	ID3D11UnorderedAccessView* ppUAViewNULL = nullptr;
-	ID3D11ShaderResourceView* ppSRVNull = nullptr;
-
-	pContext->CSSetShader(m_pGenerateMipsShader, nullptr, 0);
-	for (int i = 1; i < MIP_LEVELS; i++)
-	{
-		ID3D11ShaderResourceView* pSrcVolume = m_pRadianceVolumeMips[i-1]->GetShaderResourceView();
-		ID3D11UnorderedAccessView* pDestVolume = m_pRadianceVolumeMips[i]->GetUAV();
-
-		pContext->CSSetUnorderedAccessViews(0, 1, &pDestVolume, nullptr);
-		pContext->CSSetShaderResources(0, 1, &pSrcVolume);
-
-		pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
-
-		pContext->CopySubresourceRegion(m_pRadianceVolumeMips[0]->GetTexture(), i, 0, 0, 0, m_pRadianceVolumeMips[i]->GetTexture(), 0, nullptr);
-	}
-
-	//Reset
-	pContext->CSSetShader(nullptr, nullptr, 0);
-	pContext->CSSetUnorderedAccessViews(0, 1, &ppUAViewNULL, nullptr);
-	pContext->CSSetShaderResources(0, 1, &ppSRVNull);
+	pContext->GenerateMips(m_pRadianceVolume->GetShaderResourceView());
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -271,9 +248,8 @@ void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext3* pContext, const XMMA
 	ID3D11ShaderResourceView* ppSRVNull[1] = { nullptr };
 	ID3D11ShaderResourceView* srv;
 	
-	srv = m_pRadianceVolumeMips[0]->GetShaderResourceView();
+	srv = m_pRadianceVolume->GetShaderResourceView();
 	
-
 	pContext->GSSetShaderResources(0, 1, &srv);
 
 	XMMATRIX mWorldM = XMMatrixTranspose(mWorld);
@@ -366,13 +342,13 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 	{
 		//Necessary for triple buffering to avoid gpu syncs
 		m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
-		ID3D11UnorderedAccessView* uavs[2] = { m_pRadianceVolumeMips[0]->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
+		ID3D11UnorderedAccessView* uavs[2] = { m_pRadianceVolume->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
 		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
 
 	}
 	else
 	{
-		ID3D11UnorderedAccessView* uavs[1] = { m_pRadianceVolumeMips[0]->GetUAV() };
+		ID3D11UnorderedAccessView* uavs[1] = { m_pRadianceVolume->GetUAV() };
 		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 1, uavs, 0);
 	}
 
@@ -470,11 +446,10 @@ void VoxelisedScene::Shutdown()
 		m_pSamplerState = nullptr;
 	}
 	
-	for (int i = 0; i < MIP_LEVELS; i++)
-	{
-		delete m_pRadianceVolumeMips[i];
-		m_pRadianceVolumeMips[i] = nullptr;
-	}
+	
+	delete m_pRadianceVolume;
+	m_pRadianceVolume = nullptr;
+	
 	
 	if (m_bUseTiledResources)
 	{
@@ -489,12 +464,11 @@ void VoxelisedScene::Shutdown()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void VoxelisedScene::GetRadianceVolumes(ID3D11ShaderResourceView* volumes[MIP_LEVELS])
+ID3D11ShaderResourceView* VoxelisedScene::GetRadianceVolume()
 {
-	for (int i = 0; i < MIP_LEVELS; i++)
-	{
-		volumes[i] = m_pRadianceVolumeMips[i]->GetShaderResourceView();
-	}
+	
+	return m_pRadianceVolume->GetShaderResourceView();
+	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -540,7 +514,7 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 					{
 						if (!m_bPreviousFrameOccupation[z][y][x])
 						{
-							m_pRadianceVolumeMips[0]->MapTile(pContext, x, y, z, 0);
+							m_pRadianceVolume->MapTile(pContext, x, y, z, 0);
 							for (int i = 1; i < MIP_LEVELS; i++)
 							{
 								int mult = std::pow(2, i);
@@ -550,7 +524,7 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 								int mipIdx = (mipZ * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult)) + mipY * ((TEXTURE_DIMENSION / 32) / mult) + mipX;
 								if (!m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx])
 								{
-									m_pRadianceVolumeMips[0]->MapTile(pContext, mipX, mipY, mipZ, i);
+									m_pRadianceVolume->MapTile(pContext, mipX, mipY, mipZ, i);
 									m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx] = true;
 								}
 							}
@@ -580,7 +554,7 @@ void VoxelisedScene::UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext)
 {
 	if (m_bUseTiledResources)
 	{
-		m_pRadianceVolumeMips[0]->UnmapAllTiles(pDeviceContext);
+		m_pRadianceVolume->UnmapAllTiles(pDeviceContext);
 		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
 		{
 			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
