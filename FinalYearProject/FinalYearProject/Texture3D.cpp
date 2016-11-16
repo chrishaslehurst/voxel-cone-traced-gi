@@ -1,8 +1,8 @@
 #include "Texture3D.h"
 #include "Debugging.h"
 
-//Tiles are 32x32x16 grids of 32 byte pixels given the format RGBA8
-static const int kTileSizeInBytes = 32 * 32 * 32 * 16;
+//Tiles are 32x32x16 grids of 4 byte pixels given the format RGBA8
+static const int kTileSizeInBytes = 4 * 32 * 32 * 16;
 
 Texture3D::Texture3D()
 	: m_pTexture(nullptr)
@@ -11,6 +11,7 @@ Texture3D::Texture3D()
 	, m_pRenderTargetView(nullptr)
 	, m_iNumTilesMapped(0)
 	, m_iBufferSizeInTiles(1)
+	, m_bTiled(false)
 {
 
 }
@@ -22,6 +23,10 @@ Texture3D::~Texture3D()
 
 HRESULT Texture3D::Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, int iTextureWidth, int iTextureHeight, int iTextureDepth, int mipLevels, DXGI_FORMAT format, DXGI_FORMAT uavFormat, DXGI_FORMAT srvFormat, D3D11_USAGE usage, UINT bindFlags, UINT cpuAccessFlags /*= 0*/, UINT MiscFlags /*= 0*/)
 {
+	m_iResolution[0] = iTextureWidth;
+	m_iResolution[1] = iTextureHeight;
+	m_iResolution[2] = iTextureDepth;
+	m_iMipLevels = mipLevels;
 	//Initialise Resources..
 	D3D11_TEXTURE3D_DESC textureDesc;
 	ZeroMemory(&textureDesc, sizeof(textureDesc));
@@ -46,6 +51,7 @@ HRESULT Texture3D::Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, 
 
 	if (MiscFlags & D3D11_RESOURCE_MISC_TILED)
 	{
+		m_bTiled = true;
 		D3D11_BUFFER_DESC tilePoolDesc;
 		ZeroMemory(&tilePoolDesc, sizeof(tilePoolDesc));
 		tilePoolDesc.ByteWidth = m_iBufferSizeInTiles * kTileSizeInBytes;
@@ -185,10 +191,10 @@ HRESULT Texture3D::UnmapAllTiles(ID3D11DeviceContext3* pContext)
 
 	D3D11_TILE_REGION_SIZE TRS;
 	TRS.bUseBox = true;
-	TRS.NumTiles = 8*8*16;
-	TRS.Width = 8;
-	TRS.Depth = 16;
-	TRS.Height = 8;
+	TRS.NumTiles = (m_iResolution[0]/32) * (m_iResolution[1]/32) * (m_iResolution[2]/16);
+	TRS.Width = (m_iResolution[0] / 32);
+	TRS.Depth = (m_iResolution[2] / 16);
+	TRS.Height = (m_iResolution[1] / 32);
 
 	UINT RangeFlags = D3D11_TILE_RANGE_NULL;
 	UINT startOffset = 0;
@@ -197,6 +203,26 @@ HRESULT Texture3D::UnmapAllTiles(ID3D11DeviceContext3* pContext)
 	{
 		VS_LOG_VERBOSE("Failed to map tiles");
 		return false;
+	}
+}
+
+int Texture3D::GetMemoryUsageInBytes()
+{
+	if (m_bTiled)
+	{
+		return m_iBufferSizeInTiles * kTileSizeInBytes;
+	}
+	else
+	{
+		int numPixels = 0;
+		float mipDiv = 1;
+		for (int i = 0; i < m_iMipLevels; i++)
+		{
+			//Multiply by 4 because its always 4 bytes for the ones we're interested in. Would need a better solution if this changed.
+			numPixels += ((m_iResolution[0] * mipDiv) * (m_iResolution[1] * mipDiv) * (m_iResolution[2] * mipDiv));
+			mipDiv *= 0.5f;
+		}
+		return numPixels * 4;
 	}
 }
 

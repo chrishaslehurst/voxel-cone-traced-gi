@@ -118,6 +118,8 @@ public:
 	void Update(ID3D11DeviceContext3* pDeviceContext);
 
 	void UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext);
+
+	int GetMemoryUsageInBytes() { return m_pRadianceVolume->GetMemoryUsageInBytes(); }
 private:
 	void UpdateTiles(ID3D11DeviceContext3* pDeviceContext);
 	
@@ -143,7 +145,6 @@ private:
 	D3D11_VIEWPORT m_pVoxeliseViewport;
 	ID3D11SamplerState* m_pSamplerState;
 
-	//TODO: Generate mips without needing the array - do it directly to mip level in the shader
 	Texture3D* m_pRadianceVolume;
 
 	XMMATRIX m_mViewProjMatrices[3];

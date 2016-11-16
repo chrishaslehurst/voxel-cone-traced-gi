@@ -530,10 +530,10 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 							}
 							//Limit number of tiles which can be mapped per frame to stop frame rate spikes..
 							iNumTilesMappedThisFrame++;
-							if (iNumTilesMappedThisFrame >= 5)
-							{
-								break;
-							}
+						//	if (iNumTilesMappedThisFrame >= 5)
+						//	{
+						//		break;
+						//	}
 						}
 						m_bPreviousFrameOccupation[z][y][x] = true;
 					}

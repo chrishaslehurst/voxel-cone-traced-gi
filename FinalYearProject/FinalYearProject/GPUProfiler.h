@@ -43,7 +43,7 @@ public:
 	void EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID);
 
 	void DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, bool bProfilingRun);
-	void OutputStoredTimesToFile();
+	void OutputStoredTimesToFile(const char* gpuName, int gpuMemInMB, const char* voxelStorageType, int iResolution, int MemUsage);
 
 	void Shutdown();
 private:

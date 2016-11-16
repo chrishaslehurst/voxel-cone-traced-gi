@@ -24,10 +24,16 @@ public:
 	HRESULT MapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel);
 	HRESULT UnmapTile(ID3D11DeviceContext3* pContext, int x, int y, int z, int mipLevel);
 	HRESULT UnmapAllTiles(ID3D11DeviceContext3* pContext);
+
+	int GetMemoryUsageInBytes();
 private:
 
 	int m_iNumTilesMapped;
 	int m_iBufferSizeInTiles;
+	int m_iMipLevels;
+
+	bool m_bTiled;
+	int m_iResolution[3];
 
 	ID3D11ShaderResourceView* m_pShaderResourceView;
 	ID3D11RenderTargetView*   m_pRenderTargetView;

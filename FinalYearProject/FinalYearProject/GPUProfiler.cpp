@@ -188,13 +188,16 @@ void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime
 
 }
 
-void GPUProfiler::OutputStoredTimesToFile()
+void GPUProfiler::OutputStoredTimesToFile(const char* gpuName, int gpuMemInMB, const char* voxelStorageType, int iResolution, int MemUsage)
 {
 	//Get the averages as up to now just accumulated values..
 	m_fStoredCPUAverageTime /= static_cast<float>(m_iNumFramesProfiled);
-	
+
+	std::stringstream ss;
+	ss << "../Results/" << gpuName << "_" << gpuMemInMB << "MB_" << voxelStorageType << "_" << iResolution << ".csv";
+
 	std::ofstream outfile;
-	outfile.open("results.csv");
+	outfile.open(ss.str().c_str());
 	outfile << "Profiled Section, Average, Minimum, Maximum\n";
 	outfile << "CPU Frame Time," << m_fStoredCPUAverageTime << "," << m_fStoredCPUMinTime << "," << m_fStoredCPUMaxTime << "\n";
 	for (int i = 0; i < ProfiledSections::psMax; i++)
@@ -202,6 +205,8 @@ void GPUProfiler::OutputStoredTimesToFile()
 		m_arrStoredGPUAverageTimes[i] /= m_iNumFramesProfiled;
 		outfile << m_arrProfiledSectionNames[i] << "," << m_arrStoredGPUAverageTimes[i] << "," << m_arrStoredGPUMinTimes[i] << "," << m_arrStoredGPUMaxTimes[i] << "\n";
 	}
+
+	outfile << "\nMemory Usage(MB):," << MemUsage;
 
 	outfile.close();
 	//Reset Times Stored

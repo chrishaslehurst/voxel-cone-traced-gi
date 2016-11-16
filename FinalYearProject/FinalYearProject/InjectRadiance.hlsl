@@ -90,13 +90,15 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 						float4 sampleCol = RadianceVolume.Load(int4(texCoord + (i*ToLNorm), 0));
 						if (sampleCol.a > 0)
 						{
-							iShadowFactor = 0;
+							
+							iShadowFactor = 1;
 							break;
 						}
 					}
 					colour += saturate(float4((diffuseColour.rgb * pointLights[j].colour * iShadowFactor), 0.f));
 				}
 			}
+			colour.a = 1.f;
 			colour = saturate(colour);
 			RadianceVolume[texCoord] = convVec4ToRGBA8(colour * 255.f);
 		}

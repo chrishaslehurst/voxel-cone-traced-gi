@@ -17,6 +17,7 @@
 //Global consts..
 
 const bool FULL_SCREEN = false;
+const bool RENDER_DEBUG = true;
 const bool VSYNC_ENABLED = true;
 const float SCREEN_DEPTH = 3000.f;
 const float SCREEN_NEAR = 0.1f;
@@ -38,6 +39,8 @@ enum RenderMode
 	rmComparison,
 	rmMax
 };
+
+const RenderMode k_eRenderMode = rmTiledTexture;
 
 class Renderer
 {
@@ -76,6 +79,7 @@ private:
 	std::string m_sGITypeRendered;
 	std::string m_sGIStorageMode;
 	void SetGITypeString();
+
 	bool Render();
 	bool RenderRegular();
 	bool RenderTiled();
@@ -85,6 +89,7 @@ private:
 
 	double m_dCPUFrameStartTime;
 	double m_dCPUFrameEndTime;
+	double m_dTileUpdateTime;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

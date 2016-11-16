@@ -203,10 +203,9 @@ float getMipLevelFromRadius(float radius)
 }
 
 
-//Based off of GGX roughness; gets angle that encompasses 90% of samples in the IBL image approximation
 float calculateSpecularConeHalfAngle(float roughness)
 {
-	return acos(sqrt(0.11111f / (roughness * roughness + 0.11111f)));
+	return acos(sqrt(0.1f / (roughness * roughness + 0.1f)));
 }
 
 float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition, float coneRadius, inout bool outsideVolume)
