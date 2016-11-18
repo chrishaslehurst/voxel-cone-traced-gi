@@ -64,10 +64,13 @@ DirectX::XMFLOAT3 Camera::GetRotation()
 
 void Camera::TraverseRoute()
 {
-	m_bFollowingRoute = true;
-	m_vPosition = m_arrRoute[0];
-	m_vRotation = XMFLOAT3(0.f, 0.f, 0.f);
-	m_iCurrentRouteIndex = 1;
+	if (!m_bFollowingRoute)
+	{
+		m_bFollowingRoute = true;
+		m_vPosition = m_arrRoute[0];
+		m_vRotation = XMFLOAT3(0.f, 0.f, 0.f);
+		m_iCurrentRouteIndex = 1;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

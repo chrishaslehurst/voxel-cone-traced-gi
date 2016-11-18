@@ -124,6 +124,11 @@ void Texture3D::Shutdown()
 		m_pUAV->Release();
 		m_pUAV = nullptr;
 	}
+	if (pTilePool)
+	{
+		pTilePool->Release();
+		pTilePool = nullptr;
+	}
 }
 
 ID3D11ShaderResourceView* Texture3D::GetShaderResourceView()

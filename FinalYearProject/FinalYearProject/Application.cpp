@@ -36,7 +36,26 @@ void Application::Run()
 			//else, loop..
 			if (!Update())
 			{
-				bDone = true;
+				//If we still have test runs to do, delete the renderer, rebuild and run again..
+				m_iTestIndex++;
+				if (m_iTestIndex < m_arrTests.size() && !m_pInput->IsEscapePressed())
+				{
+					if (m_pRenderer)
+					{
+						delete m_pRenderer;
+						m_pRenderer = nullptr;
+					}
+					m_pRenderer = new Renderer;
+					if (!m_pRenderer->Initialise(m_iScreenWidth, m_iScreenHeight, m_hwnd, m_arrTests[m_iTestIndex].eRenderMode, m_arrTests[m_iTestIndex].iResolution, TEST_MODE))
+					{
+						VS_LOG("Failed to initialise Renderer")	
+					}
+
+				}
+				else
+				{
+					bDone = true;
+				}
 			}
 		}
 	}
@@ -76,6 +95,7 @@ void Application::GetWidthAndHeight(int& width, int& height)
 Application::Application()
 	: m_pInput(nullptr)
 	, m_pRenderer(nullptr)
+	, m_iTestIndex(0)
 {
 
 }
@@ -95,7 +115,8 @@ bool Application::Initialise()
 	
 	//Initialise the windows API
 	InitialiseWindows(iScreenWidth, iScreenHeight);
-
+	m_iScreenHeight = iScreenHeight;
+	m_iScreenWidth = iScreenWidth;
 	//Create input manager
 	m_pInput = InputManager::Get();
 	if (!m_pInput)
@@ -117,10 +138,31 @@ bool Application::Initialise()
 		return false;
 	}
 	
-	if (!m_pRenderer->Initialise(iScreenWidth, iScreenHeight, m_hwnd))
+	
+
+#ifdef TEST_MODE
+	//This is where all the test types will go..
+	TestType t1;
+	t1.iResolution = 256;
+	t1.eRenderMode = rmTiledTexture;
+
+	TestType t2;
+	t2.iResolution = 256;
+	t2.eRenderMode = rmRegularTexture;
+
+	m_arrTests.push_back(t1);
+	m_arrTests.push_back(t2);
+#else
+	TestType t1;
+	t1.iResolution = 256;
+	t1.eRenderMode = rmTiledTexture;
+	m_arrTests.push_back(t1);
+#endif
+
+	if (!m_pRenderer->Initialise(iScreenWidth, iScreenHeight, m_hwnd, m_arrTests[m_iTestIndex].eRenderMode, m_arrTests[m_iTestIndex].iResolution, TEST_MODE))
 	{
 		VS_LOG("Failed to initialise Renderer")
-		return false;
+			return false;
 	}
 
 	return true;

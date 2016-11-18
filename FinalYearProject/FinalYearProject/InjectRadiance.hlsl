@@ -90,8 +90,7 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 						float4 sampleCol = RadianceVolume.Load(int4(texCoord + (i*ToLNorm), 0));
 						if (sampleCol.a > 0)
 						{
-							
-							iShadowFactor = 1;
+							iShadowFactor = 0;
 							break;
 						}
 					}

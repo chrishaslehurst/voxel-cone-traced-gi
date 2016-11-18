@@ -13,19 +13,7 @@ VoxelisedScene::VoxelisedScene()
 	, m_iCurrentOccupationTexture(0)
 
 {
-	m_sNumThreads = std::to_string(NUM_THREADS);
-
-	m_sNumTexelsPerThread = std::to_string((TEXTURE_DIMENSION * TEXTURE_DIMENSION * TEXTURE_DIMENSION) / (NUM_THREADS * NUM_THREADS * NUM_GROUPS * NUM_GROUPS));
-	m_ComputeShaderDefines[csdNumThreads].Name = "NUM_THREADS";
-	m_ComputeShaderDefines[csdNumThreads].Definition = m_sNumThreads.c_str();
-	m_ComputeShaderDefines[csdNumTexelsPerThread].Name = "NUM_TEXELS_PER_THREAD";
-	m_ComputeShaderDefines[csdNumTexelsPerThread].Definition = m_sNumTexelsPerThread.c_str();
-
-	m_sNumGroups = std::to_string(NUM_GROUPS);
-	m_ComputeShaderDefines[csdNumGroups].Name = "NUM_GROUPS";
-	m_ComputeShaderDefines[csdNumGroups].Definition = m_sNumGroups.c_str();
-	m_ComputeShaderDefines[csdNulls].Name = nullptr;
-	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
+	
 	
 }
 
@@ -38,18 +26,19 @@ VoxelisedScene::~VoxelisedScene()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB, bool bUseTiledResources)
+HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB, int iTextureResolution, bool bUseTiledResources)
 {
+	m_iTextureDimension = iTextureResolution;
 	m_bUseTiledResources = bUseTiledResources;
 	if (m_bUseTiledResources)
 	{
-		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+		for (int z = 0; z < m_iTextureDimension / 16; z++)
 		{
-			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+			for (int y = 0; y < m_iTextureDimension / 32; y++)
 			{
-				for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+				for (int x = 0; x < m_iTextureDimension / 32; x++)
 				{
-					m_bPreviousFrameOccupation[z][y][x] = false;
+					m_bPreviousFrameOccupation.push_back(false);
 				}
 			}
 		}
@@ -57,7 +46,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		for (int i = 1; i < MIP_LEVELS; i++)
 		{
 			int mult = std::pow(2, i);
-			int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
+			int numTilesInMip = ((m_iTextureDimension / 16) / (mult)) * ((m_iTextureDimension / 32) / mult) * ((m_iTextureDimension / 32) / mult);
 			m_bPreviousFrameOccupationMipLevels[i - 1] = new bool[numTilesInMip];
 			for (int j = 0; j < numTilesInMip; j++)
 			{
@@ -66,6 +55,21 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		}
 
 	}
+
+	m_sNumThreads = std::to_string(NUM_THREADS);
+
+	m_sNumTexelsPerThread = std::to_string((m_iTextureDimension * m_iTextureDimension * m_iTextureDimension) / (NUM_THREADS * NUM_THREADS * NUM_GROUPS * NUM_GROUPS));
+	m_ComputeShaderDefines[csdNumThreads].Name = "NUM_THREADS";
+	m_ComputeShaderDefines[csdNumThreads].Definition = m_sNumThreads.c_str();
+	m_ComputeShaderDefines[csdNumTexelsPerThread].Name = "NUM_TEXELS_PER_THREAD";
+	m_ComputeShaderDefines[csdNumTexelsPerThread].Definition = m_sNumTexelsPerThread.c_str();
+
+	m_sNumGroups = std::to_string(NUM_GROUPS);
+	m_ComputeShaderDefines[csdNumGroups].Name = "NUM_GROUPS";
+	m_ComputeShaderDefines[csdNumGroups].Definition = m_sNumGroups.c_str();
+	m_ComputeShaderDefines[csdNulls].Name = nullptr;
+	m_ComputeShaderDefines[csdNulls].Definition = nullptr;
+
 	CreateWorldToVoxelGrid(voxelGridAABB);
 	
 	InitialiseDebugBuffers(pDevice);
@@ -119,7 +123,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		for (int i = 0; i < 3; i++)
 		{
 			m_pTileOccupation[i] = new Texture3D;
-			m_pTileOccupation[i]->Init(pDevice, pContext, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 32.f, TEXTURE_DIMENSION / 16.f, 1, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
+			m_pTileOccupation[i]->Init(pDevice, pContext, m_iTextureDimension / 32.f, m_iTextureDimension / 32.f, m_iTextureDimension / 16.f, 1, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
 		}
 		D3D11_TEXTURE3D_DESC textureDesc;
 		m_pTileOccupation[0]->GetTexture()->GetDesc(&textureDesc);
@@ -142,7 +146,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	
 	
 	m_pRadianceVolume = new Texture3D;
-	m_pRadianceVolume->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, MIP_LEVELS, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags | D3D11_RESOURCE_MISC_GENERATE_MIPS);
+	m_pRadianceVolume->Init(pDevice, pContext, m_iTextureDimension, m_iTextureDimension, m_iTextureDimension, MIP_LEVELS, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE, 0, MiscFlags | D3D11_RESOURCE_MISC_GENERATE_MIPS);
 		
 
 	//Initialise Rasteriser state
@@ -158,8 +162,8 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	//Initialise Viewport
 	m_pVoxeliseViewport.TopLeftX = 0.f;
 	m_pVoxeliseViewport.TopLeftY = 0.f;
-	m_pVoxeliseViewport.Width = (float)TEXTURE_DIMENSION;
-	m_pVoxeliseViewport.Height = (float)TEXTURE_DIMENSION;
+	m_pVoxeliseViewport.Width = (float)m_iTextureDimension;
+	m_pVoxeliseViewport.Height = (float)m_iTextureDimension;
 	m_pVoxeliseViewport.MinDepth = 0.f;
 	m_pVoxeliseViewport.MaxDepth = 1.f;
 
@@ -274,7 +278,7 @@ void VoxelisedScene::RenderDebugCubes(ID3D11DeviceContext3* pContext, const XMMA
 	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
 	pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 				
-	pContext->DrawIndexed(TEXTURE_DIMENSION*TEXTURE_DIMENSION*TEXTURE_DIMENSION, 0, 0);
+	pContext->DrawIndexed(m_iTextureDimension*m_iTextureDimension*m_iTextureDimension, 0, 0);
 	
 
 	pContext->PSSetShaderResources(0, 1, ppSRVNull);
@@ -502,17 +506,17 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 
 		UINT num = pTexData[0];
 		int index = 0;
-		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+		for (int z = 0; z < m_iTextureDimension / 16; z++)
 		{
-			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+			for (int y = 0; y < m_iTextureDimension / 32; y++)
 			{
 				index = z * (pTexture.DepthPitch ) + y * (pTexture.RowPitch );
-				for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+				for (int x = 0; x < m_iTextureDimension / 32; x++)
 				{
 					char* TexData = &pTexData[index];
 					if (pTexData[index] != 0)
 					{
-						if (!m_bPreviousFrameOccupation[z][y][x])
+						if (!m_bPreviousFrameOccupation[(z*m_iTextureDimension/32* m_iTextureDimension / 32) + (y*m_iTextureDimension / 32) + x])
 						{
 							m_pRadianceVolume->MapTile(pContext, x, y, z, 0);
 							for (int i = 1; i < MIP_LEVELS; i++)
@@ -521,7 +525,7 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 								int mipZ = z / mult;
 								int mipY = y / mult;
 								int mipX = x / mult;
-								int mipIdx = (mipZ * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult)) + mipY * ((TEXTURE_DIMENSION / 32) / mult) + mipX;
+								int mipIdx = (mipZ * ((m_iTextureDimension / 32) / mult) * ((m_iTextureDimension / 32) / mult)) + mipY * ((m_iTextureDimension / 32) / mult) + mipX;
 								if (!m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx])
 								{
 									m_pRadianceVolume->MapTile(pContext, mipX, mipY, mipZ, i);
@@ -535,12 +539,12 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 						//		break;
 						//	}
 						}
-						m_bPreviousFrameOccupation[z][y][x] = true;
+						m_bPreviousFrameOccupation[(z * m_iTextureDimension / 32 * m_iTextureDimension / 32) + (y * m_iTextureDimension / 32) + x] = true;
 					}
 					else
 					{
 						//TODO: and unmap the tile..
-						m_bPreviousFrameOccupation[z][y][x] = false;
+						m_bPreviousFrameOccupation[(z * m_iTextureDimension / 32 * m_iTextureDimension / 32) + (y * m_iTextureDimension / 32) + x] = false;
 					}
 					index++;
 				}
@@ -555,13 +559,13 @@ void VoxelisedScene::UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext)
 	if (m_bUseTiledResources)
 	{
 		m_pRadianceVolume->UnmapAllTiles(pDeviceContext);
-		for (int z = 0; z < TEXTURE_DIMENSION / 16; z++)
+		for (int z = 0; z < m_iTextureDimension / 16; z++)
 		{
-			for (int y = 0; y < TEXTURE_DIMENSION / 32; y++)
+			for (int y = 0; y < m_iTextureDimension / 32; y++)
 			{
-				for (int x = 0; x < TEXTURE_DIMENSION / 32; x++)
+				for (int x = 0; x < m_iTextureDimension / 32; x++)
 				{
-					m_bPreviousFrameOccupation[z][y][x] = false;
+					m_bPreviousFrameOccupation[(z * m_iTextureDimension / 32 * m_iTextureDimension / 32) + (y * m_iTextureDimension / 32) + x] = false;
 				}
 			}
 		}
@@ -569,7 +573,7 @@ void VoxelisedScene::UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext)
 		for (int i = 1; i < MIP_LEVELS; i++)
 		{
 			int mult = std::pow(2, i);
-			int numTilesInMip = ((TEXTURE_DIMENSION / 16) / (mult)) * ((TEXTURE_DIMENSION / 32) / mult) * ((TEXTURE_DIMENSION / 32) / mult);
+			int numTilesInMip = ((m_iTextureDimension / 16) / (mult)) * ((m_iTextureDimension / 32) / mult) * ((m_iTextureDimension / 32) / mult);
 			m_bPreviousFrameOccupationMipLevels[i - 1] = new bool[numTilesInMip];
 			for (int j = 0; j < numTilesInMip; j++)
 			{
@@ -617,7 +621,7 @@ void VoxelisedScene::CreateWorldToVoxelGrid(const AABB& voxelGridAABB)
 	}
 	m_vVoxelGridSize = XMFLOAT3(voxelGridSize, voxelGridSize, voxelGridSize);
 
-	float scale = TEXTURE_DIMENSION / voxelGridSize;
+	float scale = m_iTextureDimension / voxelGridSize;
 
 	XMVECTOR translateToOrigin = (-Min - (VoxelGridSize * 0.5f));
 	XMMATRIX scaling = XMMatrixScaling(2.f / voxelGridSize, 2.f / voxelGridSize, 2.f / voxelGridSize);
@@ -832,14 +836,14 @@ bool VoxelisedScene::InitialiseDebugBuffers(ID3D11Device* pDevice)
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
 	HRESULT result;
 
-	verts = new DebugCubesVertexType[TEXTURE_DIMENSION*TEXTURE_DIMENSION*TEXTURE_DIMENSION];
+	verts = new DebugCubesVertexType[m_iTextureDimension*m_iTextureDimension*m_iTextureDimension];
 	if (!verts)
 	{
 		VS_LOG_VERBOSE("Unable to allocate debug cubes vertices buffer");
 		return false;
 	}
 
-	indices = new unsigned long[TEXTURE_DIMENSION*TEXTURE_DIMENSION*TEXTURE_DIMENSION];
+	indices = new unsigned long[m_iTextureDimension*m_iTextureDimension*m_iTextureDimension];
 	if (!indices)
 	{
 		VS_LOG_VERBOSE("Unable to allocate debug cubes indices buffer");
@@ -847,11 +851,11 @@ bool VoxelisedScene::InitialiseDebugBuffers(ID3D11Device* pDevice)
 	}
 
 	int idx = 0;
-	for (int x = 0; x < TEXTURE_DIMENSION; x++)
+	for (int x = 0; x < m_iTextureDimension; x++)
 	{
-		for (int y = 0; y < TEXTURE_DIMENSION; y++)
+		for (int y = 0; y < m_iTextureDimension; y++)
 		{
-			for (int z = 0; z < TEXTURE_DIMENSION; z++)
+			for (int z = 0; z < m_iTextureDimension; z++)
 			{
 				verts[idx].position = XMFLOAT3(x, y, z);
 				indices[idx] = idx;
@@ -917,12 +921,12 @@ bool VoxelisedScene::InitialiseDebugBuffers(ID3D11Device* pDevice)
 bool VoxelisedScene::InitialiseOctreeData(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext)
 {
 	m_pSparseVoxelOctreeBricks = new Texture3D;
-	m_pSparseVoxelOctreeBricks->Init(pDevice, pContext, TEXTURE_DIMENSION, TEXTURE_DIMENSION, TEXTURE_DIMENSION, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
+	m_pSparseVoxelOctreeBricks->Init(pDevice, pContext, m_iTextureDimension, m_iTextureDimension, m_iTextureDimension, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
 
 	D3D11_BUFFER_DESC descGPUBuffer;
 	ZeroMemory(&descGPUBuffer, sizeof(descGPUBuffer));
 	descGPUBuffer.BindFlags = D3D11_BIND_UNORDERED_ACCESS |	D3D11_BIND_SHADER_RESOURCE;
-	descGPUBuffer.ByteWidth = TEXTURE_DIMENSION * sizeof(OctreeNode);
+	descGPUBuffer.ByteWidth = m_iTextureDimension * sizeof(OctreeNode);
 	descGPUBuffer.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 	descGPUBuffer.StructureByteStride = 0; 
 
@@ -939,7 +943,7 @@ bool VoxelisedScene::InitialiseOctreeData(ID3D11Device3* pDevice, ID3D11DeviceCo
 	// Format must be must be DXGI_FORMAT_UNKNOWN, when creating 
 	// a View of a Structured Buffer
 	descView.Format = DXGI_FORMAT_UNKNOWN;
-	descView.Buffer.NumElements = TEXTURE_DIMENSION;
+	descView.Buffer.NumElements = m_iTextureDimension;
 	descView.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
 	if (FAILED(pDevice->CreateUnorderedAccessView(m_pSparseVoxelOctree, &descView, &m_pSVOUAV)))
 	{
@@ -952,7 +956,7 @@ bool VoxelisedScene::InitialiseOctreeData(ID3D11Device3* pDevice, ID3D11DeviceCo
 	descSRV.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
 	descSRV.BufferEx.FirstElement = 0;
 	descSRV.Format = DXGI_FORMAT_UNKNOWN;
-	descSRV.BufferEx.NumElements =TEXTURE_DIMENSION;
+	descSRV.BufferEx.NumElements =m_iTextureDimension;
 
 	if (FAILED(pDevice->CreateShaderResourceView(m_pSparseVoxelOctree, &descSRV, &m_pSVOSRV)))
 	{

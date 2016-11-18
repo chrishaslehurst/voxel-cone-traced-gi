@@ -13,7 +13,7 @@
 #include "Texture3D.h"
 #include "RenderPass.h"
 
-#define TEXTURE_DIMENSION 256
+
 #define MIP_LEVELS 4
 
 #define SPARSE_VOXEL_OCTREES 0
@@ -93,7 +93,7 @@ public:
 	VoxelisedScene();
 	~VoxelisedScene();
 
-	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB, bool bUseTiledResources = false);
+	HRESULT Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, const AABB& voxelGridAABB, int iTextureResolution, bool bUseTiledResources = false);
 	void RenderClearVoxelsPass(ID3D11DeviceContext* pContext);
 	void RenderInjectRadiancePass(ID3D11DeviceContext* pContext);
 	void GenerateMips(ID3D11DeviceContext* pContext);
@@ -113,14 +113,18 @@ public:
 	ID3D11ShaderResourceView* GetRadianceVolume();
 	const XMMATRIX& GetWorldToVoxelMatrix() { return m_mWorldToVoxelGrid; }
 
-	float GetVoxelScale() { return m_vVoxelGridSize.x / TEXTURE_DIMENSION; } //size of one voxel
+	float GetVoxelScale() { return m_vVoxelGridSize.x / m_iTextureDimension; } //size of one voxel
 
 	void Update(ID3D11DeviceContext3* pDeviceContext);
 
 	void UnmapAllTiles(ID3D11DeviceContext3* pDeviceContext);
 
 	int GetMemoryUsageInBytes() { return m_pRadianceVolume->GetMemoryUsageInBytes(); }
+	int GetTextureDimensions() { return m_iTextureDimension; }
+
 private:
+
+	int m_iTextureDimension;
 	void UpdateTiles(ID3D11DeviceContext3* pDeviceContext);
 	
 
@@ -172,7 +176,7 @@ private:
 	Texture3D* m_pTileOccupation[3];
 	ID3D11Texture3D* m_pTileOccupationStaging;
 
-	bool m_bPreviousFrameOccupation[TEXTURE_DIMENSION / 16][TEXTURE_DIMENSION / 32][TEXTURE_DIMENSION / 32];
+	std::vector<bool> m_bPreviousFrameOccupation;
 	bool *m_bPreviousFrameOccupationMipLevels[MIP_LEVELS - 1];
 
 

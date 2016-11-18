@@ -14,7 +14,15 @@
 #include "InputManager.h"
 #include "Renderer.h"
 
+#define TEST_MODE 0
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct TestType
+{
+	int iResolution;
+	RenderMode eRenderMode;
+};
 
 class Application
 {
@@ -46,6 +54,10 @@ private:
 	Application();
 	~Application();
 
+	int m_iScreenHeight;
+	int m_iScreenWidth;
+	int m_iTestIndex;
+	std::vector<TestType> m_arrTests;
 
 	bool Initialise();
 	bool Update();

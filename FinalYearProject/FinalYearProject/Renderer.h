@@ -40,7 +40,7 @@ enum RenderMode
 	rmMax
 };
 
-const RenderMode k_eRenderMode = rmTiledTexture;
+
 
 class Renderer
 {
@@ -48,11 +48,13 @@ public:
 	Renderer();
 	~Renderer();
 
-	bool Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd);
+	bool Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, RenderMode eRenderMode, int iVoxelGridResolution, bool bTestMode);
 	void Shutdown();
 	bool Update(HWND hwnd);
 
 private:
+	RenderMode k_eRenderMode;
+
 	D3DWrapper* m_pD3D;
 	Camera*		m_pCamera;
 
@@ -73,8 +75,8 @@ private:
 	bool m_bGPressed;
 	bool m_bMPressed;
 
-	RenderMode m_eRenderMode;
-
+	bool m_bTestMode;
+	
 	GIRenderFlag m_eGITypeToRender;
 	std::string m_sGITypeRendered;
 	std::string m_sGIStorageMode;

@@ -17,7 +17,6 @@ Renderer::Renderer()
 	, m_bGPressed(false)
 	, m_bMPressed(false)
 	, m_eGITypeToRender(GIRenderFlag::giFull)
-	, m_eRenderMode(k_eRenderMode)
 	, m_iAlternateRender(0)
 {
 	SetGITypeString();
@@ -33,9 +32,10 @@ Renderer::~Renderer()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
+bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, RenderMode eRenderMode, int iVoxelGridResolution, bool bTestMode)
 {
-	
+	m_bTestMode = bTestMode;
+	k_eRenderMode = eRenderMode;
 	m_pD3D = new D3DWrapper;
 	if (!m_pD3D)
 	{
@@ -139,12 +139,12 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd)
 	if (k_eRenderMode == rmComparison || k_eRenderMode == rmRegularTexture)
 	{
 		m_pRegularVoxelisedScene = new VoxelisedScene;
-		m_pRegularVoxelisedScene->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_arrModels[0]->GetWholeModelAABB(), false);
+		m_pRegularVoxelisedScene->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_arrModels[0]->GetWholeModelAABB(), iVoxelGridResolution, false);
 	}
 	if (k_eRenderMode == rmComparison || k_eRenderMode == rmTiledTexture)
 	{
 		m_pTiledVoxelisedScene = new VoxelisedScene;
-		m_pTiledVoxelisedScene->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_arrModels[0]->GetWholeModelAABB(), true);
+		m_pTiledVoxelisedScene->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_arrModels[0]->GetWholeModelAABB(), iVoxelGridResolution, true);
 	}
 	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
 	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
@@ -180,12 +180,7 @@ void Renderer::Shutdown()
 
 	LightManager::Get()->Shutdown();
 
-	//deallocate the D3DWrapper
-	if (m_pD3D)
-	{
-		delete m_pD3D;
-		m_pD3D = nullptr;
-	}
+	
 	if (m_pRegularVoxelisedScene)
 	{
 		delete m_pRegularVoxelisedScene;
@@ -198,6 +193,12 @@ void Renderer::Shutdown()
 	}
 
 	m_DebugRenderTexture.Shutdown();
+	//deallocate the D3DWrapper
+	if (m_pD3D)
+	{
+		delete m_pD3D;
+		m_pD3D = nullptr;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +270,7 @@ bool Renderer::Update(HWND hwnd)
 	{
 		if (k_eRenderMode == rmComparison)
 		{
-			m_eRenderMode = static_cast<RenderMode>((static_cast<int>(m_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
+			k_eRenderMode = static_cast<RenderMode>((static_cast<int>(k_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
 			SetGITypeString();
 		}
 		m_bMPressed = true;
@@ -294,7 +295,7 @@ bool Renderer::Update(HWND hwnd)
 	//Render the scene
 	if (!Render())
 	{
-		VS_LOG_VERBOSE("Render function failed")
+		VS_LOG_VERBOSE("Render function failed or ended..")
 		return false;
 	}
 	return true;
@@ -325,7 +326,7 @@ void Renderer::SetGITypeString()
 		break;
 	}
 
-	switch (m_eRenderMode)
+	switch (k_eRenderMode)
 	{
 	case rmRegularTexture:
 		m_sGIStorageMode += "Regular Texture";
@@ -350,7 +351,7 @@ bool Renderer::Render()
 	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
 	std::string sRenderMode;
 	int iMemUsage = 0;
-	switch (m_eRenderMode)
+	switch (k_eRenderMode)
 	{
 	case RenderMode::rmRegularTexture:
 		RenderRegular();
@@ -389,7 +390,15 @@ bool Renderer::Render()
 			char sGPUName[64];
 			int iGPUMemoryInMB;
 			m_pD3D->GetVideoCardInfo(sGPUName, iGPUMemoryInMB);
-			GPUProfiler::Get()->OutputStoredTimesToFile(sGPUName, iGPUMemoryInMB, sRenderMode.c_str(), TEXTURE_DIMENSION, iMemUsage);
+			if (m_pRegularVoxelisedScene)
+			{
+				GPUProfiler::Get()->OutputStoredTimesToFile(sGPUName, iGPUMemoryInMB, sRenderMode.c_str(), m_pRegularVoxelisedScene->GetTextureDimensions(), iMemUsage);
+			}
+			else if (m_pTiledVoxelisedScene)
+			{
+				GPUProfiler::Get()->OutputStoredTimesToFile(sGPUName, iGPUMemoryInMB, sRenderMode.c_str(), m_pTiledVoxelisedScene->GetTextureDimensions(), iMemUsage);
+			}
+			return false;
 		}
 
 		DebugLog::Get()->OutputString(m_sGITypeRendered);
@@ -397,6 +406,12 @@ bool Renderer::Render()
 	}
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
+
+	if (m_bTestMode)
+	{
+		m_pCamera->TraverseRoute();
+		m_bTestMode = false;
+	}
 
 	return true;
 }
@@ -575,7 +590,7 @@ bool Renderer::RenderTiled()
 	GPUProfiler::Get()->StartTimeStamp(pContext, GPUProfiler::psInjectRadiance);
 	if (bUpdateVoxelVolume)
 	{
-	m_pTiledVoxelisedScene->RenderInjectRadiancePass(pContext);
+		m_pTiledVoxelisedScene->RenderInjectRadiancePass(pContext);
 	}
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psInjectRadiance);
 
