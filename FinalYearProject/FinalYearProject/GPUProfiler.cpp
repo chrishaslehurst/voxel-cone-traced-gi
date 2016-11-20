@@ -11,6 +11,9 @@ GPUProfiler::GPUProfiler()
 	, m_fStoredCPUAverageTime(0)
 	, m_fStoredCPUMaxTime(0)
 	, m_fStoredCPUMinTime(FLT_MAX)
+	, m_fAverageImageDifference(0)
+	, m_fMaxImageDifference(0)
+	, m_fMinImageDifference(FLT_MAX)
 {
 	for (int i = 0; i < ProfiledSections::psMax; i++)
 	{
@@ -108,7 +111,7 @@ void GPUProfiler::EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections e
 	pContext->End(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][eSectionID]);
 }
 
-void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, bool bProfilingRun)
+void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, float fImageDifferencePercentage, bool bProfilingRun)
 {
 	while (pContext->GetData(m_pDisjointQuery[m_iCurrentBufferIndex], nullptr, 0, 0) == S_FALSE)
 	{
@@ -135,6 +138,7 @@ void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime
 	if (bProfilingRun)
 	{
 		m_fStoredCPUAverageTime += CPUFrameTime;
+		m_fAverageImageDifference += fImageDifferencePercentage;
 		if (CPUFrameTime > m_fStoredCPUMaxTime)
 		{
 			m_fStoredCPUMaxTime = CPUFrameTime;
@@ -143,6 +147,16 @@ void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime
 		{
 			m_fStoredCPUMinTime = CPUFrameTime;
 		}
+
+		if (fImageDifferencePercentage > m_fMaxImageDifference)
+		{
+			m_fMaxImageDifference = fImageDifferencePercentage;
+		}
+		if (fImageDifferencePercentage < m_fMinImageDifference)
+		{
+			m_fMinImageDifference = fImageDifferencePercentage;
+		}
+
 		m_iNumFramesProfiled++;
 	}
 	m_pFontWrapper->DrawString(pContext, wideCPUFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
@@ -192,27 +206,34 @@ void GPUProfiler::OutputStoredTimesToFile(const char* gpuName, int gpuMemInMB, c
 {
 	//Get the averages as up to now just accumulated values..
 	m_fStoredCPUAverageTime /= static_cast<float>(m_iNumFramesProfiled);
+	m_fAverageImageDifference /= static_cast<float>(m_iNumFramesProfiled);
 
 	std::stringstream ss;
 	ss << "../Results/" << gpuName << "_" << gpuMemInMB << "MB_" << voxelStorageType << "_" << iResolution << ".csv";
 
 	std::ofstream outfile;
 	outfile.open(ss.str().c_str());
-	outfile << "Profiled Section, Average, Minimum, Maximum\n";
+	outfile << std::fixed << "Profiled Section, Average, Minimum, Maximum\n";
 	outfile << "CPU Frame Time," << m_fStoredCPUAverageTime << "," << m_fStoredCPUMinTime << "," << m_fStoredCPUMaxTime << "\n";
 	for (int i = 0; i < ProfiledSections::psMax; i++)
 	{
 		m_arrStoredGPUAverageTimes[i] /= m_iNumFramesProfiled;
 		outfile << m_arrProfiledSectionNames[i] << "," << m_arrStoredGPUAverageTimes[i] << "," << m_arrStoredGPUMinTimes[i] << "," << m_arrStoredGPUMaxTimes[i] << "\n";
 	}
-
+	outfile << "Image Comparison Difference," << m_fAverageImageDifference << "," << m_fMinImageDifference << "," << m_fMaxImageDifference << "\n";
 	outfile << "\nMemory Usage(MB):," << MemUsage;
+	
+
 
 	outfile.close();
 	//Reset Times Stored
 	m_fStoredCPUAverageTime = 0;
 	m_fStoredCPUMaxTime = 0;
 	m_fStoredCPUMinTime = FLT_MAX;
+
+	m_fAverageImageDifference = 0;
+	m_fMaxImageDifference = 0;
+	m_fMinImageDifference = FLT_MAX;
 
 	for (int i = 0; i < ProfiledSections::psMax; i++)
 	{

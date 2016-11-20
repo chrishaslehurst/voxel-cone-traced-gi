@@ -400,6 +400,8 @@ bool Renderer::Render()
 	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
 	std::string sRenderMode;
 	int iMemUsage = 0;
+	float imagePercentDiff = 0;
+
 	switch (k_eRenderMode)
 	{
 	case RenderMode::rmRegularTexture:
@@ -416,7 +418,7 @@ bool Renderer::Render()
 		break;
 	case RenderMode::rmComparison:
 		iMemUsage = m_pTiledVoxelisedScene->GetMemoryUsageInBytes() + m_pRegularVoxelisedScene->GetMemoryUsageInBytes();
-		RenderComparison();
+		RenderComparison(imagePercentDiff);
 		pActiveVoxScene = m_pTiledVoxelisedScene;
 		sRenderMode = "ComparisonMode";
 		break;
@@ -435,7 +437,7 @@ bool Renderer::Render()
 		DebugLog::Get()->OutputString(ssCameraPosition.str());
 
 		GPUProfiler::Get()->EndFrame(pContext);
-		GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime), static_cast<float>(m_dTileUpdateTime), m_pCamera->IsFollowingDebugRoute());
+		GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime), static_cast<float>(m_dTileUpdateTime), imagePercentDiff, m_pCamera->IsFollowingDebugRoute());
 
 		if (m_pCamera->FinishedRouteThisFrame())
 		{
@@ -700,7 +702,7 @@ bool Renderer::RenderTiled()
 	return true;
 }
 
-bool Renderer::RenderComparison()
+bool Renderer::RenderComparison(float& imageDifferencePercent)
 {
 	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
 
@@ -822,7 +824,7 @@ bool Renderer::RenderComparison()
 	//Render the comparison texture - expected result is fully black if images are the same.
 	m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonResultTextures[0]);
 	float fImageDifferencePercent = GetCompTexturePercentageDifference();
-
+	imageDifferencePercent = fImageDifferencePercent;
 	stringstream ssImageDiff;
 	ssImageDiff << "Image Difference: " << fImageDifferencePercent << "%";
 
@@ -894,7 +896,6 @@ float Renderer::GetCompTexturePercentageDifference()
 
 	totalPixelDiff /= (float)(m_iScreenWidth * m_iScreenHeight);
 	float totalPixelDiffAsPercentage = totalPixelDiff * 100;
-
 	return totalPixelDiffAsPercentage;
 }
 

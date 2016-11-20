@@ -94,7 +94,7 @@ private:
 	bool Render();
 	bool RenderRegular();
 	bool RenderTiled();
-	bool RenderComparison();
+	bool RenderComparison(float& imageDifferencePercent);
 
 	void RunImageCompShader();
 	float GetCompTexturePercentageDifference();

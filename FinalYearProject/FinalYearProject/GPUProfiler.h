@@ -42,7 +42,7 @@ public:
 	void StartTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID);
 	void EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID);
 
-	void DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, bool bProfilingRun);
+	void DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, float fImageDifferencePercentage, bool bProfilingRun);
 	void OutputStoredTimesToFile(const char* gpuName, int gpuMemInMB, const char* voxelStorageType, int iResolution, int MemUsage);
 
 	void Shutdown();
@@ -63,6 +63,9 @@ private:
 	float m_fStoredCPUAverageTime;
 	float m_fStoredCPUMaxTime;
 	float m_fStoredCPUMinTime;
+	float m_fMaxImageDifference;
+	float m_fMinImageDifference;
+	float m_fAverageImageDifference;
 
 	ID3D11Query* m_pBeginFrame[2];
 	ID3D11Query* m_pDisjointQuery[2];

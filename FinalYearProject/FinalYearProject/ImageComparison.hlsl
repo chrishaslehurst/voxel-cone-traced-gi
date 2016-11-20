@@ -21,6 +21,5 @@ void main( uint3 id : SV_DispatchThreadID )
 	float4 col2 = Input2.Load(id);
 
 	finalCol = abs(col1 - col2);
-	finalCol = float4(1.0f, 1.0f, 1.0f, 1.f);
 	Output[id2] = finalCol;
 }
