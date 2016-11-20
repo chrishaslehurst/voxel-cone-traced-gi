@@ -224,5 +224,8 @@
     <FxCompile Include="GenerateOctree.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="ImageComparison.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

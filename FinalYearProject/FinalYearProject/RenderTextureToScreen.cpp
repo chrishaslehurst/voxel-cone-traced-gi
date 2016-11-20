@@ -149,6 +149,8 @@ bool RenderTextureToScreen::SetShaderParameters(ID3D11DeviceContext* pContext, X
 
 	ID3D11ShaderResourceView* pResource = pTexture->GetShaderResourceView();
 	pContext->PSSetShaderResources(0, 1, &pResource);
+
+	return true;
 }
 
 void RenderTextureToScreen::RenderShader(ID3D11DeviceContext3* pContext, int iIndexCount)

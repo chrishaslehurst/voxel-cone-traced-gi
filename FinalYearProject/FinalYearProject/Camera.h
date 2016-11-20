@@ -44,6 +44,7 @@ public:
 	bool CheckBoundingBoxInsideViewFrustum(const XMFLOAT3& vPos, const AABB& boundingBox);
 	bool IsFollowingDebugRoute() { return m_bFollowingRoute; }
 	bool FinishedRouteThisFrame() { return m_bFinishedRouteThisFrame; }
+	void EndRoute() { m_bFollowingRoute = false; };
 
 	std::vector<XMFLOAT3> m_arrRoute;
 private:

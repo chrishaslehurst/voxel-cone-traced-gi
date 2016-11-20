@@ -18,6 +18,9 @@ Renderer::Renderer()
 	, m_bMPressed(false)
 	, m_eGITypeToRender(GIRenderFlag::giFull)
 	, m_iAlternateRender(0)
+	, m_dCPUFrameStartTime(0.0)
+	, m_dCPUFrameEndTime(0.0)
+	, m_iElapsedFrames(0)
 {
 	SetGITypeString();
 	m_dCPUFrameStartTime = 0;
@@ -34,6 +37,8 @@ Renderer::~Renderer()
 
 bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, RenderMode eRenderMode, int iVoxelGridResolution, bool bTestMode)
 {
+	m_iScreenWidth = iScreenWidth;
+	m_iScreenHeight = iScreenHeight;
 	m_bTestMode = bTestMode;
 	k_eRenderMode = eRenderMode;
 	m_pD3D = new D3DWrapper;
@@ -80,12 +85,54 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, Render
 		for (int i = 0; i < ComparisonTextures::ctMax; i++)
 		{
 			m_arrComparisonTextures[i] = new Texture2D;
-			if (FAILED(m_arrComparisonTextures[i]->Init(m_pD3D->GetDevice(), iScreenWidth, iScreenHeight, 1, 1, DXGI_FORMAT_R16G16B16A16_FLOAT, D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE)))
+			if (FAILED(m_arrComparisonTextures[i]->Init(m_pD3D->GetDevice(), iScreenWidth, iScreenHeight, 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS)))
 			{
 				VS_LOG_VERBOSE("Failed to create render target textures");
 				return false;
 			}
 		}
+		for (int j = 0; j < 3; j++)
+		{
+			m_arrComparisonResultTextures[j] = new Texture2D;
+			if (FAILED(m_arrComparisonResultTextures[j]->Init(m_pD3D->GetDevice(), iScreenWidth, iScreenHeight, 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS)))
+			{
+				VS_LOG_VERBOSE("Failed to create comparison result textures");
+				return false;
+			}
+		}
+		D3D11_TEXTURE2D_DESC textureDesc;
+		m_arrComparisonResultTextures[0]->GetTexture()->GetDesc(&textureDesc);
+		textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		textureDesc.Usage = D3D11_USAGE_STAGING;
+		textureDesc.BindFlags = 0;
+		m_pD3D->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_pComparisonResultStaging);
+		
+
+		//Compile the clear voxels compute shader code
+		ID3D10Blob* pImgCompBuffer;
+		ID3D10Blob* pErrorMessage;
+		HRESULT result = D3DCompileFromFile(L"ImageComparison.hlsl", NULL, nullptr, "main", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pImgCompBuffer, &pErrorMessage);
+		if (FAILED(result))
+		{
+			if (pErrorMessage)
+			{
+				//If the shader failed to compile it should have written something to error message, so we output that here
+				OutputShaderErrorMessage(pErrorMessage, hwnd, L"ImageComparison.hlsl");
+			}
+			else
+			{
+				//if it hasn't, then it couldn't find the shader file..
+				MessageBox(hwnd, L"ImageComparison.hlsl", L"Missing Shader File", MB_OK);
+			}
+			return false;
+		}
+		result = m_pD3D->GetDevice()->CreateComputeShader(pImgCompBuffer->GetBufferPointer(), pImgCompBuffer->GetBufferSize(), nullptr, &m_pCompareImagesCompute);
+		if (FAILED(result))
+		{
+			VS_LOG_VERBOSE("Failed to create the compute shader.");
+			return false;
+		}
+
 	}
 
 	//Create the mesh..
@@ -348,6 +395,8 @@ bool Renderer::Render()
 	double dCPUFrameTime = (m_dCPUFrameEndTime - m_dCPUFrameStartTime) * 1000;
 	m_dCPUFrameStartTime = Timer::Get()->GetCurrentTime();
 
+	VoxelisedScene* pActiveVoxScene = nullptr;
+
 	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
 	std::string sRenderMode;
 	int iMemUsage = 0;
@@ -356,16 +405,19 @@ bool Renderer::Render()
 	case RenderMode::rmRegularTexture:
 		RenderRegular();
 		iMemUsage = m_pRegularVoxelisedScene->GetMemoryUsageInBytes();
+		pActiveVoxScene = m_pRegularVoxelisedScene;
 		sRenderMode = "RegularGrid";
 		break;
 	case RenderMode::rmTiledTexture:
 		RenderTiled();
 		iMemUsage = m_pTiledVoxelisedScene->GetMemoryUsageInBytes();
+		pActiveVoxScene = m_pTiledVoxelisedScene;
 		sRenderMode = "VolumeTiledResources";
 		break;
 	case RenderMode::rmComparison:
 		iMemUsage = m_pTiledVoxelisedScene->GetMemoryUsageInBytes() + m_pRegularVoxelisedScene->GetMemoryUsageInBytes();
 		RenderComparison();
+		pActiveVoxScene = m_pTiledVoxelisedScene;
 		sRenderMode = "ComparisonMode";
 		break;
 	}
@@ -390,14 +442,9 @@ bool Renderer::Render()
 			char sGPUName[64];
 			int iGPUMemoryInMB;
 			m_pD3D->GetVideoCardInfo(sGPUName, iGPUMemoryInMB);
-			if (m_pRegularVoxelisedScene)
-			{
-				GPUProfiler::Get()->OutputStoredTimesToFile(sGPUName, iGPUMemoryInMB, sRenderMode.c_str(), m_pRegularVoxelisedScene->GetTextureDimensions(), iMemUsage);
-			}
-			else if (m_pTiledVoxelisedScene)
-			{
-				GPUProfiler::Get()->OutputStoredTimesToFile(sGPUName, iGPUMemoryInMB, sRenderMode.c_str(), m_pTiledVoxelisedScene->GetTextureDimensions(), iMemUsage);
-			}
+			
+			GPUProfiler::Get()->OutputStoredTimesToFile(sGPUName, iGPUMemoryInMB, sRenderMode.c_str(), pActiveVoxScene->GetTextureDimensions(), iMemUsage);
+			m_pCamera->EndRoute();
 			return false;
 		}
 
@@ -407,12 +454,13 @@ bool Renderer::Render()
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
 
-	if (m_bTestMode)
+	//If we're in test mode, allow for stabilisation/loading before we profile..
+	if (m_bTestMode && m_iElapsedFrames > 10)
 	{
 		m_pCamera->TraverseRoute();
 		m_bTestMode = false;
 	}
-
+	m_iElapsedFrames++;
 	return true;
 }
 
@@ -768,15 +816,17 @@ bool Renderer::RenderComparison()
 
 	GPUProfiler::Get()->EndTimeStamp(pContext, GPUProfiler::psLightingPass);
 	m_pD3D->SetRenderOutputToScreen();
-	m_iAlternateRender++;
-	if (m_iAlternateRender % 2 == 0)
-	{
-		m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonTextures[ComparisonTextures::ctRegularTexture]);
-	}
-	else
-	{
-		m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonTextures[ComparisonTextures::ctTiled]);
-	}
+	
+	//Subtract Tiled from Regular and write the absolute value to the comparison texture..
+	RunImageCompShader();
+	//Render the comparison texture - expected result is fully black if images are the same.
+	m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonResultTextures[0]);
+	float fImageDifferencePercent = GetCompTexturePercentageDifference();
+
+	stringstream ssImageDiff;
+	ssImageDiff << "Image Difference: " << fImageDifferencePercent << "%";
+
+	DebugLog::Get()->OutputString(ssImageDiff.str());
 
 	//Go back to 3D rendering
 	m_pD3D->TurnZBufferOn();
@@ -790,4 +840,89 @@ bool Renderer::RenderComparison()
 	return true;
 }
 
+void Renderer::RunImageCompShader()
+{
+	ID3D11UnorderedAccessView* ppUAViewNULL[1] = { nullptr };
+	ID3D11ShaderResourceView* ppSRViewNULL[2] = { nullptr, nullptr };
+	
+	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
+	pContext->CSSetShader(m_pCompareImagesCompute, nullptr, 0);
+	ID3D11UnorderedAccessView* uav[1] = { m_arrComparisonResultTextures[0]->GetUAV() };
+	ID3D11ShaderResourceView* srv[2] = { m_arrComparisonTextures[ComparisonTextures::ctRegularTexture]->GetShaderResourceView(), m_arrComparisonTextures[ComparisonTextures::ctTiled]->GetShaderResourceView() };
+	pContext->CSSetUnorderedAccessViews(0, 1, uav, nullptr);
+	pContext->CSSetShaderResources(0, 2, srv);
+	
+	pContext->Dispatch(64, 64, 1);
+
+	//Reset
+	pContext->CSSetShader(nullptr, nullptr, 0);
+	pContext->CSSetUnorderedAccessViews(0, 1, ppUAViewNULL, nullptr);
+	pContext->CSSetShaderResources(0, 2, ppSRViewNULL);
+	
+}
+
+float Renderer::GetCompTexturePercentageDifference()
+{
+	//TODO: Triple buffer this to avoid stalls..
+	ID3D11DeviceContext3* pContext = m_pD3D->GetDeviceContext();
+ 	pContext->CopySubresourceRegion(m_pComparisonResultStaging, 0, 0, 0, 0, m_arrComparisonResultTextures[0]->GetTexture(), 0, nullptr);
+ 
+ 	D3D11_MAPPED_SUBRESOURCE pTexture;
+ 	HRESULT res = pContext->Map(m_pComparisonResultStaging, 0, D3D11_MAP_READ, 0, &pTexture);
+ 	if (FAILED(res))
+ 	{
+		VS_LOG_VERBOSE("Couldn't map resource..");
+ 		return 0.f;
+ 	}
+	float* pTexData = static_cast<float*>(pTexture.pData);
+	int index = 0;
+	float totalPixelDiff = 0;
+	for (int y = 0; y < m_iScreenHeight; y++)
+	{
+		index = y * pTexture.RowPitch / 16;
+		for (int x = 0; x < m_iScreenWidth ; x++)
+		{
+			float texDataR = pTexData[index];
+			float texDataG = pTexData[index+1];
+			float texDataB = pTexData[index+2];
+			float texDataA = pTexData[index+3];
+
+			totalPixelDiff += ((texDataR + texDataG + texDataB + texDataA) / 4.f);
+			index += 4;
+		}
+	}
+
+	totalPixelDiff /= (float)(m_iScreenWidth * m_iScreenHeight);
+	float totalPixelDiffAsPercentage = totalPixelDiff * 100;
+
+	return totalPixelDiffAsPercentage;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Renderer::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename)
+{
+	//Get ptr to error message text buffer
+	char* compileErrors = (char*)(errorMessage->GetBufferPointer());
+
+	//get the length of the message..
+	size_t u_iBufferSize = errorMessage->GetBufferSize();
+
+	ofstream fout;
+	fout.open("shader-error.txt");
+	//Write out the error to the file..
+
+	for (size_t i = 0; i < u_iBufferSize; i++)
+	{
+		fout << compileErrors[i];
+	}
+	//Close file
+	fout.close();
+
+	errorMessage->Release();
+	errorMessage = nullptr;
+
+	// Pop a message up on the screen to notify the user to check the text file for compile errors.
+	MessageBox(hwnd, L"Error compiling shader. Check shader-error.txt for message.", shaderFilename, MB_OK);
+
+}

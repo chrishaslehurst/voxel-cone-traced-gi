@@ -121,12 +121,12 @@ public:
 
 	int GetMemoryUsageInBytes() { return m_pRadianceVolume->GetMemoryUsageInBytes(); }
 	int GetTextureDimensions() { return m_iTextureDimension; }
+	bool ReadyToProfile() { return m_bReadyToRunProfiling; }
 
 private:
 
 	int m_iTextureDimension;
 	void UpdateTiles(ID3D11DeviceContext3* pDeviceContext);
-	
 
 	void CreateWorldToVoxelGrid(const AABB& voxelGridAABB);
 	HRESULT InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
@@ -170,7 +170,7 @@ private:
 	int m_iDebugMipLevel;
 
 	bool m_bUseTiledResources;
-
+	bool m_bReadyToRunProfiling;
 
 	int m_iCurrentOccupationTexture;
 	Texture3D* m_pTileOccupation[3];

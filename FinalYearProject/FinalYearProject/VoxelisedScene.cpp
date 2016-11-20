@@ -11,7 +11,7 @@
 VoxelisedScene::VoxelisedScene()
 	:m_iDebugMipLevel(0)
 	, m_iCurrentOccupationTexture(0)
-
+	, m_bReadyToRunProfiling(false)
 {
 	
 	
@@ -55,7 +55,10 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		}
 
 	}
-
+	else
+	{
+		m_bReadyToRunProfiling = true;
+	}
 	m_sNumThreads = std::to_string(NUM_THREADS);
 
 	m_sNumTexelsPerThread = std::to_string((m_iTextureDimension * m_iTextureDimension * m_iTextureDimension) / (NUM_THREADS * NUM_THREADS * NUM_GROUPS * NUM_GROUPS));
@@ -534,10 +537,10 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 							}
 							//Limit number of tiles which can be mapped per frame to stop frame rate spikes..
 							iNumTilesMappedThisFrame++;
-						//	if (iNumTilesMappedThisFrame >= 5)
-						//	{
-						//		break;
-						//	}
+// 							if (iNumTilesMappedThisFrame >= 20)
+// 							{
+// 								break;
+// 							}
 						}
 						m_bPreviousFrameOccupation[(z * m_iTextureDimension / 32 * m_iTextureDimension / 32) + (y * m_iTextureDimension / 32) + x] = true;
 					}
@@ -551,6 +554,10 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 			}
 		}
 		pContext->Unmap(m_pTileOccupationStaging, 0);
+		if (iNumTilesMappedThisFrame <= 0)
+		{
+			m_bReadyToRunProfiling = true;
+		}
 	}
 }
 

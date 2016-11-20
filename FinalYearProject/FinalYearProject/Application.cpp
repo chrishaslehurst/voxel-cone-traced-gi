@@ -140,7 +140,7 @@ bool Application::Initialise()
 	
 	
 
-#ifdef TEST_MODE
+#if TEST_MODE
 	//This is where all the test types will go..
 	TestType t1;
 	t1.iResolution = 256;
@@ -155,7 +155,7 @@ bool Application::Initialise()
 #else
 	TestType t1;
 	t1.iResolution = 256;
-	t1.eRenderMode = rmTiledTexture;
+	t1.eRenderMode = rmComparison;
 	m_arrTests.push_back(t1);
 #endif
 

@@ -344,7 +344,7 @@ bool D3DWrapper::QueryRefreshRateAndGPUInfo(int iScreenWidth, int iScreenHeight,
 	}
 
 	// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the monitor.
-	unsigned int iNumModes;
+	unsigned int iNumModes = 0;
 	if (FAILED(pAdapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &iNumModes, nullptr)))
 	{
 		VS_LOG_VERBOSE("Failed to get the number of modes");

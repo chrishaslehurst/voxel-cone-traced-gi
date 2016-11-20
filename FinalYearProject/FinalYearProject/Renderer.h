@@ -53,6 +53,9 @@ public:
 	bool Update(HWND hwnd);
 
 private:
+	int m_iScreenWidth;
+	int m_iScreenHeight;
+
 	RenderMode k_eRenderMode;
 
 	D3DWrapper* m_pD3D;
@@ -66,7 +69,12 @@ private:
 	VoxelisedScene*	  m_pTiledVoxelisedScene;
 	OrthoWindow* m_pFullScreenWindow;
 
+	ID3D11ComputeShader*	m_pCompareImagesCompute;
+
 	Texture2D* m_arrComparisonTextures[ComparisonTextures::ctMax];
+	//There will be readback from GPU so triple buffer it..
+	Texture2D* m_arrComparisonResultTextures[3];
+	ID3D11Texture2D* m_pComparisonResultStaging;
 	bool m_bDebugRenderVoxels;
 
 	bool m_bPlusPressed;
@@ -76,6 +84,7 @@ private:
 	bool m_bMPressed;
 
 	bool m_bTestMode;
+	int m_iElapsedFrames;
 	
 	GIRenderFlag m_eGITypeToRender;
 	std::string m_sGITypeRendered;
@@ -86,6 +95,10 @@ private:
 	bool RenderRegular();
 	bool RenderTiled();
 	bool RenderComparison();
+
+	void RunImageCompShader();
+	float GetCompTexturePercentageDifference();
+	void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, WCHAR* shaderFilename);
 
 	int m_iAlternateRender;
 
