@@ -223,8 +223,6 @@ void GPUProfiler::OutputStoredTimesToFile(const char* gpuName, int gpuMemInMB, c
 	outfile << "Image Comparison Difference," << m_fAverageImageDifference << "," << m_fMinImageDifference << "," << m_fMaxImageDifference << "\n";
 	outfile << "\nMemory Usage(MB):," << MemUsage;
 	
-
-
 	outfile.close();
 	//Reset Times Stored
 	m_fStoredCPUAverageTime = 0;

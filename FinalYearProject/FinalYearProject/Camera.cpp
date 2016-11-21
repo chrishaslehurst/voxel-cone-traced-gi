@@ -13,14 +13,14 @@ Camera::Camera()
 {
 	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
 	m_arrRoute.push_back(XMFLOAT3( 1150, 200, 475));
-//	m_arrRoute.push_back(XMFLOAT3( 1150, 200, -450));
-//	m_arrRoute.push_back(XMFLOAT3(-1250, 200, -450));
-//	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
-//	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
-//	m_arrRoute.push_back(XMFLOAT3(1150, 600, 475));
-//	m_arrRoute.push_back(XMFLOAT3(1150, 600, -450));
-//	m_arrRoute.push_back(XMFLOAT3(-1250, 600, -450));
-//	m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
+	//m_arrRoute.push_back(XMFLOAT3( 1150, 200, -450));
+	//m_arrRoute.push_back(XMFLOAT3(-1250, 200, -450));
+	//m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
+	//m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
+	//m_arrRoute.push_back(XMFLOAT3(1150, 600, 475));
+	//m_arrRoute.push_back(XMFLOAT3(1150, 600, -450));
+	//m_arrRoute.push_back(XMFLOAT3(-1250, 600, -450));
+	//m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,6 @@
 
-Texture2D Input1;
-Texture2D Input2;
+Texture2D Input1; //Reg
+Texture2D Input2; //Tiled
 
 RWTexture2D<float4> Output;
 
@@ -16,7 +16,7 @@ void main( uint3 id : SV_DispatchThreadID )
 	{
 		return;
 	}
-	float4 finalCol = float4(1.f, 0.f, 0.f, 1.f);
+	float4 finalCol = float4(1.f, 1.f, 1.f, 1.f);
 	float4 col1 = Input1.Load(id);
 	float4 col2 = Input2.Load(id);
 

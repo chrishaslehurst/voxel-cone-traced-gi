@@ -315,11 +315,10 @@ bool Renderer::Update(HWND hwnd)
 
 	if (InputManager::Get()->IsKeyPressed(DIK_M) && !m_bMPressed)
 	{
-		if (k_eRenderMode == rmComparison)
-		{
-			k_eRenderMode = static_cast<RenderMode>((static_cast<int>(k_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
-			SetGITypeString();
-		}
+		
+		k_eRenderMode = static_cast<RenderMode>((static_cast<int>(k_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
+		SetGITypeString();
+		
 		m_bMPressed = true;
 	}
 	else if (InputManager::Get()->IsKeyReleased(DIK_M))
@@ -435,6 +434,7 @@ bool Renderer::Render()
 
 		DebugLog::Get()->OutputString(ssMemoryUsage.str());
 		DebugLog::Get()->OutputString(ssCameraPosition.str());
+		DebugLog::Get()->OutputString(m_sGIStorageMode);
 
 		GPUProfiler::Get()->EndFrame(pContext);
 		GPUProfiler::Get()->DisplayTimes(pContext, static_cast<float>(dCPUFrameTime), static_cast<float>(m_dTileUpdateTime), imagePercentDiff, m_pCamera->IsFollowingDebugRoute());
@@ -821,8 +821,17 @@ bool Renderer::RenderComparison(float& imageDifferencePercent)
 	
 	//Subtract Tiled from Regular and write the absolute value to the comparison texture..
 	RunImageCompShader();
-	//Render the comparison texture - expected result is fully black if images are the same.
-	m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonResultTextures[0]);
+	//Render the scene with alternating frames..
+	m_iAlternateRender++;
+	if (m_iAlternateRender % 2 == 0)
+	{
+		m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonTextures[ComparisonTextures::ctRegularTexture]);
+	}
+	else
+	{
+		m_DebugRenderTexture.RenderTexture(pContext, m_pFullScreenWindow->GetIndexCount(), mWorld, mBaseView, mOrtho, m_pCamera->GetPosition(), m_arrComparisonTextures[ComparisonTextures::ctTiled]);
+	}
+
 	float fImageDifferencePercent = GetCompTexturePercentageDifference();
 	imageDifferencePercent = fImageDifferencePercent;
 	stringstream ssImageDiff;

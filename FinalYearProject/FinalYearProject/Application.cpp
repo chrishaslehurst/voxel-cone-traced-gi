@@ -142,16 +142,28 @@ bool Application::Initialise()
 
 #if TEST_MODE
 	//This is where all the test types will go..
+	int iRes = 64; 
+	
 	TestType t1;
-	t1.iResolution = 256;
+	t1.iResolution = iRes;
 	t1.eRenderMode = rmTiledTexture;
 
 	TestType t2;
-	t2.iResolution = 256;
+	t2.iResolution = iRes;
 	t2.eRenderMode = rmRegularTexture;
+
+	TestType t3;
+	t3.iResolution = iRes;
+	t3.eRenderMode = rmComparison;
 
 	m_arrTests.push_back(t1);
 	m_arrTests.push_back(t2);
+	m_arrTests.push_back(t3);
+
+	
+	
+		
+
 #else
 	TestType t1;
 	t1.iResolution = 256;

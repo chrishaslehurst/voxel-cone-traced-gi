@@ -223,7 +223,20 @@ float4 sampleVoxelVolume(Texture3D<float4> RadianceVolume, float4 worldPosition,
 		return float4(0.f, 0.f, 0.f, 0.f);
 	}
 
-	int MipLevel = getMipLevelFromRadius(coneRadius);
+	uint3 res;
+	RadianceVolume.GetDimensions(res.x, res.y, res.z);
+	//Define the max mip as the 32x32 mip, anything less is not worth sampling..
+	int MaxMip = 0;
+	while (res.x > 32)
+	{
+		MaxMip++;
+		res.x /= 2;
+	}
+	
+
+
+
+	int MipLevel = clamp(getMipLevelFromRadius(coneRadius), 0, MaxMip);
 	
 	return RadianceVolume.SampleLevel(VoxelSampler, texCoord, MipLevel);
 }
@@ -365,7 +378,7 @@ float4 PSMain(PixelInput input) : SV_TARGET
 		coneDirection = normalize(coneDirection);
 
 		float accumulatedAO = 0.f;
-		float4 accumulatedColour = TraceDiffuseCone(WorldPositionSample, Normal, coneDirection, diffuseRadiusRatio, voxelScale, 8, accumulatedAO);
+		float4 accumulatedColour = TraceDiffuseCone(WorldPositionSample, Normal, coneDirection, diffuseRadiusRatio, voxelScale, texDimensions.x / 32, accumulatedAO);
 
 		accumulatedDiffuse += accumulatedColour * ConeSampleWeights[coneIndex];
 		accumulatedDiffuseOcclusion += accumulatedAO * ConeSampleWeights[coneIndex];

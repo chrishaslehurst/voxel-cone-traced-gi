@@ -104,6 +104,7 @@ HRESULT Texture3D::Init(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, 
 
 void Texture3D::Shutdown()
 {
+	
 	if (m_pTexture)
 	{
 		m_pTexture->Release();

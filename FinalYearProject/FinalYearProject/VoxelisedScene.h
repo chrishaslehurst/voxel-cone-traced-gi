@@ -139,7 +139,6 @@ private:
 
 	ID3D11ComputeShader*	m_pClearVoxelsComputeShader;
 	ID3D11ComputeShader*	m_pInjectRadianceComputeShader;
-	ID3D11ComputeShader*	m_pGenerateMipsShader;
 
 	
 	ID3D11Buffer*			m_pVoxeliseVertexShaderBuffer;

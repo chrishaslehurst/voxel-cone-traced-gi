@@ -430,6 +430,11 @@ void VoxelisedScene::Shutdown()
 		m_pClearVoxelsComputeShader->Release();
 		m_pClearVoxelsComputeShader = nullptr;
 	}
+	if (m_pInjectRadianceComputeShader)
+	{
+		m_pInjectRadianceComputeShader->Release();
+		m_pInjectRadianceComputeShader = nullptr;
+	}
 	
 	if (m_pVoxeliseVertexShaderBuffer)
 	{
@@ -453,9 +458,11 @@ void VoxelisedScene::Shutdown()
 		m_pSamplerState = nullptr;
 	}
 	
-	
 	delete m_pRadianceVolume;
 	m_pRadianceVolume = nullptr;
+	
+	m_pDebugCubesIndexBuffer->Release();
+	m_pDebugCubesVertexBuffer->Release();
 	
 	
 	if (m_bUseTiledResources)
@@ -465,6 +472,13 @@ void VoxelisedScene::Shutdown()
 			delete[] m_bPreviousFrameOccupationMipLevels[i];
 			m_bPreviousFrameOccupationMipLevels[i] = nullptr;
 		}
+		for (int j = 0; j < 3; j++)
+		{
+			delete m_pTileOccupation[j];
+			m_pTileOccupation[j] = nullptr;
+		}
+		m_pTileOccupationStaging->Release();
+		m_pTileOccupationStaging = nullptr;
 	}
 
 }
@@ -521,7 +535,9 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 					{
 						if (!m_bPreviousFrameOccupation[(z*m_iTextureDimension/32* m_iTextureDimension / 32) + (y*m_iTextureDimension / 32) + x])
 						{
-							m_pRadianceVolume->MapTile(pContext, x, y, z, 0);
+							if(m_pRadianceVolume->MapTile(pContext, x, y, z, 0))
+								m_bPreviousFrameOccupation[(z * m_iTextureDimension / 32 * m_iTextureDimension / 32) + (y * m_iTextureDimension / 32) + x] = true;
+							
 							for (int i = 1; i < MIP_LEVELS; i++)
 							{
 								int mult = std::pow(2, i);
@@ -531,8 +547,10 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 								int mipIdx = (mipZ * ((m_iTextureDimension / 32) / mult) * ((m_iTextureDimension / 32) / mult)) + mipY * ((m_iTextureDimension / 32) / mult) + mipX;
 								if (!m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx])
 								{
-									m_pRadianceVolume->MapTile(pContext, mipX, mipY, mipZ, i);
-									m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx] = true;
+									if (m_pRadianceVolume->MapTile(pContext, mipX, mipY, mipZ, i))
+									{
+										m_bPreviousFrameOccupationMipLevels[i - 1][mipIdx] = true;
+									}
 								}
 							}
 							//Limit number of tiles which can be mapped per frame to stop frame rate spikes..
@@ -542,7 +560,6 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 // 								break;
 // 							}
 						}
-						m_bPreviousFrameOccupation[(z * m_iTextureDimension / 32 * m_iTextureDimension / 32) + (y * m_iTextureDimension / 32) + x] = true;
 					}
 					else
 					{
@@ -664,7 +681,6 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	
 	ID3D10Blob* pComputeShaderBuffer(nullptr);
 	ID3D10Blob* pRadianceComputeShaderBuffer(nullptr);
-	ID3D10Blob* pGenerateMipsShaderBuffer(nullptr);
 
 	//Compile the clear voxels compute shader code
 	HRESULT result = D3DCompileFromFile(L"Voxelise_Clear.hlsl", m_ComputeShaderDefines, nullptr, "CSClearVoxels", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer, &pErrorMessage);
@@ -714,29 +730,6 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 		return false;
 	}
 
-
-	//Compile the clear voxels compute shader code
-	result = D3DCompileFromFile(L"GenerateMips.hlsl", m_ComputeShaderDefines, nullptr, "CSGenerateMips", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pGenerateMipsShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"GenerateMips.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"GenerateMips.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-	result = pDevice->CreateComputeShader(pGenerateMipsShaderBuffer->GetBufferPointer(), pGenerateMipsShaderBuffer->GetBufferSize(), nullptr, &m_pGenerateMipsShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the compute shader.");
-		return false;
-	}
 
 	//Initialise the input layout
 
@@ -800,9 +793,6 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 
 	pRadianceComputeShaderBuffer->Release();
 	pRadianceComputeShaderBuffer = nullptr;
-
-	pGenerateMipsShaderBuffer->Release();
-	pGenerateMipsShaderBuffer = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
