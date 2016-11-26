@@ -123,21 +123,22 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 	{
 		MiscFlags = D3D11_RESOURCE_MISC_TILED;
 		//Need 3 of these for triple buffering to avoid gpu syncs flushing the pipeline and stalling everything
+		
+		m_pTileOccupation = new Texture3D;
+		m_pTileOccupation->Init(pDevice, pContext, m_iTextureDimension / 32.f, m_iTextureDimension / 32.f, m_iTextureDimension / 16.f, 1, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
 		for (int i = 0; i < 3; i++)
 		{
-			m_pTileOccupation[i] = new Texture3D;
-			m_pTileOccupation[i]->Init(pDevice, pContext, m_iTextureDimension / 32.f, m_iTextureDimension / 32.f, m_iTextureDimension / 16.f, 1, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
-		}
-		D3D11_TEXTURE3D_DESC textureDesc;
-		m_pTileOccupation[0]->GetTexture()->GetDesc(&textureDesc);
-		textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-		textureDesc.Usage = D3D11_USAGE_STAGING;
-		textureDesc.BindFlags = 0;
-		result = pDevice->CreateTexture3D(&textureDesc, nullptr, &m_pTileOccupationStaging);
-		if (FAILED(result))
-		{
-			VS_LOG_VERBOSE("Failed to create tile occupation staging texture")
-				return false;
+			D3D11_TEXTURE3D_DESC textureDesc;
+			m_pTileOccupation->GetTexture()->GetDesc(&textureDesc);
+			textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			textureDesc.Usage = D3D11_USAGE_STAGING;
+			textureDesc.BindFlags = 0;
+			result = pDevice->CreateTexture3D(&textureDesc, nullptr, &m_pTileOccupationStaging[i]);
+			if (FAILED(result))
+			{
+				VS_LOG_VERBOSE("Failed to create tile occupation staging texture")
+					return false;
+			}
 		}
 	}
 
@@ -300,7 +301,6 @@ void VoxelisedScene::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMA
 	{
 		if (!pMesh->GetMeshArray()[i]->m_pMaterial->UsesAlphaMaps())
 		{
-			
 			ID3D11ShaderResourceView* SRVDiffuseTex = pMesh->GetMeshArray()[i]->m_pMaterial->GetDiffuseTexture()->GetShaderResourceView();
 			pDeviceContext->PSSetShaderResources(0, 1, &SRVDiffuseTex);
 			pMesh->RenderBuffers(i, pDeviceContext);
@@ -310,6 +310,11 @@ void VoxelisedScene::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMA
 		}
 	}
 	PostRender(pDeviceContext);
+	if (m_bUseTiledResources)
+	{
+		m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
+		pDeviceContext->CopySubresourceRegion(m_pTileOccupationStaging[m_iCurrentOccupationTexture], 0, 0, 0, 0, m_pTileOccupation->GetTexture(), 0, nullptr);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -348,8 +353,8 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 	if (m_bUseTiledResources)
 	{
 		//Necessary for triple buffering to avoid gpu syncs
-		m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
-		ID3D11UnorderedAccessView* uavs[2] = { m_pRadianceVolume->GetUAV(), m_pTileOccupation[m_iCurrentOccupationTexture]->GetUAV() };
+		
+		ID3D11UnorderedAccessView* uavs[2] = { m_pRadianceVolume->GetUAV(), m_pTileOccupation->GetUAV() };
 		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 2, uavs, 0);
 
 	}
@@ -358,7 +363,7 @@ bool VoxelisedScene::SetVoxeliseShaderParams(ID3D11DeviceContext3* pDeviceContex
 		ID3D11UnorderedAccessView* uavs[1] = { m_pRadianceVolume->GetUAV() };
 		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 1, uavs, 0);
 	}
-
+	
 	return true;
 }
 
@@ -472,13 +477,14 @@ void VoxelisedScene::Shutdown()
 			delete[] m_bPreviousFrameOccupationMipLevels[i];
 			m_bPreviousFrameOccupationMipLevels[i] = nullptr;
 		}
+
+		delete m_pTileOccupation;
+		m_pTileOccupation = nullptr;
 		for (int j = 0; j < 3; j++)
 		{
-			delete m_pTileOccupation[j];
-			m_pTileOccupation[j] = nullptr;
+			m_pTileOccupationStaging[j]->Release();
+			m_pTileOccupationStaging[j] = nullptr;
 		}
-		m_pTileOccupationStaging->Release();
-		m_pTileOccupationStaging = nullptr;
 	}
 
 }
@@ -510,10 +516,9 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 	{
 		int iNumTilesMappedThisFrame = 0;
 		int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % 3;
-		pContext->CopySubresourceRegion(m_pTileOccupationStaging, 0, 0, 0, 0, m_pTileOccupation[iFrameMinus2TileOccupation]->GetTexture(), 0, nullptr);
-
+		
 		D3D11_MAPPED_SUBRESOURCE pTexture;
-		HRESULT res = pContext->Map(m_pTileOccupationStaging, 0, D3D11_MAP_READ, 0, &pTexture);
+		HRESULT res = pContext->Map(m_pTileOccupationStaging[iFrameMinus2TileOccupation], 0, D3D11_MAP_READ, 0, &pTexture);
 		if (FAILED(res))
 		{
 			VS_LOG_VERBOSE("Couldn't map resource..")
@@ -570,11 +575,12 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 				}
 			}
 		}
-		pContext->Unmap(m_pTileOccupationStaging, 0);
+		pContext->Unmap(m_pTileOccupationStaging[iFrameMinus2TileOccupation], 0);
 		if (iNumTilesMappedThisFrame <= 0)
 		{
 			m_bReadyToRunProfiling = true;
 		}
+		
 	}
 }
 

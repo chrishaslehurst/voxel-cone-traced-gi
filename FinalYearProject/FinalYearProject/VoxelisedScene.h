@@ -172,8 +172,8 @@ private:
 	bool m_bReadyToRunProfiling;
 
 	int m_iCurrentOccupationTexture;
-	Texture3D* m_pTileOccupation[3];
-	ID3D11Texture3D* m_pTileOccupationStaging;
+	Texture3D* m_pTileOccupation;
+	ID3D11Texture3D* m_pTileOccupationStaging[3];
 
 	std::vector<bool> m_bPreviousFrameOccupation;
 	bool *m_bPreviousFrameOccupationMipLevels[MIP_LEVELS - 1];

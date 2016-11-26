@@ -459,11 +459,18 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext3* pContext, XMMATRI
 	}
 	CameraBuffer* pCameraData;
 	pCameraData = (CameraBuffer*)mappedResource.pData;
-
-	pCameraData->fVoxelScale = pVoxelisedScene->GetVoxelScale();
-	pCameraData->vCameraPosition = vCamPos;
-	pCameraData->mWorldToVoxelGrid = pVoxelisedScene->GetWorldToVoxelMatrix();
-
+	if (pVoxelisedScene)
+	{
+		pCameraData->fVoxelScale = pVoxelisedScene->GetVoxelScale();
+		pCameraData->vCameraPosition = vCamPos;
+		pCameraData->mWorldToVoxelGrid = pVoxelisedScene->GetWorldToVoxelMatrix();
+	}
+	else
+	{
+		pCameraData->fVoxelScale = 1.f;
+		pCameraData->vCameraPosition = vCamPos;
+		pCameraData->mWorldToVoxelGrid = XMMatrixIdentity();
+	}
 	pContext->Unmap(m_pCameraBuffer, 0);
 
 
@@ -499,9 +506,11 @@ bool DeferredRender::SetShaderParameters(ID3D11DeviceContext3* pContext, XMMATRI
 		}
 	}
 	pContext->PSSetShaderResources(BufferType::btMax, NUM_LIGHTS, pShadowCubeArray);
-
-	ID3D11ShaderResourceView* pVoxelRadianceVolumes = pVoxelisedScene->GetRadianceVolume();
-	pContext->PSSetShaderResources(BufferType::btMax + NUM_LIGHTS, 1, &pVoxelRadianceVolumes);
+	if (pVoxelisedScene)
+	{
+		ID3D11ShaderResourceView* pVoxelRadianceVolumes = pVoxelisedScene->GetRadianceVolume();
+		pContext->PSSetShaderResources(BufferType::btMax + NUM_LIGHTS, 1, &pVoxelRadianceVolumes);
+	}
 	return true;
 }
 

@@ -52,14 +52,20 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 	float3 texCoord;
 
 	float3 lightPosVoxelGrid[NUM_LIGHTS];
+	int iNumLights = 0;
 	//Get the light in voxel space..
 	for (int k = 0; k < NUM_LIGHTS; k++)
 	{
-		lightPosVoxelGrid[k] = mul(float4(pointLights[k].position.xyz, 1.f), mWorldToVoxelGrid).xyz;
-		
-		lightPosVoxelGrid[k] = float3((((lightPosVoxelGrid[k].x * 0.5) + 0.5f) * size.x),
-			(((lightPosVoxelGrid[k].y * 0.5) + 0.5f) * size.x),
-			(((lightPosVoxelGrid[k].z * 0.5) + 0.5f) * size.x));
+		if (pointLights[k].colour.a > 0)
+		{
+			lightPosVoxelGrid[k] = mul(float4(pointLights[k].position.xyz, 1.f), mWorldToVoxelGrid).xyz;
+
+			lightPosVoxelGrid[k] = float3((((lightPosVoxelGrid[k].x * 0.5) + 0.5f) * size.x),
+				(((lightPosVoxelGrid[k].y * 0.5) + 0.5f) * size.x),
+				(((lightPosVoxelGrid[k].z * 0.5) + 0.5f) * size.x));
+
+			iNumLights++;
+		}
 	}
 	
 	
@@ -69,33 +75,32 @@ void CSInjectRadiance(uint3 id: SV_DispatchThreadID)
 		texCoord.y = (index / size.x) % size.x;
 		texCoord.z = index % size.x;
 		float4 diffuseColour = convRGBA8ToVec4(RadianceVolume.Load(int4(texCoord, 0)));
-		diffuseColour /= 255.f;
 		if (diffuseColour.a > 0)
 		{
+			diffuseColour /= 255.f;
 			float4 colour = float4(0.f, 0.f, 0.f, 1.f);
 			[unroll]
-			for (int j = 0; j < NUM_LIGHTS; j++)
+			for (int j = 0; j < iNumLights; j++)
 			{
-				if (pointLights[j].colour.a > 0)
+				
+				float3 ToLight = lightPosVoxelGrid[j] - texCoord;
+				float3 ToLNorm = normalize(ToLight);
+				float4 tempCol = float4(0.f, 0.f, 0.f, 0.f);
+				//shadow test
+				int iShadowFactor = 1;
+				int voxelsToLight = length(ToLight);
+				//Start a few voxels away from surface to stop self intersection..
+				for (int i = 4; i < voxelsToLight; i++)
 				{
-					float3 ToLight = lightPosVoxelGrid[j] - texCoord;
-					float3 ToLNorm = normalize(ToLight);
-					float4 tempCol = float4(0.f, 0.f, 0.f, 0.f);
-					//shadow test
-					int iShadowFactor = 1;
-					int voxelsToLight = length(ToLight);
-					//Start a few voxels away from surface to stop self intersection..
-					for (int i = 4; i < voxelsToLight; i++)
+					float4 sampleCol = RadianceVolume.Load(int4(texCoord + (i*ToLNorm), 0));
+					if (sampleCol.a > 0)
 					{
-						float4 sampleCol = RadianceVolume.Load(int4(texCoord + (i*ToLNorm), 0));
-						if (sampleCol.a > 0)
-						{
-							iShadowFactor = 0;
-							break;
-						}
+						iShadowFactor = 0;
+						break;
 					}
-					colour += saturate(float4((diffuseColour.rgb * pointLights[j].colour * iShadowFactor), 0.f));
 				}
+				colour += saturate(float4((diffuseColour.rgb * pointLights[j].colour * iShadowFactor), 0.f));
+				
 			}
 			colour.a = 1.f;
 			colour = saturate(colour);

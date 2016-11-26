@@ -60,7 +60,6 @@ GSInput VSMain(VertexInput input)
 //Geometry shader creates 6 copies of the geometry and transforms it to the different viewpoints so it can be rendered on the 6 faces of the cubemap by the pixel shader
 [instance(ShadowMapCount)]
 [maxvertexcount(3)]
-
 void GSMain(uint shadowMapId : SV_GSInstanceID, triangle GSInput input[3], inout TriangleStream<PSInput> outputStream)
 {
 	PSInput output;
