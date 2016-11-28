@@ -126,7 +126,7 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 		
 		m_pTileOccupation = new Texture3D;
 		m_pTileOccupation->Init(pDevice, pContext, m_iTextureDimension / 32.f, m_iTextureDimension / 32.f, m_iTextureDimension / 16.f, 1, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
-		for (int i = 0; i < 3; i++)
+		for (int i = 0; i < OCCUPATION_FRAMES; i++)
 		{
 			D3D11_TEXTURE3D_DESC textureDesc;
 			m_pTileOccupation->GetTexture()->GetDesc(&textureDesc);
@@ -195,24 +195,13 @@ HRESULT VoxelisedScene::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext3*
 
 void VoxelisedScene::RenderClearVoxelsPass(ID3D11DeviceContext* pContext)
 {
-	//ID3D11UnorderedAccessView* ppUAViewNULL[2] = { nullptr, nullptr };
-	//
-	//pContext->CSSetShader(m_pClearVoxelsComputeShader, nullptr, 0);
-	//
-	//ID3D11UnorderedAccessView* uavs[2] = { m_pVoxelisedSceneColours->GetUAV(), m_pVoxelisedSceneNormals->GetUAV() };
-	//pContext->CSSetUnorderedAccessViews(0, 2, uavs, nullptr);
-	//pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
-	//pContext->CSSetShader(nullptr, nullptr, 0);
-	//pContext->CSSetUnorderedAccessViews(0, 2, ppUAViewNULL, nullptr);
 	UINT colour[4];
 	colour[0] = 0;
 	colour[1] = 0;
 	colour[2] = 0;
 	colour[3] = 0;
-	for (int i = 0; i < MIP_LEVELS; i++)
-	{
-		pContext->ClearUnorderedAccessViewUint(m_pRadianceVolume->GetUAV(), colour);
-	}
+	
+	pContext->ClearUnorderedAccessViewUint(m_pRadianceVolume->GetUAV(), colour);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -224,20 +213,17 @@ void VoxelisedScene::RenderInjectRadiancePass(ID3D11DeviceContext* pContext)
 
 	pContext->CSSetShader(m_pInjectRadianceComputeShader, nullptr, 0);
 	ID3D11UnorderedAccessView* uav = m_pRadianceVolume->GetUAV();
-	//ID3D11ShaderResourceView* srvs[1] = { m_pRadianceVolumeMips[0]->GetShaderResourceView()};
+	
 	pContext->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
-//	pContext->CSSetShaderResources(0, 1, srvs);
 	
 	ID3D11Buffer* pLightBuffer = LightManager::Get()->GetLightBuffer();
 	pContext->CSSetConstantBuffers(0, 1, &pLightBuffer);
 	pContext->CSSetConstantBuffers(1, 1, &m_pVoxeliseVertexShaderBuffer);
 	pContext->Dispatch(NUM_GROUPS, NUM_GROUPS, 1);
 
-
 	//Reset
 	pContext->CSSetShader(nullptr, nullptr, 0);
 	pContext->CSSetUnorderedAccessViews(0, 1, ppUAViewNULL, nullptr);
-//	pContext->CSSetShaderResources(0, 1, ppSRVNull);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -312,7 +298,7 @@ void VoxelisedScene::RenderMesh(ID3D11DeviceContext3* pDeviceContext, const XMMA
 	PostRender(pDeviceContext);
 	if (m_bUseTiledResources)
 	{
-		m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % 3;
+		m_iCurrentOccupationTexture = (m_iCurrentOccupationTexture + 1) % OCCUPATION_FRAMES;
 		pDeviceContext->CopySubresourceRegion(m_pTileOccupationStaging[m_iCurrentOccupationTexture], 0, 0, 0, 0, m_pTileOccupation->GetTexture(), 0, nullptr);
 	}
 }
@@ -430,11 +416,7 @@ void VoxelisedScene::Shutdown()
 		delete m_pDebugRenderPass;
 		m_pDebugRenderPass = nullptr;
 	}
-	if (m_pClearVoxelsComputeShader)
-	{
-		m_pClearVoxelsComputeShader->Release();
-		m_pClearVoxelsComputeShader = nullptr;
-	}
+
 	if (m_pInjectRadianceComputeShader)
 	{
 		m_pInjectRadianceComputeShader->Release();
@@ -480,7 +462,7 @@ void VoxelisedScene::Shutdown()
 
 		delete m_pTileOccupation;
 		m_pTileOccupation = nullptr;
-		for (int j = 0; j < 3; j++)
+		for (int j = 0; j < OCCUPATION_FRAMES; j++)
 		{
 			m_pTileOccupationStaging[j]->Release();
 			m_pTileOccupationStaging[j] = nullptr;
@@ -515,7 +497,7 @@ void VoxelisedScene::UpdateTiles(ID3D11DeviceContext3* pContext)
 	if (m_bUseTiledResources)
 	{
 		int iNumTilesMappedThisFrame = 0;
-		int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % 3;
+		int iFrameMinus2TileOccupation = (m_iCurrentOccupationTexture + 1) % OCCUPATION_FRAMES;
 		
 		D3D11_MAPPED_SUBRESOURCE pTexture;
 		HRESULT res = pContext->Map(m_pTileOccupationStaging[iFrameMinus2TileOccupation], 0, D3D11_MAP_READ, 0, &pTexture);
@@ -685,36 +667,9 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 {
 	ID3D10Blob* pErrorMessage(nullptr);
 	
-	ID3D10Blob* pComputeShaderBuffer(nullptr);
 	ID3D10Blob* pRadianceComputeShaderBuffer(nullptr);
 
-	//Compile the clear voxels compute shader code
-	HRESULT result = D3DCompileFromFile(L"Voxelise_Clear.hlsl", m_ComputeShaderDefines, nullptr, "CSClearVoxels", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pComputeShaderBuffer, &pErrorMessage);
-	if (FAILED(result))
-	{
-		if (pErrorMessage)
-		{
-			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"Voxelise_Clear.hlsl");
-		}
-		else
-		{
-			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"Voxelise_Clear.hlsl", L"Missing Shader File", MB_OK);
-		}
-		return false;
-	}
-
-	result = pDevice->CreateComputeShader(pComputeShaderBuffer->GetBufferPointer(), pComputeShaderBuffer->GetBufferSize(), nullptr, &m_pClearVoxelsComputeShader);
-	if (FAILED(result))
-	{
-		VS_LOG_VERBOSE("Failed to create the compute shader.");
-		return false;
-	}
-
-
-	//Compile the clear voxels compute shader code
-	result = D3DCompileFromFile(L"InjectRadiance.hlsl", m_ComputeShaderDefines, nullptr, "CSInjectRadiance", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pRadianceComputeShaderBuffer, &pErrorMessage);
+	HRESULT result = D3DCompileFromFile(L"InjectRadiance.hlsl", m_ComputeShaderDefines, nullptr, "CSInjectRadiance", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pRadianceComputeShaderBuffer, &pErrorMessage);
 	if (FAILED(result))
 	{
 		if (pErrorMessage)
@@ -793,9 +748,6 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	//Finished with shader buffers now so they can be released
 	pErrorMessage->Release();
 	pErrorMessage = nullptr;
-
-	pComputeShaderBuffer->Release();
-	pComputeShaderBuffer = nullptr;
 
 	pRadianceComputeShaderBuffer->Release();
 	pRadianceComputeShaderBuffer = nullptr;

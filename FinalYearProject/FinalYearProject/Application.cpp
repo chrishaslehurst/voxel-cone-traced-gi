@@ -142,7 +142,7 @@ bool Application::Initialise()
 
 #if TEST_MODE
 	//This is where all the test types will go..
-	int iRes = 128; 
+	int iRes = 512; 
 	
 	TestType t1;
 	t1.iResolution = iRes;
@@ -161,9 +161,9 @@ bool Application::Initialise()
 	t4.eRenderMode = rmNoGI;
 
 	m_arrTests.push_back(t1);
-	//m_arrTests.push_back(t2);
-	//m_arrTests.push_back(t3);
-	//m_arrTests.push_back(t4);
+	m_arrTests.push_back(t2);
+	m_arrTests.push_back(t3);
+	m_arrTests.push_back(t4);
 
 #else
 	TestType t1;
