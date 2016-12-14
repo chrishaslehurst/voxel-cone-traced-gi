@@ -669,18 +669,18 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	
 	ID3D10Blob* pRadianceComputeShaderBuffer(nullptr);
 
-	HRESULT result = D3DCompileFromFile(L"InjectRadiance.hlsl", m_ComputeShaderDefines, nullptr, "CSInjectRadiance", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pRadianceComputeShaderBuffer, &pErrorMessage);
+	HRESULT result = D3DCompileFromFile(L"../Assets/Shaders/InjectRadiance.hlsl", m_ComputeShaderDefines, nullptr, "CSInjectRadiance", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pRadianceComputeShaderBuffer, &pErrorMessage);
 	if (FAILED(result))
 	{
 		if (pErrorMessage)
 		{
 			//If the shader failed to compile it should have written something to error message, so we output that here
-			OutputShaderErrorMessage(pErrorMessage, hwnd, L"InjectRadiance.hlsl");
+			OutputShaderErrorMessage(pErrorMessage, hwnd, L"../Assets/Shaders/InjectRadiance.hlsl");
 		}
 		else
 		{
 			//if it hasn't, then it couldn't find the shader file..
-			MessageBox(hwnd, L"InjectRadiance.hlsl", L"Missing Shader File", MB_OK);
+			MessageBox(hwnd, L"../Assets/Shaders/InjectRadiance.hlsl", L"Missing Shader File", MB_OK);
 		}
 		return false;
 	}
@@ -740,10 +740,10 @@ HRESULT VoxelisedScene::InitialiseShadersAndInputLayout(ID3D11Device3* pDevice, 
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
 
 	m_pVoxeliseScenePass = new RenderPass;
-	m_pVoxeliseScenePass->Initialise(pDevice, hwnd, polyLayout, iNumElements, L"Voxelise_Populate.hlsl", "VSMain", "GSMain", "PSMain");
+	m_pVoxeliseScenePass->Initialise(pDevice, hwnd, polyLayout, iNumElements, L"../Assets/Shaders/Voxelise_Populate.hlsl", "VSMain", "GSMain", "PSMain");
 	
 	m_pDebugRenderPass = new RenderPass;
-	m_pDebugRenderPass->Initialise(pDevice, hwnd, polyLayout, 1, L"VoxelRenderShader.hlsl", "VSMain", "GSMain", "PSMain");
+	m_pDebugRenderPass->Initialise(pDevice, hwnd, polyLayout, 1, L"../Assets/Shaders/Debug/VoxelRenderShader.hlsl", "VSMain", "GSMain", "PSMain");
 
 	//Finished with shader buffers now so they can be released
 	pErrorMessage->Release();
@@ -871,53 +871,4 @@ bool VoxelisedScene::InitialiseDebugBuffers(ID3D11Device* pDevice)
 	return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if SPARSE_VOXEL_OCTREES
-bool VoxelisedScene::InitialiseOctreeData(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext)
-{
-	m_pSparseVoxelOctreeBricks = new Texture3D;
-	m_pSparseVoxelOctreeBricks->Init(pDevice, pContext, m_iTextureDimension, m_iTextureDimension, m_iTextureDimension, 1, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE, 0, 0);
-
-	D3D11_BUFFER_DESC descGPUBuffer;
-	ZeroMemory(&descGPUBuffer, sizeof(descGPUBuffer));
-	descGPUBuffer.BindFlags = D3D11_BIND_UNORDERED_ACCESS |	D3D11_BIND_SHADER_RESOURCE;
-	descGPUBuffer.ByteWidth = m_iTextureDimension * sizeof(OctreeNode);
-	descGPUBuffer.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-	descGPUBuffer.StructureByteStride = 0; 
-
-	if (FAILED(pDevice->CreateBuffer(&descGPUBuffer, nullptr, &m_pSparseVoxelOctree)))
-	{
-		VS_LOG_VERBOSE("Failed to create structured buffer");
-		return false;
-	}
-
-	D3D11_UNORDERED_ACCESS_VIEW_DESC descView;
-	ZeroMemory(&descView, sizeof(descView));
-	descView.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-	descView.Buffer.FirstElement = 0;
-	// Format must be must be DXGI_FORMAT_UNKNOWN, when creating 
-	// a View of a Structured Buffer
-	descView.Format = DXGI_FORMAT_UNKNOWN;
-	descView.Buffer.NumElements = m_iTextureDimension;
-	descView.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
-	if (FAILED(pDevice->CreateUnorderedAccessView(m_pSparseVoxelOctree, &descView, &m_pSVOUAV)))
-	{
-		VS_LOG_VERBOSE("Failed to create structured buffer uav");
-		return false;
-	}
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC descSRV;
-	ZeroMemory(&descView, sizeof(descView));
-	descSRV.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
-	descSRV.BufferEx.FirstElement = 0;
-	descSRV.Format = DXGI_FORMAT_UNKNOWN;
-	descSRV.BufferEx.NumElements =m_iTextureDimension;
-
-	if (FAILED(pDevice->CreateShaderResourceView(m_pSparseVoxelOctree, &descSRV, &m_pSVOSRV)))
-	{
-		VS_LOG_VERBOSE("Failed to create structured buffer srv");
-		return false;
-	}
-}
-#endif
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

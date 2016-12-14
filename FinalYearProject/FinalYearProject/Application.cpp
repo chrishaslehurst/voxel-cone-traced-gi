@@ -142,7 +142,7 @@ bool Application::Initialise()
 
 #if TEST_MODE
 	//This is where all the test types will go..
-	int iRes = 512; 
+	int iRes = 64; 
 	
 	TestType t1;
 	t1.iResolution = iRes;

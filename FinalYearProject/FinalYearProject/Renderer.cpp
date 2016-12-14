@@ -111,18 +111,18 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, Render
 		//Compile the clear voxels compute shader code
 		ID3D10Blob* pImgCompBuffer;
 		ID3D10Blob* pErrorMessage;
-		HRESULT result = D3DCompileFromFile(L"ImageComparison.hlsl", NULL, nullptr, "main", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pImgCompBuffer, &pErrorMessage);
+		HRESULT result = D3DCompileFromFile(L"../Assets/Shaders/ImageComparison.hlsl", NULL, nullptr, "main", "cs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, &pImgCompBuffer, &pErrorMessage);
 		if (FAILED(result))
 		{
 			if (pErrorMessage)
 			{
 				//If the shader failed to compile it should have written something to error message, so we output that here
-				OutputShaderErrorMessage(pErrorMessage, hwnd, L"ImageComparison.hlsl");
+				OutputShaderErrorMessage(pErrorMessage, hwnd, L"../Assets/Shaders/ImageComparison.hlsl");
 			}
 			else
 			{
 				//if it hasn't, then it couldn't find the shader file..
-				MessageBox(hwnd, L"ImageComparison.hlsl", L"Missing Shader File", MB_OK);
+				MessageBox(hwnd, L"../Assets/Shaders/ImageComparison.hlsl", L"Missing Shader File", MB_OK);
 			}
 			return false;
 		}

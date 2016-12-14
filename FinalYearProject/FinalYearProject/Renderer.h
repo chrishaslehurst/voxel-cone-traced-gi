@@ -16,7 +16,7 @@
 
 //Global consts..
 
-const bool FULL_SCREEN = true;
+const bool FULL_SCREEN = false;
 const bool RENDER_DEBUG = true;
 const bool VSYNC_ENABLED = true;
 const float SCREEN_DEPTH = 3000.f;

@@ -126,7 +126,7 @@ HRESULT OmnidirectionalShadowMap::Initialise(ID3D11Device3* pDevice, ID3D11Devic
 	unsigned int iNumElements(sizeof(polyLayout) / sizeof(polyLayout[0]));
 
 	m_pShadowMapRenderPass = new RenderPass;
-	m_pShadowMapRenderPass->Initialise(pDevice, hwnd, polyLayout, iNumElements, L"OmniShadowMap.hlsl", "VSMain", "GSMain", "PSMain");
+	m_pShadowMapRenderPass->Initialise(pDevice, hwnd, polyLayout, iNumElements, L"../Assets/Shaders/OmniShadowMap.hlsl", "VSMain", "GSMain", "PSMain");
 	
 	if (FAILED(result))
 	{

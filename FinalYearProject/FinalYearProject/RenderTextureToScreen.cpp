@@ -53,7 +53,7 @@ HRESULT RenderTextureToScreen::Initialise(ID3D11Device3* pDevice, ID3D11DeviceCo
 		return false;
 	}
 
-	InitialiseShader(pDevice, hwnd, L"RenderTexToScreen.hlsl");
+	InitialiseShader(pDevice, hwnd, L"../Assets/Shaders/Debug/RenderTexToScreen.hlsl");
 }
 
 void RenderTextureToScreen::Shutdown()

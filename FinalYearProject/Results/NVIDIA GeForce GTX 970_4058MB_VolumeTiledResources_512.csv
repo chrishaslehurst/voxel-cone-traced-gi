@@ -1,14 +1,14 @@
 Profiled Section, Average, Minimum, Maximum
-CPU Frame Time,22.279072,11.008311,125.838402
-GPU Frame Time:     ,90.898361,79.719711,202.683273
-Render to Buffers:  ,2.072503,0.348320,6.712384
-Shadow Maps Render: ,1.890879,1.871424,2.009376
-Lighting Pass:      ,24.295118,17.045952,110.523232
-Voxelise Clear:     ,9.789503,9.705312,10.021504
-Voxelise Pass:      ,2.775334,2.740128,2.821312
-Inject Radiance:    ,47.456650,42.502048,52.336864
-GPU Tile Update:    ,0.000149,0.000000,0.035616
-Generate Mips:      ,2.581586,1.482368,107.613853
+CPU Frame Time,0.315701,0.254245,2.548885
+GPU Frame Time:     ,83.064323,72.650406,170.404221
+Render to Buffers:  ,2.254857,0.347296,7.735808
+Shadow Maps Render: ,1.954534,1.873248,2.478816
+Lighting Pass:      ,24.255213,17.080927,110.503334
+Voxelise Clear:     ,2.451262,2.433952,2.653568
+Voxelise Pass:      ,2.789775,2.757664,3.029120
+Inject Radiance:    ,47.512691,41.880192,52.687904
+GPU Tile Update:    ,0.000783,0.000000,0.370336
+Generate Mips:      ,1.807134,1.458336,3.635712
 Image Comparison Difference,0.000000,0.000000,0.000000
 
 Memory Usage(MB):,146

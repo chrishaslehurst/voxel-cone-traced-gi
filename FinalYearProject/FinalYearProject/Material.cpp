@@ -55,7 +55,7 @@ bool Material::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* pContext,
 	{
 		m_defines[USE_PHYSICALLY_BASED_SHADING].Definition = "1";
 	}
-	if (!InitialiseShader(pDevice, hwnd, L"DeferredShader.hlsl"))
+	if (!InitialiseShader(pDevice, hwnd, L"../Assets/Shaders/DeferredShader.hlsl"))
 	{
 		return false;
 	}
@@ -94,7 +94,7 @@ bool Material::Render(ID3D11DeviceContext* pDeviceContext, int iIndexCount, XMMA
 void Material::ReloadShader(ID3D11Device3* pDevice, HWND hwnd)
 {
 	ShutdownShader();
-	InitialiseShader(pDevice, hwnd, L"DeferredShader.hlsl");
+	InitialiseShader(pDevice, hwnd, L"../Assets/Shaders/DeferredShader.hlsl");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

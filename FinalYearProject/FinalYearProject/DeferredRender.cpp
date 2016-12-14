@@ -136,7 +136,7 @@ HRESULT DeferredRender::Initialise(ID3D11Device3* pDevice, ID3D11DeviceContext* 
 	m_viewport.TopLeftX = 0.0f;
 	m_viewport.TopLeftY = 0.0f;
 
-	res = InitialiseShader(pDevice, hwnd, L"LightingPass.hlsl");
+	res = InitialiseShader(pDevice, hwnd, L"../Assets/Shaders/LightingPass.hlsl");
 	if (FAILED(res))
 	{
 		VS_LOG_VERBOSE("Failed to initialise lighting shader");
