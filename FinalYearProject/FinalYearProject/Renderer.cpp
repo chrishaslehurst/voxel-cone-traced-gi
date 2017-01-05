@@ -40,7 +40,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, Render
 	m_iScreenWidth = iScreenWidth;
 	m_iScreenHeight = iScreenHeight;
 	m_bTestMode = bTestMode;
-	k_eRenderMode = eRenderMode;
+	
 	m_pD3D = new D3DWrapper;
 	if (!m_pD3D)
 	{
@@ -54,6 +54,27 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, Render
 		MessageBox(hwnd, L"Could not initialise the D3DWrapper", L"Error", MB_OK);
 		return false;
 	}
+
+	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
+	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
+
+	if (!bTestMode)
+	{
+		if (DisplayVoxelStorageMenu(eRenderMode))
+		{
+			//display the resolution menu..
+			if (DisplayResolutionMenu(iVoxelGridResolution))
+			{
+				m_pD3D->BeginScene(0, 0, 0, 1);
+				DebugLog::Get()->OutputString("Loading...");
+				DebugLog::Get()->PrintLogToScreen(m_pD3D->GetDeviceContext());
+				m_pD3D->EndScene();
+			}
+
+		}
+	}
+
+	m_eRenderMode = eRenderMode;
 
 	m_pCamera = new Camera;
 	if (!m_pCamera)
@@ -80,7 +101,7 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, Render
 		VS_LOG_VERBOSE("Failed to initialise deferred buffers");
 		return false;
 	}
-	if (k_eRenderMode == rmComparison)
+	if (m_eRenderMode == rmComparison)
 	{
 		for (int i = 0; i < ComparisonTextures::ctMax; i++)
 		{
@@ -171,34 +192,27 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, Render
 
 		pLightManager->AddPointLight(XMFLOAT3(250.f, 500.f, 50.f), XMFLOAT4(1.f, 1.f, 0.8f, 1.f), 3000.f);
 		pLightManager->GetPointLight(0)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(0)->GetRange());
-	//	pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, -425.f), XMFLOAT4(0.f, 0.f, 1.f, 1.f), 3000.f);
-	//	pLightManager->GetPointLight(1)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(1)->GetRange());
- 	//	pLightManager->AddPointLight(XMFLOAT3(-1270.f, 625.f, 425.f), XMFLOAT4(0.f, 1.f, 1.f, 1.f), 400.f);
-	//	pLightManager->GetPointLight(2)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(2)->GetRange());
- 	//	pLightManager->AddPointLight(XMFLOAT3(1250.f, 625.f, 425.f), XMFLOAT4(1.f, 1.f, 0.f, 1.f), 400.f);
-	//	pLightManager->GetPointLight(3)->AddShadowMap(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, SCREEN_NEAR, pLightManager->GetPointLight(3)->GetRange());
-
+	
 		pLightManager->AddDirectionalLight();
 		pLightManager->SetDirectionalLightColour(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f));
 		pLightManager->SetDirectionalLightDirection(XMFLOAT3(0.2f, -0.1f, 0.2f));
 	}
 	m_DebugRenderTexture.Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, iScreenWidth, iScreenHeight, SCREEN_DEPTH, SCREEN_NEAR);
-	if (k_eRenderMode == rmComparison || k_eRenderMode == rmRegularTexture)
+	if (m_eRenderMode == rmComparison || m_eRenderMode == rmRegularTexture)
 	{
 		m_pRegularVoxelisedScene = new VoxelisedScene;
 		m_pRegularVoxelisedScene->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_arrModels[0]->GetWholeModelAABB(), iVoxelGridResolution, false);
 	}
-	if (k_eRenderMode == rmComparison || k_eRenderMode == rmTiledTexture)
+	if (m_eRenderMode == rmComparison || m_eRenderMode == rmTiledTexture)
 	{
 		m_pTiledVoxelisedScene = new VoxelisedScene;
 		m_pTiledVoxelisedScene->Initialise(m_pD3D->GetDevice(), m_pD3D->GetDeviceContext(), hwnd, m_arrModels[0]->GetWholeModelAABB(), iVoxelGridResolution, true);
 	}
-	if (k_eRenderMode == rmNoGI)
+	if (m_eRenderMode == rmNoGI)
 	{
 		m_eGITypeToRender = giNone;
 	}
-	GPUProfiler::Get()->Initialise(m_pD3D->GetDevice());
-	DebugLog::Get()->Initialise(m_pD3D->GetDevice());
+	
 
 	return true;
 }
@@ -320,7 +334,7 @@ bool Renderer::Update(HWND hwnd)
 	if (InputManager::Get()->IsKeyPressed(DIK_M) && !m_bMPressed)
 	{
 		
-		k_eRenderMode = static_cast<RenderMode>((static_cast<int>(k_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
+		m_eRenderMode = static_cast<RenderMode>((static_cast<int>(m_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
 		SetGITypeString();
 		
 		m_bMPressed = true;
@@ -351,6 +365,151 @@ bool Renderer::Update(HWND hwnd)
 	return true;
 }
 
+bool Renderer::DisplayVoxelStorageMenu(RenderMode& eRenderMode)
+{
+	while (true)
+	{
+		m_pD3D->BeginScene(0, 0, 0, 1);
+
+		DebugLog::Get()->OutputString("Choose a Voxel Storage Method\n Press 1 for Regular 3D Texture\n Press 2 for Volume Tiled Resources\n Press 3 to Render in Comparison Mode\n(Comparison Mode will render both methods as alternating frames)\n\nPress Escape To Quit.");
+		DebugLog::Get()->PrintLogToScreen(m_pD3D->GetDeviceContext());
+
+		//Present the menu..
+		m_pD3D->EndScene();
+
+		InputManager* pInput = InputManager::Get();
+		if (!pInput->Update())
+		{
+			return false;
+		}
+		if (pInput->IsKeyPressed(DIK_1))
+		{
+			while (true)
+			{
+				pInput->Update();
+				if (pInput->IsKeyReleased(DIK_1))
+				{
+					eRenderMode = RenderMode::rmRegularTexture;
+					return true;
+				}
+			}
+		}
+		else if (pInput->IsKeyPressed(DIK_2))
+		{
+			while (true)
+			{
+				pInput->Update();
+				if (pInput->IsKeyReleased(DIK_2))
+				{
+					eRenderMode = RenderMode::rmTiledTexture;
+					return true;
+				}
+			}
+		}
+		else if (pInput->IsKeyPressed(DIK_3))
+		{
+			while (true)
+			{
+				pInput->Update();
+				if (pInput->IsKeyReleased(DIK_3))
+				{
+					eRenderMode = RenderMode::rmComparison;
+					return true;
+				}
+			}
+		}
+		else if (pInput->IsKeyPressed(DIK_NUMPAD1))
+		{
+			while (true)
+			{
+				pInput->Update();
+				if (pInput->IsKeyReleased(DIK_NUMPAD1))
+				{
+					eRenderMode = RenderMode::rmRegularTexture;
+					return true;
+				}
+			}
+		}
+		else if (pInput->IsKeyPressed(DIK_NUMPAD2))
+		{
+			while (true)
+			{
+				pInput->Update();
+				if (pInput->IsKeyReleased(DIK_NUMPAD2))
+				{
+					eRenderMode = RenderMode::rmTiledTexture;
+					return true;
+				}
+			}
+		}
+		else if (pInput->IsKeyPressed(DIK_NUMPAD3))
+		{
+			while (true)
+			{
+				pInput->Update();
+				if (pInput->IsKeyReleased(DIK_NUMPAD3))
+				{
+					eRenderMode = RenderMode::rmComparison;
+					return true;
+				}
+			}
+		}
+
+		else if (pInput->IsEscapePressed())
+		{
+			return false;
+		}
+	}
+	
+}
+
+bool Renderer::DisplayResolutionMenu(int& iVoxelGridResolution)
+{
+	InputManager* pInput = InputManager::Get();
+	
+
+	while (true)
+	{
+		m_pD3D->BeginScene(0, 0, 0, 1);
+
+		DebugLog::Get()->OutputString("Choose a Resolution for the Voxelised Scene\n Press 1 for 64 x 64 x 64 (Will look overbright due to low res)\n Press 2 for 128 x 128 x 128\n Press 3 for 256 x 256 x 256 (Best Quality/Performance point)\n Press 4 for 512 x 512 x 512 (Will likely lag a little)\n\nPress Escape To Quit.");
+		DebugLog::Get()->PrintLogToScreen(m_pD3D->GetDeviceContext());
+
+		//Present the menu..
+		m_pD3D->EndScene();
+
+		
+		if (!pInput->Update())
+		{
+			return false;
+		}
+		if (pInput->IsKeyPressed(DIK_1) || pInput->IsKeyPressed(DIK_NUMPAD1))
+		{
+			iVoxelGridResolution = 64;
+			return true;
+		}
+		else if (pInput->IsKeyPressed(DIK_2) || pInput->IsKeyPressed(DIK_NUMPAD2))
+		{
+			iVoxelGridResolution = 128;
+			return true;
+		}
+		else if (pInput->IsKeyPressed(DIK_3) || pInput->IsKeyPressed(DIK_NUMPAD3))
+		{
+			iVoxelGridResolution = 256;
+			return true;
+		}
+		else if (pInput->IsKeyPressed(DIK_4) || pInput->IsKeyPressed(DIK_NUMPAD4))
+		{
+			iVoxelGridResolution = 512;
+			return true;
+		}
+		else if (pInput->IsEscapePressed())
+		{
+			return false;
+		}
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Renderer::SetGITypeString()
@@ -376,7 +535,7 @@ void Renderer::SetGITypeString()
 		break;
 	}
 
-	switch (k_eRenderMode)
+	switch (m_eRenderMode)
 	{
 	case rmRegularTexture:
 		m_sGIStorageMode += "Regular Texture";
@@ -408,7 +567,7 @@ bool Renderer::Render()
 	float imagePercentDiff = 0;
 	int iResolution = 0;
 
-	switch (k_eRenderMode)
+	switch (m_eRenderMode)
 	{
 	case RenderMode::rmRegularTexture:
 		RenderRegular();
@@ -447,7 +606,7 @@ bool Renderer::Render()
 		DebugLog::Get()->OutputString(ssMemoryUsage.str());
 		DebugLog::Get()->OutputString(ssCameraPosition.str());
 		DebugLog::Get()->OutputString(m_sGIStorageMode);
-
+	   
 
 		m_dCPUFrameEndTime = Timer::Get()->GetCurrentTime();
 		GPUProfiler::Get()->EndFrame(pContext);

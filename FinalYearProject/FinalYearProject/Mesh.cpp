@@ -154,8 +154,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorld
 {
 	m_arrMeshesToRender.clear();
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
-	//TODO: THIS IS QUITE A NAIVE APPROACH - SORT THE OBJECTS INTO 2 LISTS FOR RENDERING
-	//Opaque pass
+	
 	//TODO: This needs to be tidier.. just a quick hack to only set the shader once..
 	m_arrSubMeshes[0]->m_pMaterial->SetShadersAndSamplers(pDeviceContext);
 	m_arrSubMeshes[0]->m_pMaterial->SetPerFrameShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix);
@@ -184,28 +183,14 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorld
 		}
 	}
 
-	stringstream ss;
-	ss << "Models Rendered In G Buffer Pass: " << iModelsRenderedInGBufferPass;
-	DebugLog::Get()->OutputString(ss.str());
+// 	stringstream ss;
+// 	ss << "Models Rendered In G Buffer Pass: " << iModelsRenderedInGBufferPass;
+// 	DebugLog::Get()->OutputString(ss.str());
+// 
+// 	stringstream ss2;
+// 	ss2 << "Polygons Rendered In G Buffer Pass: " << iNumPolysRenderedInGBufferPass;
+// 	DebugLog::Get()->OutputString(ss2.str());
 
-	stringstream ss2;
-	ss2 << "Polygons Rendered In G Buffer Pass: " << iNumPolysRenderedInGBufferPass;
-	DebugLog::Get()->OutputString(ss2.str());
-
-
-	//Transparent pass..
-	//for (int i = 0; i < m_arrSubMeshes.size(); i++)
-	//{
-	//	if (m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps())
-	//	{
-			//RenderBuffers(i, pDeviceContext);
-
-			//if (!m_arrSubMeshes[i]->m_pMaterial->Render(pDeviceContext, m_arrSubMeshes[i]->m_iIndexCount, mWorldMatrix, mViewMatrix, mProjectionMatrix, vLightDirection, vLightDiffuseColour, vAmbientColour, vCameraPos))
-			//{
-			//	VS_LOG_VERBOSE("Unable to render object with shader");
-			//}
-	//	}
-	//}
 }
 
 

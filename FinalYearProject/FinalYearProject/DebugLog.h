@@ -27,6 +27,8 @@ public:
 	void OutputString(std::string sOutput);
 	void PrintLogToScreen(ID3D11DeviceContext* pContext);
 
+	void ClearLog() { m_iNumStrings = 0; }
+
 private:
 
 	int m_iNumStrings;

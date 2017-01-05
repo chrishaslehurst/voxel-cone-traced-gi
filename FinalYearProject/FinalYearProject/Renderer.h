@@ -52,12 +52,14 @@ public:
 	bool Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, RenderMode eRenderMode, int iVoxelGridResolution, bool bTestMode);
 	void Shutdown();
 	bool Update(HWND hwnd);
+	bool DisplayVoxelStorageMenu(RenderMode& eRenderMode);
+	bool DisplayResolutionMenu(int& iVoxelGridResolution);
 
 private:
 	int m_iScreenWidth;
 	int m_iScreenHeight;
 
-	RenderMode k_eRenderMode;
+	RenderMode m_eRenderMode;
 
 	D3DWrapper* m_pD3D;
 	Camera*		m_pCamera;

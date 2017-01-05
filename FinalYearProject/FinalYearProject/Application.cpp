@@ -167,7 +167,7 @@ bool Application::Initialise()
 
 #else
 	TestType t1;
-	t1.iResolution = 256;
+	t1.iResolution = 64;
 	t1.eRenderMode = rmTiledTexture;
 	m_arrTests.push_back(t1);
 #endif
@@ -175,7 +175,7 @@ bool Application::Initialise()
 	if (!m_pRenderer->Initialise(iScreenWidth, iScreenHeight, m_hwnd, m_arrTests[m_iTestIndex].eRenderMode, m_arrTests[m_iTestIndex].iResolution, TEST_MODE))
 	{
 		VS_LOG("Failed to initialise Renderer")
-			return false;
+		return false;
 	}
 
 	return true;
