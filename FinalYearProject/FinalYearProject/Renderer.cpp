@@ -70,7 +70,15 @@ bool Renderer::Initialise(int iScreenWidth, int iScreenHeight, HWND hwnd, Render
 				DebugLog::Get()->PrintLogToScreen(m_pD3D->GetDeviceContext());
 				m_pD3D->EndScene();
 			}
+			else
+			{
+				return false;
+			}
 
+		}
+		else
+		{
+			return false;
 		}
 	}
 
@@ -270,10 +278,10 @@ void Renderer::Shutdown()
 
 bool Renderer::Update(HWND hwnd)
 {
-	if (InputManager::Get()->IsKeyPressed(DIK_R))
-	{
-		m_arrModels[0]->ReloadShaders(m_pD3D->GetDevice(), hwnd);
-	}
+// 	if (InputManager::Get()->IsKeyPressed(DIK_R))
+// 	{
+// 		m_arrModels[0]->ReloadShaders(m_pD3D->GetDevice(), hwnd);
+// 	}
 	if (InputManager::Get()->IsKeyPressed(DIK_V) && !m_bVPressed)
 	{
 		m_bDebugRenderVoxels = !m_bDebugRenderVoxels;
@@ -283,38 +291,38 @@ bool Renderer::Update(HWND hwnd)
 	{
 		m_bVPressed = false;
 	}
-	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS) && !m_bPlusPressed)
-	{
-		if (m_pRegularVoxelisedScene)
-		{
-			m_pRegularVoxelisedScene->IncreaseDebugMipLevel();
-		}
-		if (m_pTiledVoxelisedScene)
-		{
-			m_pTiledVoxelisedScene->IncreaseDebugMipLevel();
-		}
-		m_bPlusPressed = true;
-	}
-	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADPLUS))
-	{
-		m_bPlusPressed = false;
-	}
-	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADMINUS) && !m_bMinusPressed)
-	{
-		if (m_pRegularVoxelisedScene)
-		{
-			m_pRegularVoxelisedScene->DecreaseDebugMipLevel();
-		}
-		if (m_pTiledVoxelisedScene)
-		{
-			m_pTiledVoxelisedScene->DecreaseDebugMipLevel();
-		}
-		m_bMinusPressed = true;
-	}
-	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADMINUS))
-	{
-		m_bMinusPressed = false;
-	}
+// 	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADPLUS) && !m_bPlusPressed)
+// 	{
+// 		if (m_pRegularVoxelisedScene)
+// 		{
+// 			m_pRegularVoxelisedScene->IncreaseDebugMipLevel();
+// 		}
+// 		if (m_pTiledVoxelisedScene)
+// 		{
+// 			m_pTiledVoxelisedScene->IncreaseDebugMipLevel();
+// 		}
+// 		m_bPlusPressed = true;
+// 	}
+// 	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADPLUS))
+// 	{
+// 		m_bPlusPressed = false;
+// 	}
+// 	if (InputManager::Get()->IsKeyPressed(DIK_NUMPADMINUS) && !m_bMinusPressed)
+// 	{
+// 		if (m_pRegularVoxelisedScene)
+// 		{
+// 			m_pRegularVoxelisedScene->DecreaseDebugMipLevel();
+// 		}
+// 		if (m_pTiledVoxelisedScene)
+// 		{
+// 			m_pTiledVoxelisedScene->DecreaseDebugMipLevel();
+// 		}
+// 		m_bMinusPressed = true;
+// 	}
+// 	else if (InputManager::Get()->IsKeyReleased(DIK_NUMPADMINUS))
+// 	{
+// 		m_bMinusPressed = false;
+// 	}
 	if (InputManager::Get()->IsKeyPressed(DIK_G) && !m_bGPressed)
 	{
 		m_eGITypeToRender = static_cast<GIRenderFlag>((static_cast<int>(m_eGITypeToRender) + 1) % static_cast<int>(GIRenderFlag::giMax));
@@ -326,28 +334,28 @@ bool Renderer::Update(HWND hwnd)
 		m_bGPressed = false;
 	}
 
-	if (InputManager::Get()->IsKeyPressed(DIK_P))
-	{
-		m_pCamera->TraverseRoute();
-	}
+// 	if (InputManager::Get()->IsKeyPressed(DIK_P))
+// 	{
+// 		m_pCamera->TraverseRoute();
+// 	}
 
-	if (InputManager::Get()->IsKeyPressed(DIK_M) && !m_bMPressed)
-	{
-		
-		m_eRenderMode = static_cast<RenderMode>((static_cast<int>(m_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
-		SetGITypeString();
-		
-		m_bMPressed = true;
-	}
-	else if (InputManager::Get()->IsKeyReleased(DIK_M))
-	{
-		m_bMPressed = false;
-	}
+// 	if (InputManager::Get()->IsKeyPressed(DIK_M) && !m_bMPressed)
+// 	{
+// 		
+// 		m_eRenderMode = static_cast<RenderMode>((static_cast<int>(m_eRenderMode) + 1) % static_cast<int>(RenderMode::rmMax));
+// 		SetGITypeString();
+// 		
+// 		m_bMPressed = true;
+// 	}
+// 	else if (InputManager::Get()->IsKeyReleased(DIK_M))
+// 	{
+// 		m_bMPressed = false;
+// 	}
 
-	if (InputManager::Get()->IsKeyPressed(DIK_U))
-	{
-		m_pTiledVoxelisedScene->UnmapAllTiles(m_pD3D->GetDeviceContext());
-	}
+// 	if (InputManager::Get()->IsKeyPressed(DIK_U))
+// 	{
+// 		m_pTiledVoxelisedScene->UnmapAllTiles(m_pD3D->GetDeviceContext());
+// 	}
 
 	m_pCamera->Update();
 	for (int i = 0; i < m_arrModels.size(); i++)
@@ -604,7 +612,7 @@ bool Renderer::Render()
 		ssMemoryUsage << "Memory Consumption in MB: " << iMemUsage;
 
 		DebugLog::Get()->OutputString(ssMemoryUsage.str());
-		DebugLog::Get()->OutputString(ssCameraPosition.str());
+		//DebugLog::Get()->OutputString(ssCameraPosition.str());
 		DebugLog::Get()->OutputString(m_sGIStorageMode);
 	   
 
@@ -629,6 +637,7 @@ bool Renderer::Render()
 		DebugLog::Get()->OutputString(m_sGITypeRendered);
 		DebugLog::Get()->PrintLogToScreen(pContext);
 	}
+
 	//Present the rendered scene to the screen
 	m_pD3D->EndScene();
 

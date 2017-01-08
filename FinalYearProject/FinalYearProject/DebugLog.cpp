@@ -56,6 +56,10 @@ void DebugLog::PrintLogToScreen(ID3D11DeviceContext* pContext)
 		std::wstring wideString(m_arrLog[i].begin(), m_arrLog[i].end());
 		m_pFontWrapper->DrawString(pContext, wideString.c_str(), textSize, xPos, yPos - (i*textSize + 2), TextColour, 0);
 	}
+	std::string s = ("Controls\n W - Move Forward\n S - Move Backward\n A - Move Left\n D - Move Right\n Mouse - Look Around\n V - Show Voxel Debug\n G - Change Render Type");
+	std::wstring ws(s.begin(), s.end());
+	m_pFontWrapper->DrawString(pContext, ws.c_str(), textSize, 1600.f, 150.f, TextColour, 0);
+
 	m_iNumStrings = 0;
 
 	pContext->GSSetShader(nullptr, nullptr, 0);
