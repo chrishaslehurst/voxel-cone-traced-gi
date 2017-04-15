@@ -10,7 +10,8 @@ https://www.dropbox.com/s/w2q72ptt9r7baha/RendererAssets.zip?dl=0
 
 If this link goes stale for whatever reason, shoot me a message and I'll send over the assets folder.
 
-
+Project Description
+-------------------
 For my Master's thesis I chose to investigate a method of reducing the impact of Voxel Cone Tracing on GPU memory occupancy.
 
 Voxel Cone tracing is a method of computing global illumination. The scene is first voxelized and stored in a 3D texture. This simplified version of the scene is then sampled by approximate cones to calculate global illumination.
