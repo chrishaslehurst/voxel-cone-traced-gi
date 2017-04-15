@@ -14,15 +14,6 @@ Camera::Camera()
 	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 0));
 	m_arrRoute.push_back(XMFLOAT3( 1150, 200, 0));
 	m_arrRoute.push_back(XMFLOAT3(-1250, 200, 0));
-
-	//m_arrRoute.push_back(XMFLOAT3( 1150, 200, -450));
-	//m_arrRoute.push_back(XMFLOAT3(-1250, 200, -450));
-	//m_arrRoute.push_back(XMFLOAT3(-1250, 200, 475));
-	//m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
-	//m_arrRoute.push_back(XMFLOAT3(1150, 600, 475));
-	//m_arrRoute.push_back(XMFLOAT3(1150, 600, -450));
-	//m_arrRoute.push_back(XMFLOAT3(-1250, 600, -450));
-	//m_arrRoute.push_back(XMFLOAT3(-1250, 600, 475));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +175,7 @@ void Camera::Render()
 
 	float yaw, pitch, roll;
 
+	//angles are stored as degrees since it's more intuitive - convert here to build matrix
 	pitch = XMConvertToRadians(m_vRotation.x);
 	yaw = XMConvertToRadians(m_vRotation.y);
 	roll = XMConvertToRadians(m_vRotation.z);
@@ -194,7 +186,6 @@ void Camera::Render()
 	XMStoreFloat3(&m_vForward, lookAt);
 	right = XMVector3Cross(lookAt, up);
 	XMStoreFloat3(&m_vLeftVector, right);
-
 
 	lookAt = pos + lookAt;
 

@@ -17,13 +17,14 @@
 //Global consts..
 
 const bool FULL_SCREEN = true;
-const bool RENDER_DEBUG = true;
+const bool RENDER_DEBUG = false;
 const bool VSYNC_ENABLED = true;
 const float SCREEN_DEPTH = 3000.f;
 const float SCREEN_NEAR = 0.1f;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//What method are we using to store the GI info - regular is the baseline, tiled is the experimental.
 enum ComparisonTextures
 {
 	ctRegularTexture,

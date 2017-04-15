@@ -32,6 +32,7 @@ bool GPUProfiler::Initialise(ID3D11Device* pDevice)
 {
 	m_iCurrentBufferIndex = 0;
 
+	//setup the font factory for rendering fonts to the screen
 	HRESULT res = FW1CreateFactory(FW1_VERSION, &m_pFW1Factory);
 	if (FAILED(res))
 	{
@@ -53,6 +54,9 @@ bool GPUProfiler::Initialise(ID3D11Device* pDevice)
 	ZeroMemory(&disjointQueryDescription, sizeof(disjointQueryDescription));
 	disjointQueryDescription.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
 
+	//create device queries so we can get timings.
+	//queries are double buffered so we don't need to wait for the results of one to render the next frame. We always retrieve the results from the previous frame
+	//stops the gpu being throttled by syncing
 	for (int i = 0; i < ProfiledSections::psMax; i++)
 	{
 		pDevice->CreateQuery(&queryDescription, &m_arrProfiledSectionStartTimesBuffer[0][i]);
@@ -82,164 +86,183 @@ bool GPUProfiler::Initialise(ID3D11Device* pDevice)
 
 void GPUProfiler::BeginFrame(ID3D11DeviceContext* pContext)
 {
-	pContext->Begin(m_pDisjointQuery[m_iCurrentBufferIndex]);
-	pContext->End(m_arrProfiledSectionStartTimesBuffer[m_iCurrentBufferIndex][ProfiledSections::psWholeFrame]);
+	if (m_pFontWrapper)
+	{
+		pContext->Begin(m_pDisjointQuery[m_iCurrentBufferIndex]);
+		pContext->End(m_arrProfiledSectionStartTimesBuffer[m_iCurrentBufferIndex][ProfiledSections::psWholeFrame]);
+	}
 }
 
 void GPUProfiler::EndFrame(ID3D11DeviceContext* pContext)
 {
-	pContext->End(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][ProfiledSections::psWholeFrame]);
-	pContext->End(m_pDisjointQuery[m_iCurrentBufferIndex]);
-
-	if (m_iCurrentBufferIndex == 1)
+	if (m_pFontWrapper)
 	{
-		m_iCurrentBufferIndex = 0;
+		pContext->End(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][ProfiledSections::psWholeFrame]);
+		pContext->End(m_pDisjointQuery[m_iCurrentBufferIndex]);
+
+		if (m_iCurrentBufferIndex == 1)
+		{
+			m_iCurrentBufferIndex = 0;
+		}
+		else
+		{
+			m_iCurrentBufferIndex = 1;
+		}
 	}
- 	else
- 	{
- 		m_iCurrentBufferIndex = 1;
- 	}
 }
 
+//the start and end timestamp functions are identical, it just helps to make the code more readable in the main app..
 void GPUProfiler::StartTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID)
 {
-	pContext->End(m_arrProfiledSectionStartTimesBuffer[m_iCurrentBufferIndex][eSectionID]);
+	if (m_pFontWrapper)
+	{
+		pContext->End(m_arrProfiledSectionStartTimesBuffer[m_iCurrentBufferIndex][eSectionID]);
+	}
 }
 
 void GPUProfiler::EndTimeStamp(ID3D11DeviceContext* pContext, ProfiledSections eSectionID)
 {
-	pContext->End(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][eSectionID]);
+	if (m_pFontWrapper)
+	{
+		pContext->End(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][eSectionID]);
+	}
 }
 
 void GPUProfiler::DisplayTimes(ID3D11DeviceContext* pContext, float CPUFrameTime, float CPUTileUpdateTime, float fImageDifferencePercentage, bool bProfilingRun)
 {
-	while (pContext->GetData(m_pDisjointQuery[m_iCurrentBufferIndex], nullptr, 0, 0) == S_FALSE)
+	if (m_pFontWrapper)
 	{
-		Sleep(1); //wait for the data to be ready..
-	}
-
-	D3D10_QUERY_DATA_TIMESTAMP_DISJOINT tsDisjoint;
-	pContext->GetData(m_pDisjointQuery[m_iCurrentBufferIndex], &tsDisjoint, sizeof(tsDisjoint), 0);
-	if (tsDisjoint.Disjoint)
-	{
-		return; //Data was disjoint so discard it..
-	}
-
-	
-	float xPos = 100.f;
-	float yPos = 50.f;
-	float textSize = 20.f;
-	UINT32 TextColour = 0xffffffff;
-	
-	stringstream CPUss; 
-	CPUss << std::fixed << std::setprecision(2) << "CPU Frame Time:     " << CPUFrameTime << "ms";
-	string sCPUString = CPUss.str();
-	std::wstring wideCPUFrameString(sCPUString.begin(), sCPUString.end());
-	if (bProfilingRun)
-	{
-		m_fStoredCPUAverageTime += CPUFrameTime;
-		m_fAverageImageDifference += fImageDifferencePercentage;
-		if (CPUFrameTime > m_fStoredCPUMaxTime)
+		while (pContext->GetData(m_pDisjointQuery[m_iCurrentBufferIndex], nullptr, 0, 0) == S_FALSE)
 		{
-			m_fStoredCPUMaxTime = CPUFrameTime;
-		}
-		if (CPUFrameTime < m_fStoredCPUMinTime)
-		{
-			m_fStoredCPUMinTime = CPUFrameTime;
+			//we do wait for the data.. but its from the previous frame so doesn't hold up rendering..
+			Sleep(1); //wait for the data to be ready..
 		}
 
-		if (fImageDifferencePercentage > m_fMaxImageDifference)
+		D3D10_QUERY_DATA_TIMESTAMP_DISJOINT tsDisjoint;
+		pContext->GetData(m_pDisjointQuery[m_iCurrentBufferIndex], &tsDisjoint, sizeof(tsDisjoint), 0);
+		if (tsDisjoint.Disjoint)
 		{
-			m_fMaxImageDifference = fImageDifferencePercentage;
-		}
-		if (fImageDifferencePercentage < m_fMinImageDifference)
-		{
-			m_fMinImageDifference = fImageDifferencePercentage;
+			return; //Data was disjoint so discard it..
 		}
 
-		m_iNumFramesProfiled++;
-	}
-	m_pFontWrapper->DrawString(pContext, wideCPUFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
-	yPos += textSize;
 
-	stringstream TileUpdateSs;
-	TileUpdateSs << std::fixed << std::setprecision(2) << "CPU Tile Update Time:" << CPUTileUpdateTime << "ms";
-	string sTileUpdateString = TileUpdateSs.str();
-	std::wstring wideTileUpdateFrameString(sTileUpdateString.begin(), sTileUpdateString.end());
-	m_pFontWrapper->DrawString(pContext, wideTileUpdateFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
+		float xPos = 100.f;
+		float yPos = 50.f;
+		float textSize = 20.f;
+		UINT32 TextColour = 0xffffffff;
 
-	yPos += textSize;
-
-	for (int i = 0; i < ProfiledSections::psMax; i++)
-	{
-		//Get the timestamps..
-		UINT64 tsBegin, tsEnd;
-
-		pContext->GetData(m_arrProfiledSectionStartTimesBuffer[m_iCurrentBufferIndex][i], &tsBegin, sizeof(UINT64), 0);
-		pContext->GetData(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][i], &tsEnd, sizeof(UINT64), 0);
-		float fFrameTime = float(tsEnd - tsBegin) / float(tsDisjoint.Frequency) * 1000.f;
-
-		stringstream GPUss;
-		GPUss << std::fixed << std::setprecision(2) << m_arrProfiledSectionNames[i] << fFrameTime << "ms";
-		string outputString = GPUss.str();
-		std::wstring outputWideString(outputString.begin(), outputString.end());
+		stringstream CPUss;
+		CPUss << std::fixed << std::setprecision(2) << "CPU Frame Time:     " << CPUFrameTime << "ms";
+		string sCPUString = CPUss.str();
+		std::wstring wideCPUFrameString(sCPUString.begin(), sCPUString.end());
 		if (bProfilingRun)
 		{
-			m_arrStoredGPUAverageTimes[i] += fFrameTime;
-			if (fFrameTime > m_arrStoredGPUMaxTimes[i])
+			m_fStoredCPUAverageTime += CPUFrameTime;
+			m_fAverageImageDifference += fImageDifferencePercentage;
+			if (CPUFrameTime > m_fStoredCPUMaxTime)
 			{
-				m_arrStoredGPUMaxTimes[i] = fFrameTime;
+				m_fStoredCPUMaxTime = CPUFrameTime;
 			}
-			if (fFrameTime < m_arrStoredGPUMinTimes[i])
+			if (CPUFrameTime < m_fStoredCPUMinTime)
 			{
-				m_arrStoredGPUMinTimes[i] = fFrameTime;
+				m_fStoredCPUMinTime = CPUFrameTime;
 			}
-		}
-		m_pFontWrapper->DrawString(pContext, outputWideString.c_str(), textSize, xPos, yPos + (i * textSize), TextColour, 0);
-	}
-	
-	pContext->GSSetShader(nullptr, nullptr, 0);
 
+			if (fImageDifferencePercentage > m_fMaxImageDifference)
+			{
+				m_fMaxImageDifference = fImageDifferencePercentage;
+			}
+			if (fImageDifferencePercentage < m_fMinImageDifference)
+			{
+				m_fMinImageDifference = fImageDifferencePercentage;
+			}
+
+			m_iNumFramesProfiled++;
+		}
+		m_pFontWrapper->DrawString(pContext, wideCPUFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
+		yPos += textSize;
+
+		stringstream TileUpdateSs;
+		TileUpdateSs << std::fixed << std::setprecision(2) << "CPU Tile Update Time:" << CPUTileUpdateTime << "ms";
+		string sTileUpdateString = TileUpdateSs.str();
+		std::wstring wideTileUpdateFrameString(sTileUpdateString.begin(), sTileUpdateString.end());
+		m_pFontWrapper->DrawString(pContext, wideTileUpdateFrameString.c_str(), textSize, xPos, yPos, TextColour, 0);
+
+		yPos += textSize;
+
+		for (int i = 0; i < ProfiledSections::psMax; i++)
+		{
+			//Get the timestamps..
+			UINT64 tsBegin, tsEnd;
+
+			pContext->GetData(m_arrProfiledSectionStartTimesBuffer[m_iCurrentBufferIndex][i], &tsBegin, sizeof(UINT64), 0);
+			pContext->GetData(m_arrProfiledSectionEndTimesBuffer[m_iCurrentBufferIndex][i], &tsEnd, sizeof(UINT64), 0);
+			float fFrameTime = float(tsEnd - tsBegin) / float(tsDisjoint.Frequency) * 1000.f;
+
+			stringstream GPUss;
+			GPUss << std::fixed << std::setprecision(2) << m_arrProfiledSectionNames[i] << fFrameTime << "ms";
+			string outputString = GPUss.str();
+			std::wstring outputWideString(outputString.begin(), outputString.end());
+			if (bProfilingRun)
+			{
+				m_arrStoredGPUAverageTimes[i] += fFrameTime;
+				if (fFrameTime > m_arrStoredGPUMaxTimes[i])
+				{
+					m_arrStoredGPUMaxTimes[i] = fFrameTime;
+				}
+				if (fFrameTime < m_arrStoredGPUMinTimes[i])
+				{
+					m_arrStoredGPUMinTimes[i] = fFrameTime;
+				}
+			}
+			m_pFontWrapper->DrawString(pContext, outputWideString.c_str(), textSize, xPos, yPos + (i * textSize), TextColour, 0);
+		}
+
+		pContext->GSSetShader(nullptr, nullptr, 0);
+	}
 }
 
 void GPUProfiler::OutputStoredTimesToFile(const char* gpuName, int gpuMemInMB, const char* voxelStorageType, int iResolution, int MemUsage)
 {
-	//Get the averages as up to now just accumulated values..
-	m_fStoredCPUAverageTime /= static_cast<float>(m_iNumFramesProfiled);
-	m_fAverageImageDifference /= static_cast<float>(m_iNumFramesProfiled);
-
-	std::stringstream ss;
-	ss << "../Results/" << gpuName << "_" << gpuMemInMB << "MB_" << voxelStorageType << "_" << iResolution << ".csv";
-
-	std::ofstream outfile;
-	outfile.open(ss.str().c_str());
-	outfile << std::fixed << "Profiled Section, Average, Minimum, Maximum\n";
-	outfile << "CPU Frame Time," << m_fStoredCPUAverageTime << "," << m_fStoredCPUMinTime << "," << m_fStoredCPUMaxTime << "\n";
-	for (int i = 0; i < ProfiledSections::psMax; i++)
+	if (m_pFontWrapper)
 	{
-		m_arrStoredGPUAverageTimes[i] /= m_iNumFramesProfiled;
-		outfile << m_arrProfiledSectionNames[i] << "," << m_arrStoredGPUAverageTimes[i] << "," << m_arrStoredGPUMinTimes[i] << "," << m_arrStoredGPUMaxTimes[i] << "\n";
-	}
-	outfile << "Image Comparison Difference," << m_fAverageImageDifference << "," << m_fMinImageDifference << "," << m_fMaxImageDifference << "\n";
-	outfile << "\nMemory Usage(MB):," << MemUsage;
-	
-	outfile.close();
-	//Reset Times Stored
-	m_fStoredCPUAverageTime = 0;
-	m_fStoredCPUMaxTime = 0;
-	m_fStoredCPUMinTime = FLT_MAX;
+		//Get the averages as up to now just accumulated values..
+		m_fStoredCPUAverageTime /= static_cast<float>(m_iNumFramesProfiled);
+		m_fAverageImageDifference /= static_cast<float>(m_iNumFramesProfiled);
 
-	m_fAverageImageDifference = 0;
-	m_fMaxImageDifference = 0;
-	m_fMinImageDifference = FLT_MAX;
+		std::stringstream ss;
+		ss << "../Results/" << gpuName << "_" << gpuMemInMB << "MB_" << voxelStorageType << "_" << iResolution << ".csv";
 
-	for (int i = 0; i < ProfiledSections::psMax; i++)
-	{
-		m_arrStoredGPUMinTimes[i] = FLT_MAX;
-		m_arrStoredGPUMaxTimes[i] = 0;
-		m_arrStoredGPUAverageTimes[i] = 0;
+		std::ofstream outfile;
+		outfile.open(ss.str().c_str());
+		outfile << std::fixed << "Profiled Section, Average, Minimum, Maximum\n";
+		outfile << "CPU Frame Time," << m_fStoredCPUAverageTime << "," << m_fStoredCPUMinTime << "," << m_fStoredCPUMaxTime << "\n";
+		for (int i = 0; i < ProfiledSections::psMax; i++)
+		{
+			m_arrStoredGPUAverageTimes[i] /= m_iNumFramesProfiled;
+			outfile << m_arrProfiledSectionNames[i] << "," << m_arrStoredGPUAverageTimes[i] << "," << m_arrStoredGPUMinTimes[i] << "," << m_arrStoredGPUMaxTimes[i] << "\n";
+		}
+		outfile << "Image Comparison Difference," << m_fAverageImageDifference << "," << m_fMinImageDifference << "," << m_fMaxImageDifference << "\n";
+		outfile << "\nMemory Usage(MB):," << MemUsage;
+
+		outfile.close();
+		//Reset Times Stored
+		m_fStoredCPUAverageTime = 0;
+		m_fStoredCPUMaxTime = 0;
+		m_fStoredCPUMinTime = FLT_MAX;
+
+		m_fAverageImageDifference = 0;
+		m_fMaxImageDifference = 0;
+		m_fMinImageDifference = FLT_MAX;
+
+		for (int i = 0; i < ProfiledSections::psMax; i++)
+		{
+			m_arrStoredGPUMinTimes[i] = FLT_MAX;
+			m_arrStoredGPUMaxTimes[i] = 0;
+			m_arrStoredGPUAverageTimes[i] = 0;
+		}
+		m_iNumFramesProfiled = 0;
 	}
-	m_iNumFramesProfiled = 0;
 }
 
 void GPUProfiler::Shutdown()

@@ -118,7 +118,6 @@ public:
 	~Mesh();
 
 	bool InitialiseFromObj(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, char* modelFilename);
-	bool InitialiseCubeFromTxt(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	void Shutdown();	
 	void RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, Camera* pCamera);
 	
@@ -146,7 +145,6 @@ public:
 
 private:
 
-	bool LoadCubeFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd);
 	bool LoadModelFromObjFile(ID3D11Device3* pDevice, ID3D11DeviceContext3* pContext, HWND hwnd, char* filename);
 	void ReleaseModel();
 	bool InitialiseBuffers(int subMeshIndex, ID3D11Device* pDevice);

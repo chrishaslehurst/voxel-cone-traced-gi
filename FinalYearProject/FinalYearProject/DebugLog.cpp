@@ -46,22 +46,25 @@ void DebugLog::OutputString(std::string sOutput)
 
 void DebugLog::PrintLogToScreen(ID3D11DeviceContext* pContext)
 {
-	float xPos = 100.f;
-	float yPos = 500.f;
-	float textSize = 18.f;
-	UINT32 TextColour = 0xffffffff;
-
-	for (int i = 0; i < m_iNumStrings; i++)
+	if (m_pFontWrapper)
 	{
-		std::wstring wideString(m_arrLog[i].begin(), m_arrLog[i].end());
-		m_pFontWrapper->DrawString(pContext, wideString.c_str(), textSize, xPos, yPos - (i*textSize + 2), TextColour, 0);
+		float xPos = 100.f;
+		float yPos = 500.f;
+		float textSize = 18.f;
+		UINT32 TextColour = 0xffffffff;
+
+		for (int i = 0; i < m_iNumStrings; i++)
+		{
+			std::wstring wideString(m_arrLog[i].begin(), m_arrLog[i].end());
+			m_pFontWrapper->DrawString(pContext, wideString.c_str(), textSize, xPos, yPos - (i*textSize + 2), TextColour, 0);
+		}
+		std::string s = ("Controls\n W - Move Forward\n S - Move Backward\n A - Move Left\n D - Move Right\n Mouse - Look Around\n V - Show Voxel Debug\n G - Change Render Type");
+		std::wstring ws(s.begin(), s.end());
+		m_pFontWrapper->DrawString(pContext, ws.c_str(), textSize, 1600.f, 150.f, TextColour, 0);
+
+		m_iNumStrings = 0;
+
+		pContext->GSSetShader(nullptr, nullptr, 0);
 	}
-	std::string s = ("Controls\n W - Move Forward\n S - Move Backward\n A - Move Left\n D - Move Right\n Mouse - Look Around\n V - Show Voxel Debug\n G - Change Render Type");
-	std::wstring ws(s.begin(), s.end());
-	m_pFontWrapper->DrawString(pContext, ws.c_str(), textSize, 1600.f, 150.f, TextColour, 0);
-
-	m_iNumStrings = 0;
-
-	pContext->GSSetShader(nullptr, nullptr, 0);
 }
 

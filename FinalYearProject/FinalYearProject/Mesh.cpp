@@ -83,61 +83,6 @@ bool Mesh::InitialiseFromObj(ID3D11Device3* pDevice, ID3D11DeviceContext3* pCont
 	return result;
 }
 
-bool Mesh::InitialiseCubeFromTxt(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
-{
-	//Load in the model data
-	if (!LoadCubeFromTextFile(pDevice, pContext, hwnd))
-	{
-		return false;
-	}
-
-	//Calculate the binormals and tangent vectors
-	//CalculateModelVectors();
-
-	m_WholeModelBounds.Min = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
-	m_WholeModelBounds.Max = XMFLOAT3(0.f, 0.f, 0.f);
-
-	//Initialise the buffers and calculate bounding boxes
-	bool result(true);
-	for (int i = 0; i < m_arrSubMeshes.size(); i++)
-	{
-		m_arrSubMeshes[i]->CalculateBoundingBox();
-
-		//Check the new bounding box to construct the aabb for the whole model..
-		if (m_arrSubMeshes[i]->m_BoundingBox.Min.x < m_WholeModelBounds.Min.x)
-		{
-			m_WholeModelBounds.Min.x = m_arrSubMeshes[i]->m_BoundingBox.Min.x;
-		}
-		if (m_arrSubMeshes[i]->m_BoundingBox.Min.y < m_WholeModelBounds.Min.y)
-		{
-			m_WholeModelBounds.Min.y = m_arrSubMeshes[i]->m_BoundingBox.Min.y;
-		}
-		if (m_arrSubMeshes[i]->m_BoundingBox.Min.z < m_WholeModelBounds.Min.z)
-		{
-			m_WholeModelBounds.Min.z = m_arrSubMeshes[i]->m_BoundingBox.Min.z;
-		}
-		if (m_arrSubMeshes[i]->m_BoundingBox.Max.x > m_WholeModelBounds.Max.x)
-		{
-			m_WholeModelBounds.Max.x = m_arrSubMeshes[i]->m_BoundingBox.Max.x;
-		}
-		if (m_arrSubMeshes[i]->m_BoundingBox.Max.y > m_WholeModelBounds.Max.y)
-		{
-			m_WholeModelBounds.Max.y = m_arrSubMeshes[i]->m_BoundingBox.Max.y;
-		}
-		if (m_arrSubMeshes[i]->m_BoundingBox.Max.z > m_WholeModelBounds.Max.z)
-		{
-			m_WholeModelBounds.Max.z = m_arrSubMeshes[i]->m_BoundingBox.Max.z;
-		}
-
-		result = InitialiseBuffers(i, pDevice);
-		if (!result)
-		{
-			break;
-		}
-	}
-	return result;
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Mesh::Shutdown()
@@ -155,13 +100,15 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorld
 	m_arrMeshesToRender.clear();
 	//Put the vertex and index buffers in the graphics pipeline so they can be drawn
 	
-	//TODO: This needs to be tidier.. just a quick hack to only set the shader once..
+	//TODO: This could be tidier.. bit of a hack to only set the shader once since they all use the same one..
 	m_arrSubMeshes[0]->m_pMaterial->SetShadersAndSamplers(pDeviceContext);
 	m_arrSubMeshes[0]->m_pMaterial->SetPerFrameShaderParameters(pDeviceContext, mWorldMatrix, mViewMatrix, mProjectionMatrix);
+
 	int iModelsRenderedInGBufferPass = 0;
 	int iNumPolysRenderedInGBufferPass = 0;
 	for (int i = 0; i < m_arrSubMeshes.size(); i++)
 	{
+		
 		if (!m_arrSubMeshes[i]->m_pMaterial->UsesAlphaMaps() && pCamera->CheckBoundingBoxInsideViewFrustum(m_vWorldPos, m_arrSubMeshes[i]->m_BoundingBox))
 		{
 			iModelsRenderedInGBufferPass++;
@@ -172,6 +119,7 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorld
 		}
 	}
 
+	//This sorts the meshes we want to render by their distance to the camera, to allow for early z discards.
 	std::sort(m_arrMeshesToRender.begin(), m_arrMeshesToRender.end(), SortByDistanceToCameraAscending);
 	for (int i = 0; i < m_arrMeshesToRender.size(); i++)
 	{
@@ -183,20 +131,12 @@ void Mesh::RenderToBuffers(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorld
 		}
 	}
 
-// 	stringstream ss;
-// 	ss << "Models Rendered In G Buffer Pass: " << iModelsRenderedInGBufferPass;
-// 	DebugLog::Get()->OutputString(ss.str());
-// 
-// 	stringstream ss2;
-// 	ss2 << "Polygons Rendered In G Buffer Pass: " << iNumPolysRenderedInGBufferPass;
-// 	DebugLog::Get()->OutputString(ss2.str());
-
 }
 
 
 void Mesh::RenderShadows(ID3D11DeviceContext3* pDeviceContext, XMMATRIX mWorldMatrix, XMMATRIX mViewMatrix, XMMATRIX mProjectionMatrix, XMFLOAT3 vLightDirection, XMFLOAT4 vLightDiffuseColour, XMFLOAT4 vAmbientColour, XMFLOAT3 vCameraPos)
 {
-	//Shadowing Pass
+	//Render meshes to the shadow maps..
 	for (int i = 0; i < NUM_LIGHTS; i++)
 	{
 		PointLight* pLight = LightManager::Get()->GetPointLight(i);
@@ -310,65 +250,6 @@ void Mesh::UpdateMatrices()
 {
 	m_mWorldMat = XMMatrixIdentity() * m_mScaleMat;
 	m_mWorldMat = m_mWorldMat * XMMatrixTranslation(m_vWorldPos.x, m_vWorldPos.y, m_vWorldPos.z);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool Mesh::LoadCubeFromTextFile(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, HWND hwnd)
-{
-	ifstream fin;
-	fin.open("../Assets/Models/cube.txt");
-
-	//did the file open?
-	if (fin.fail())
-	{
-		VS_LOG_VERBOSE("Failed to load model, could not open file..");
-		return false;
-	}
-
-	char input;
-	//read up to the value of vertex count.
-	fin.get(input);
-	while (input != ':')
-	{
-		fin.get(input);
-	}
-
-
-	m_arrSubMeshes.push_back(new SubMesh());
-
-
-	//read in the vert count
-	fin >> m_arrSubMeshes[0]->m_iVertexCount;
-	m_arrSubMeshes[0]->m_iIndexCount = m_arrSubMeshes[0]->m_iVertexCount;
-
-	//create the model array..
-	m_arrSubMeshes[0]->m_arrModel.reserve(m_arrSubMeshes[0]->m_iVertexCount);
-
-	//Read up to the beginning of the data
-	fin.get(input);
-	while (input != ':')
-	{
-		fin.get(input);
-	}
-	fin.get(input);
-	fin.get(input);
-
-	//Read in the vertex data
-	for (int i = 0; i < m_arrSubMeshes[0]->m_iVertexCount; i++)
-	{
-		if (i + 1 > m_arrSubMeshes[0]->m_arrModel.size())
-		{
-			m_arrSubMeshes[0]->m_arrModel.push_back(ModelType());
-		}
-		fin >> m_arrSubMeshes[0]->m_arrModel[i].pos.x >> m_arrSubMeshes[0]->m_arrModel[i].pos.y >> m_arrSubMeshes[0]->m_arrModel[i].pos.z;
-		fin >> m_arrSubMeshes[0]->m_arrModel[i].tex.x >> m_arrSubMeshes[0]->m_arrModel[i].tex.y;
-		fin >> m_arrSubMeshes[0]->m_arrModel[i].norm.x >> m_arrSubMeshes[0]->m_arrModel[i].norm.y >> m_arrSubMeshes[0]->m_arrModel[i].norm.z;
-	}
-
-	fin.close();
-
-	return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
